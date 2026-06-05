@@ -1,7 +1,8 @@
 /**
- * 平行时空档案馆 v0.1.6
+ * 平行时空档案馆 v0.1.7
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
+ * v0.1.7: 新增线下记录TXT导入功能 + 分支卡片显示来源标签
  * v0.1.6: 修复角色选择器默认值 + 增强记忆API日志 + 完善_onCharSelect容错
  * v0.1.5: 内置控制台日志面板 + 角色选择器（多char+群聊）+ 修复记忆获取
  * v0.1.4: modal overlay 改用 position:absolute + display:none（避免 fixed + pointer-events 在 WebView 中阻挡点击）
@@ -136,6 +137,8 @@
     '.pua-tag-char { background:rgba(167,106,239,0.1); color:var(--pua-char); }',
     '.pua-tag-mem { background:rgba(239,106,138,0.1); color:var(--pua-mem); }',
     '.pua-tag-preset { background:rgba(91,141,239,0.1); color:var(--pua-preset); }',
+    '.pua-tag-offline { background:rgba(78,201,160,0.1); color:var(--pua-success); }',
+    '.pua-tag-online { background:rgba(106,122,154,0.1); color:var(--pua-chat); }',
 
     '/* ── Char分组标题 ── */',
     '.pua-char-group { margin-bottom:20px; }',
@@ -462,17 +465,17 @@
     logPanel.className = 'pua-log-panel'
     var logToolbar = document.createElement('div')
     logToolbar.className = 'pua-log-toolbar'
-    logToolbar.innerHTML = '<span>控制台日志</span>'
+    logToolbar.innerHTML = '<span>\u63A7\u5236\u53F0\u65E5\u5FD7</span>'
     var logBtns = document.createElement('div')
     logBtns.className = 'pua-log-toolbar-btns'
     var copyBtn = document.createElement('button')
-    copyBtn.textContent = '复制'
+    copyBtn.textContent = '\u590D\u5236'
     copyBtn.addEventListener('click', function() { self._copyLogs() })
     var exportBtn = document.createElement('button')
-    exportBtn.textContent = '导出'
+    exportBtn.textContent = '\u5BFC\u51FA'
     exportBtn.addEventListener('click', function() { self._exportLogs() })
     var clearBtn = document.createElement('button')
-    clearBtn.textContent = '清除'
+    clearBtn.textContent = '\u6E05\u9664'
     clearBtn.addEventListener('click', function() { self._clearLogs() })
     logBtns.appendChild(copyBtn)
     logBtns.appendChild(exportBtn)
@@ -487,7 +490,7 @@
     // 日志切换按钮
     var logToggle = document.createElement('div')
     logToggle.className = 'pua-log-toggle'
-    logToggle.title = '控制台'
+    logToggle.title = '\u63A7\u5236\u53F0'
     logToggle.textContent = '>_'
     logToggle.addEventListener('click', function() { self._toggleLogPanel() })
     var logCount = document.createElement('div')
@@ -524,7 +527,7 @@
     // Brand
     var brand = document.createElement('div')
     brand.className = 'pua-sidebar-brand'
-    brand.innerHTML = '<h1>平行时空</h1><p>Parallel Universe</p>'
+    brand.innerHTML = '<h1>\u5E73\u884C\u65F6\u7A7A</h1><p>Parallel Universe</p>'
     sidebar.appendChild(brand)
 
     // Nav
@@ -532,12 +535,12 @@
     nav.className = 'pua-nav'
 
     var pages = [
-      { id: 'branches', icon: '☆', label: '分支存档', badge: this.branches.length },
-      { id: 'presets', icon: '✎', label: '预设编辑器' },
-      { id: 'regex', icon: '✳', label: '正则管理' },
-      { id: 'assembly', icon: '⚙', label: '上下文组装' },
-      { id: 'memory', icon: '☽', label: '记忆系统' },
-      { id: 'settings', icon: '♑', label: '设置' },
+      { id: 'branches', icon: '\u2606', label: '\u5206\u652F\u5B58\u6863', badge: this.branches.length },
+      { id: 'presets', icon: '\u270E', label: '\u9884\u8BBE\u7F16\u8F91\u5668' },
+      { id: 'regex', icon: '\u2733', label: '\u6B63\u5219\u7BA1\u7406' },
+      { id: 'assembly', icon: '\u2699', label: '\u4E0A\u4E0B\u6587\u7EC4\u88C5' },
+      { id: 'memory', icon: '\u263D', label: '\u8BB0\u5FC6\u7CFB\u7EDF' },
+      { id: 'settings', icon: '\u2691', label: '\u8BBE\u7F6E' },
     ]
 
     pages.forEach(function(pg) {
@@ -557,7 +560,7 @@
     // Footer
     var footer = document.createElement('div')
     footer.className = 'pua-sidebar-footer'
-    footer.innerHTML = '<span>暗/亮</span>'
+    footer.innerHTML = '<span>\u6697/\u4EAE</span>'
     var toggle = document.createElement('button')
     toggle.className = 'pua-theme-toggle'
     toggle.addEventListener('click', function() {
@@ -580,8 +583,8 @@
 
     var backBtn = document.createElement('button')
     backBtn.className = 'pua-back-btn'
-    backBtn.textContent = '←'
-    backBtn.title = '返回'
+    backBtn.textContent = '\u2190'
+    backBtn.title = '\u8FD4\u56DE'
     backBtn.addEventListener('click', function() {
       if (self.roche && self.roche.ui) self.roche.ui.closeApp()
     })
@@ -611,11 +614,11 @@
 
     switch (this.currentPage) {
       case 'branches': this._renderBranches(titleEl, actionsEl, contentEl); break
-      case 'presets': this._renderPlaceholder(titleEl, actionsEl, contentEl, '✎', '预设编辑器', '预设条目管理、角色选择、拖拽排序、Roche格式导入导出'); break
-      case 'regex': this._renderPlaceholder(titleEl, actionsEl, contentEl, '✳', '正则管理', '提示词替换 / 前端渲染、深度配置、Roche格式导入导出'); break
-      case 'assembly': this._renderPlaceholder(titleEl, actionsEl, contentEl, '⚙', '上下文组装', '可视化拖拽组装、深度过滤、角色卡/世界书/记忆注入'); break
-      case 'memory': this._renderPlaceholder(titleEl, actionsEl, contentEl, '☽', '记忆系统', '副API总结、核心记忆覆写、事实记忆压缩、向量记忆预留'); break
-      case 'settings': this._renderPlaceholder(titleEl, actionsEl, contentEl, '♑', '设置', '副API配置、主题美化、导入导出、兼容性'); break
+      case 'presets': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u270E', '\u9884\u8BBE\u7F16\u8F91\u5668', '\u9884\u8BBE\u6761\u76EE\u7BA1\u7406\u3001\u89D2\u8272\u9009\u62E9\u3001\u62D6\u63FD\u6392\u5E8F\u3001Roche\u683C\u5F0F\u5BFC\u5165\u5BFC\u51FA'); break
+      case 'regex': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2733', '\u6B63\u5219\u7BA1\u7406', '\u63D0\u793A\u8BCD\u66FF\u6362 / \u524D\u7AEF\u6E32\u67D3\u3001\u6DF1\u5EA6\u914D\u7F6E\u3001Roche\u683C\u5F0F\u5BFC\u5165\u5BFC\u51FA'); break
+      case 'assembly': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2699', '\u4E0A\u4E0B\u6587\u7EC4\u88C5', '\u53EF\u89C6\u5316\u62D6\u63FD\u7EC4\u88C5\u3001\u6DF1\u5EA6\u8FC7\u6EE4\u3001\u89D2\u8272\u5361/\u4E16\u754C\u4E66/\u8BB0\u5FC6\u6CE8\u5165'); break
+      case 'memory': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u263D', '\u8BB0\u5FC6\u7CFB\u7EDF', '\u526FAPI\u603B\u7ED3\u3001\u6838\u5FC3\u8BB0\u5FC6\u8986\u5199\u3001\u4E8B\u5B9E\u8BB0\u5FC6\u538B\u7F29\u3001\u5411\u91CF\u8BB0\u5FC6\u9884\u7559'); break
+      case 'settings': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2691', '\u8BBE\u7F6E', '\u526FAPI\u914D\u7F6E\u3001\u4E3B\u9898\u7F8E\u5316\u3001\u5BFC\u5165\u5BFC\u51FA\u3001\u517C\u5BB9\u6027'); break
     }
   }
 
@@ -625,14 +628,20 @@
 
   P._renderBranches = function(titleEl, actionsEl, contentEl) {
     var self = this
-    titleEl.textContent = '分支存档'
+    titleEl.textContent = '\u5206\u652F\u5B58\u6863'
     actionsEl.innerHTML = ''
 
     var createBtn = document.createElement('button')
     createBtn.className = 'pua-btn pua-btn-gold'
-    createBtn.textContent = '+ 从当前对话创建'
+    createBtn.textContent = '+ \u4ECE\u5F53\u524D\u5BF9\u8BDD\u521B\u5EFA'
     createBtn.addEventListener('click', function() { self._showCreateBranchModal() })
     actionsEl.appendChild(createBtn)
+
+    var importBtn = document.createElement('button')
+    importBtn.className = 'pua-btn'
+    importBtn.textContent = '\u2B07 \u5BFC\u5165\u7EBF\u4E0B\u8BB0\u5F55'
+    importBtn.addEventListener('click', function() { self._showImportModal() })
+    actionsEl.appendChild(importBtn)
 
     // 按char分组
     var groups = {}
@@ -643,7 +652,7 @@
     })
 
     if (Object.keys(groups).length === 0) {
-      contentEl.innerHTML = '<div class="pua-empty"><div class="pua-empty-icon">☆</div><div class="pua-empty-text">还没有分支存档，点击右上角创建第一个</div></div>'
+      contentEl.innerHTML = '<div class="pua-empty"><div class="pua-empty-icon">\u2606</div><div class="pua-empty-text">\u8FD8\u6CA1\u6709\u5206\u652F\u5B58\u6863\uFF0C\u70B9\u51FB\u53F3\u4E0A\u89D2\u521B\u5EFA\u7B2C\u4E00\u4E2A</div></div>'
       return
     }
 
@@ -669,11 +678,11 @@
       header.appendChild(avatar)
       var name = document.createElement('div')
       name.className = 'pua-char-group-name'
-      name.textContent = g.charName || '未知角色'
+      name.textContent = g.charName || '\u672A\u77E5\u89D2\u8272'
       header.appendChild(name)
       var count = document.createElement('div')
       count.className = 'pua-char-group-count'
-      count.textContent = g.branches.length + ' 个存档'
+      count.textContent = g.branches.length + ' \u4E2A\u5B58\u6863'
       header.appendChild(count)
       group.appendChild(header)
 
@@ -692,21 +701,34 @@
 
         var meta = document.createElement('div')
         meta.className = 'pua-branch-meta'
-        meta.innerHTML = '<span>消息: ' + (b.msgCount || 0) + ' 条</span><span>创建: ' + (b.createdAt || '-') + '</span>'
+        meta.innerHTML = '<span>\u6D88\u606F: ' + (b.msgCount || 0) + ' \u6761</span><span>\u521B\u5EFA: ' + (b.createdAt || '-') + '</span>'
         card.appendChild(meta)
 
         if (b.tags && b.tags.length) {
           var tags = document.createElement('div')
           tags.className = 'pua-branch-tags'
+          // 来源标签
+          var srcTag = document.createElement('span')
+          srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
+          srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          tags.appendChild(srcTag)
           b.tags.forEach(function(t) {
             var tag = document.createElement('span')
             tag.className = 'pua-tag'
-            if (t.indexOf('预设') >= 0) tag.className += ' pua-tag-preset'
-            else if (t.indexOf('记忆') >= 0) tag.className += ' pua-tag-mem'
+            if (t.indexOf('\u9884\u8BBE') >= 0) tag.className += ' pua-tag-preset'
+            else if (t.indexOf('\u8BB0\u5FC6') >= 0) tag.className += ' pua-tag-mem'
             else tag.className += ' pua-tag-char'
             tag.textContent = t
             tags.appendChild(tag)
           })
+          card.appendChild(tags)
+        } else if (b.source) {
+          var tags = document.createElement('div')
+          tags.className = 'pua-branch-tags'
+          var srcTag = document.createElement('span')
+          srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
+          srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          tags.appendChild(srcTag)
           card.appendChild(tags)
         }
 
@@ -732,39 +754,39 @@
 
     // 分支名称
     body += '<div class="pua-field">'
-    body += '<div class="pua-field-label">分支名称</div>'
-    body += '<input class="pua-field-input" id="pua-branch-name" placeholder="给这个分支起个名字..." value="">'
+    body += '<div class="pua-field-label">\u5206\u652F\u540D\u79F0</div>'
+    body += '<input class="pua-field-input" id="pua-branch-name" placeholder="\u7ED9\u8FD9\u4E2A\u5206\u652F\u8D77\u4E2A\u540D\u5B57..." value="">'
     body += '</div>'
 
     // 来源角色 — 下拉选择
     body += '<div class="pua-field">'
-    body += '<div class="pua-field-label">来源角色 / 会话</div>'
+    body += '<div class="pua-field-label">\u6765\u6E90\u89D2\u8272 / \u4F1A\u8BDD</div>'
     body += '<select class="pua-field-input pua-field-select" id="pua-branch-char">'
-    body += '<option value="">加载中...</option>'
+    body += '<option value="">\u52A0\u8F7D\u4E2D...</option>'
     body += '</select>'
-    body += '<div class="pua-field-hint">选择要创建分支的角色或群聊</div>'
+    body += '<div class="pua-field-hint">\u9009\u62E9\u8981\u521B\u5EFA\u5206\u652F\u7684\u89D2\u8272\u6216\u7FA4\u804A</div>'
     body += '</div>'
 
     // 上下文深度
     body += '<div class="pua-field">'
-    body += '<div class="pua-field-label">获取上下文深度</div>'
+    body += '<div class="pua-field-label">\u83B7\u53D6\u4E0A\u4E0B\u6587\u6DF1\u5EA6</div>'
     body += '<input class="pua-field-input" type="number" id="pua-branch-depth" value="50" min="1" max="200">'
-    body += '<div class="pua-field-hint">从当前对话获取最近N条消息（最大200）</div>'
+    body += '<div class="pua-field-hint">\u4ECE\u5F53\u524D\u5BF9\u8BDD\u83B7\u53D6\u6700\u8FD1N\u6761\u6D88\u606F\uFF08\u6700\u5927200\uFF09</div>'
     body += '</div>'
 
     // 标签
     body += '<div class="pua-field">'
-    body += '<div class="pua-field-label">标签（逗号分隔）</div>'
-    body += '<input class="pua-field-input" id="pua-branch-tags" placeholder="关键抉择, 番外, ...">'
+    body += '<div class="pua-field-label">\u6807\u7B7E\uFF08\u9017\u53F7\u5206\u9694\uFF09</div>'
+    body += '<input class="pua-field-input" id="pua-branch-tags" placeholder="\u5173\u952E\u6296\u62E9, \u756A\u5916, ...">'
     body += '</div>'
 
     // 记忆获取选项
     body += '<div class="pua-field">'
-    body += '<div class="pua-field-label">记忆获取</div>'
+    body += '<div class="pua-field-label">\u8BB0\u5FC6\u83B7\u53D6</div>'
     body += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--pua-text-sub);margin-bottom:4px">'
-    body += '<input type="checkbox" id="pua-branch-mem-short" checked> 上下文记忆（短期）</label>'
+    body += '<input type="checkbox" id="pua-branch-mem-short" checked> \u4E0A\u4E0B\u6587\u8BB0\u5FC6\uFF08\u77ED\u671F\uFF09</label>'
     body += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--pua-text-sub);margin-bottom:4px">'
-    body += '<input type="checkbox" id="pua-branch-mem-long" checked> 事实记忆 + 核心记忆（长期）</label>'
+    body += '<input type="checkbox" id="pua-branch-mem-long" checked> \u4E8B\u5B9E\u8BB0\u5FC6 + \u6838\u5FC3\u8BB0\u5FC6\uFF08\u957F\u671F\uFF09</label>'
     body += '</div>'
 
     var modalBody = modal.querySelector('.pua-modal-body')
@@ -781,7 +803,7 @@
     }
 
     var modalTitle = modal.querySelector('.pua-modal-title')
-    if (modalTitle) modalTitle.textContent = '创建分支存档'
+    if (modalTitle) modalTitle.textContent = '\u521B\u5EFA\u5206\u652F\u5B58\u6863'
 
     // Footer buttons
     var footer = modal.querySelector('.pua-modal-footer')
@@ -791,12 +813,12 @@
 
     var cancelBtn = document.createElement('button')
     cancelBtn.className = 'pua-btn'
-    cancelBtn.textContent = '取消'
+    cancelBtn.textContent = '\u53D6\u6D88'
     cancelBtn.addEventListener('click', function() { self._closeModal() })
 
     var createBtn = document.createElement('button')
     createBtn.className = 'pua-btn pua-btn-gold'
-    createBtn.textContent = '创建'
+    createBtn.textContent = '\u521B\u5EFA'
     createBtn.addEventListener('click', function() { self._doCreateBranch() })
 
     footer.appendChild(cancelBtn)
@@ -822,7 +844,7 @@
     console.log('[PUA] _loadCharOptions: fetching character list...')
 
     // 先清空加载中
-    selectEl.innerHTML = '<option value="">加载中...</option>'
+    selectEl.innerHTML = '<option value="">\u52A0\u8F7D\u4E2D...</option>'
 
     // 收集所有选项
     var options = [] // { label, value, convId, charId, charName, charAvatar, isGroup }
@@ -838,9 +860,9 @@
             self._charList = chars
             chars.forEach(function(ch) {
               var convId = ch.conversationId || ''
-              var name = ch.handle || ch.name || '未知'
+              var name = ch.handle || ch.name || '\u672A\u77E5'
               options.push({
-                label: '👤 ' + name + ' (单聊)',
+                label: '\uD83D\uDC64 ' + name + ' (\u5355\u804A)',
                 value: 'char_' + (ch.id || ''),
                 convId: convId,
                 charId: ch.id || '',
@@ -865,7 +887,7 @@
             self._convList = convs
             convs.forEach(function(cv) {
               var convId = cv.id || cv.conversationId || ''
-              var name = cv.name || cv.handle || '未知'
+              var name = cv.name || cv.handle || '\u672A\u77E5'
               var isGroup = cv.type === 'group' || (cv.members && cv.members.length > 2)
               // 检查是否已存在
               var dup = false
@@ -874,7 +896,7 @@
               }
               if (!dup && convId) {
                 options.push({
-                  label: (isGroup ? '👥 ' : '📝 ') + name + (isGroup ? ' (群聊)' : ''),
+                  label: (isGroup ? '\uD83D\uDC65 ' : '\uD83D\uDCDD ') + name + (isGroup ? ' (\u7FA4\u804A)' : ''),
                   value: 'conv_' + convId,
                   convId: convId,
                   charId: cv.contactId || '',
@@ -892,7 +914,7 @@
     }
 
     if (fetchPromises.length === 0) {
-      selectEl.innerHTML = '<option value="">无API可用</option>'
+      selectEl.innerHTML = '<option value="">\u65E0API\u53EF\u7528</option>'
       return
     }
 
@@ -900,7 +922,7 @@
       console.log('[PUA] total options: ' + options.length)
       selectEl.innerHTML = ''
       if (options.length === 0) {
-        selectEl.innerHTML = '<option value="">未找到任何角色或会话</option>'
+        selectEl.innerHTML = '<option value="">\u672A\u627E\u5230\u4EFB\u4F55\u89D2\u8272\u6216\u4F1A\u8BDD</option>'
         return
       }
       // 填充选项
@@ -1021,10 +1043,10 @@
     console.log('[PUA] _doCreateBranch: convId=' + convId + ' charId=' + charId + ' charName=' + charName + ' depth=' + depth + ' getShort=' + getShort + ' getLong=' + getLong)
 
     if (!branchName) {
-      branchName = '分支 · ' + new Date().toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })
+      branchName = '\u5206\u652F \u00B7 ' + new Date().toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })
     }
 
-    var tags = tagsStr ? tagsStr.split(/[,，]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
+    var tags = tagsStr ? tagsStr.split(/[,\uFF0C]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
 
     var branch = {
       id: 'b' + Date.now(),
@@ -1033,6 +1055,7 @@
       charName: charName,
       charAvatar: charAvatar,
       sourceConvId: convId,
+      source: 'online',
       msgCount: 0,
       createdAt: new Date().toLocaleString('zh-CN'),
       tags: tags,
@@ -1082,27 +1105,27 @@
       self.branches.push(branch)
       self._saveBranches()
       self._closeModal()
-      self._toast('分支创建成功（未获取记忆）')
+      self._toast('\u5206\u652F\u521B\u5EFA\u6210\u529F\uFF08\u672A\u83B7\u53D6\u8BB0\u5FC6\uFF09')
       self._render()
       return
     }
 
     // 显示加载
-    this._toast('正在获取记忆...')
+    this._toast('\u6B63\u5728\u83B7\u53D6\u8BB0\u5FC6...')
 
     Promise.all(promises).then(function() {
       self.branches.push(branch)
       self._saveBranches()
       self._closeModal()
       console.log('[PUA] branch created: id=' + branch.id + ' name=' + branch.name + ' convId=' + branch.sourceConvId + ' charId=' + branch.charId + ' msgs=' + branch.msgCount)
-      self._toast('分支创建成功！已获取 ' + branch.msgCount + ' 条消息')
+      self._toast('\u5206\u652F\u521B\u5EFA\u6210\u529F\uFF01\u5DF2\u83B7\u53D6 ' + branch.msgCount + ' \u6761\u6D88\u606F')
       self._render()
     }).catch(function(e) {
       console.error('[PUA] create branch failed', e)
       self.branches.push(branch)
       self._saveBranches()
       self._closeModal()
-      self._toast('分支已创建，但记忆获取可能不完整')
+      self._toast('\u5206\u652F\u5DF2\u521B\u5EFA\uFF0C\u4F46\u8BB0\u5FC6\u83B7\u53D6\u53EF\u80FD\u4E0D\u5B8C\u6574')
       self._render()
     })
   }
@@ -1126,30 +1149,38 @@
     var body = '<div style="margin-bottom:12px">'
     body += '<div style="font-size:14px;font-weight:700;color:var(--pua-accent-text);margin-bottom:8px">' + this._escHtml(branch.name) + '</div>'
     body += '<div style="font-size:11px;color:var(--pua-text-dim);display:flex;flex-direction:column;gap:2px">'
-    body += '<span>角色: ' + this._escHtml(branch.charName || '未知') + '</span>'
-    body += '<span>消息: ' + branch.msgCount + ' 条</span>'
-    body += '<span>创建: ' + this._escHtml(branch.createdAt || '-') + '</span>'
-    body += '<span>上下文深度: ' + (branch.contextDepth || 50) + '</span>'
+    body += '<span>\u89D2\u8272: ' + this._escHtml(branch.charName || '\u672A\u77E5') + '</span>'
+    body += '<span>\u6D88\u606F: ' + branch.msgCount + ' \u6761</span>'
+    body += '<span>\u521B\u5EFA: ' + this._escHtml(branch.createdAt || '-') + '</span>'
+    body += '<span>\u6765\u6E90: ' + (branch.source === 'offline' ? '\u7EBF\u4E0B\u8BB0\u5F55' : '\u7EBF\u4E0A\u5BF9\u8BDD') + '</span>'
+    if (branch.source === 'offline' && branch.offlineMeta) {
+      var om = branch.offlineMeta
+      if (om.offlineSource) body += '<span>\u7C7B\u578B: ' + this._escHtml(om.offlineSource) + '</span>'
+      if (om.recordTime) body += '<span>\u8BB0\u5F55\u65F6\u95F4: ' + this._escHtml(om.recordTime) + '</span>'
+      if (om.fileName) body += '<span>\u6587\u4EF6: ' + this._escHtml(om.fileName) + '</span>'
+    } else {
+      body += '<span>\u4E0A\u4E0B\u6587\u6DF1\u5EA6: ' + (branch.contextDepth || 50) + '</span>'
+    }
     body += '</div></div>'
 
     // 记忆概览
     if (branch.longTermMemory) {
       body += '<div style="margin-bottom:12px">'
-      body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">长期记忆</div>'
+      body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u957F\u671F\u8BB0\u5FC6</div>'
       if (branch.longTermMemory.core) {
         var coreText = branch.longTermMemory.core.summary || branch.longTermMemory.core.text || String(branch.longTermMemory.core)
         body += '<div style="font-size:10.5px;color:var(--pua-text-sub);background:var(--pua-bg-input);border-radius:6px;padding:8px;margin-bottom:4px;max-height:80px;overflow-y:auto">'
-        body += '<b>核心:</b> ' + this._escHtml(coreText.substring(0, 200))
+        body += '<b>\u6838\u5FC3:</b> ' + this._escHtml(coreText.substring(0, 200))
         if (coreText.length > 200) body += '...'
         body += '</div>'
       }
       if (branch.longTermMemory.facts) {
         var factCount = Array.isArray(branch.longTermMemory.facts) ? branch.longTermMemory.facts.length : 0
-        body += '<div style="font-size:10px;color:var(--pua-text-dim)">事实记忆: ' + factCount + ' 条</div>'
+        body += '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E8B\u5B9E\u8BB0\u5FC6: ' + factCount + ' \u6761</div>'
       }
       if (branch.longTermMemory.vectors) {
         var vecCount = Array.isArray(branch.longTermMemory.vectors) ? branch.longTermMemory.vectors.length : 0
-        if (vecCount > 0) body += '<div style="font-size:10px;color:var(--pua-text-dim)">向量记忆: ' + vecCount + ' 条</div>'
+        if (vecCount > 0) body += '<div style="font-size:10px;color:var(--pua-text-dim)">\u5411\u91CF\u8BB0\u5FC6: ' + vecCount + ' \u6761</div>'
       }
       body += '</div>'
     }
@@ -1157,7 +1188,7 @@
     // 消息预览
     if (branch.messages && branch.messages.length) {
       body += '<div style="margin-bottom:12px">'
-      body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">聊天记录 (' + branch.messages.length + ' 条)</div>'
+      body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u804A\u5929\u8BB0\u5F55 (' + branch.messages.length + ' \u6761)</div>'
       body += '<div style="max-height:200px;overflow-y:auto;font-size:10.5px;line-height:1.6">'
       var previewCount = Math.min(branch.messages.length, 10)
       for (var j = branch.messages.length - previewCount; j < branch.messages.length; j++) {
@@ -1173,7 +1204,7 @@
         body += '</div>'
       }
       if (branch.messages.length > 10) {
-        body += '<div style="font-size:9px;color:var(--pua-text-dim);text-align:center">仅显示最近 10 条</div>'
+        body += '<div style="font-size:9px;color:var(--pua-text-dim);text-align:center">\u4EC5\u663E\u793A\u6700\u8FD1 10 \u6761</div>'
       }
       body += '</div></div>'
     }
@@ -1186,7 +1217,7 @@
     modalBody.innerHTML = body
 
     var modalTitle = modal.querySelector('.pua-modal-title')
-    if (modalTitle) modalTitle.textContent = '分支详情'
+    if (modalTitle) modalTitle.textContent = '\u5206\u652F\u8BE6\u60C5'
 
     // Footer
     var footer = modal.querySelector('.pua-modal-footer')
@@ -1196,17 +1227,17 @@
 
     var closeBtn = document.createElement('button')
     closeBtn.className = 'pua-btn'
-    closeBtn.textContent = '关闭'
+    closeBtn.textContent = '\u5173\u95ED'
     closeBtn.addEventListener('click', function() { self._closeModal() })
 
     var deleteBtn = document.createElement('button')
     deleteBtn.className = 'pua-btn pua-btn-danger'
-    deleteBtn.textContent = '删除分支'
+    deleteBtn.textContent = '\u5220\u9664\u5206\u652F'
     deleteBtn.addEventListener('click', function() {
       self.branches = self.branches.filter(function(b) { return b.id !== branchId })
       self._saveBranches()
       self._closeModal()
-      self._toast('分支已删除')
+      self._toast('\u5206\u652F\u5DF2\u5220\u9664')
       self._render()
     })
 
@@ -1220,12 +1251,363 @@
   }
 
   /* ════════════════════════════════════════════════════════════
-     占位页面（Phase 2-5 功能）
+     导入线下记录 TXT
      ════════════════════════════════════════════════════════════ */
+
+  P._showImportModal = function() {
+    console.log('[PUA] _showImportModal called')
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) { console.warn('[PUA] modal overlay not found'); return }
+
+    var body = ''
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u5BFC\u5165\u7EBF\u4E0B\u8BB0\u5F55 TXT</div>'
+    body += '<div style="border:2px dashed var(--pua-border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:var(--pua-transition)" id="pua-import-dropzone">'
+    body += '<div style="font-size:24px;opacity:0.3;margin-bottom:8px">\u2B07</div>'
+    body += '<div style="font-size:11px;color:var(--pua-text-sub)">\u70B9\u51FB\u9009\u62E9\u6587\u4EF6\u6216\u62D6\u62FD\u5230\u8FD9\u91CC</div>'
+    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-top:4px">\u652F\u6301 Roche \u5BFC\u51FA\u7684\u7EBF\u4E0B\u8BB0\u5F55 / \u5F52\u6863\u8BB0\u5F55 TXT\uFF0C\u53EF\u591A\u9009</div>'
+    body += '<input type="file" id="pua-import-file" accept=".txt" multiple style="display:none">'
+    body += '</div>'
+    body += '</div>'
+
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u5206\u652F\u540D\u79F0</div>'
+    body += '<input class="pua-field-input" id="pua-import-name" placeholder="\u7559\u7A7A\u5219\u81EA\u52A8\u4ECE\u6587\u4EF6\u540D\u751F\u6210...">'
+    body += '</div>'
+
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u6807\u7B7E\uFF08\u9017\u53F7\u5206\u9694\uFF09</div>'
+    body += '<input class="pua-field-input" id="pua-import-tags" placeholder="\u7EBF\u4E0B, \u5F52\u6863, ...">'
+    body += '</div>'
+
+    // 预览区
+    body += '<div id="pua-import-preview" style="display:none">'
+    body += '<div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:6px">\u89E3\u6790\u9884\u89C8</div>'
+    body += '<div id="pua-import-preview-content" style="max-height:200px;overflow-y:auto;font-size:10px;color:var(--pua-text-sub);background:var(--pua-bg-input);border-radius:6px;padding:8px;line-height:1.5"></div>'
+    body += '</div>'
+
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (!modalBody) { console.warn('[PUA] modal body not found'); return }
+    modalBody.innerHTML = body
+
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u5BFC\u5165\u7EBF\u4E0B\u8BB0\u5F55'
+
+    // Footer
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+
+    var confirmBtn = document.createElement('button')
+    confirmBtn.className = 'pua-btn pua-btn-gold'
+    confirmBtn.textContent = '\u786E\u8BA4\u5BFC\u5165'
+    confirmBtn.id = 'pua-import-confirm'
+    confirmBtn.addEventListener('click', function() { self._doImport() })
+
+    footer.appendChild(cancelBtn)
+    footer.appendChild(confirmBtn)
+
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    // 绑定文件选择事件
+    var dropzone = modal.querySelector('#pua-import-dropzone')
+    var fileInput = modal.querySelector('#pua-import-file')
+    if (dropzone && fileInput) {
+      dropzone.addEventListener('click', function() { fileInput.click() })
+      dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault()
+        dropzone.style.borderColor = 'var(--pua-accent)'
+        dropzone.style.background = 'var(--pua-accent-glow)'
+      })
+      dropzone.addEventListener('dragleave', function() {
+        dropzone.style.borderColor = 'var(--pua-border)'
+        dropzone.style.background = ''
+      })
+      dropzone.addEventListener('drop', function(e) {
+        e.preventDefault()
+        dropzone.style.borderColor = 'var(--pua-border)'
+        dropzone.style.background = ''
+        self._handleImportFiles(e.dataTransfer.files)
+      })
+      fileInput.addEventListener('change', function() {
+        if (fileInput.files && fileInput.files.length) {
+          self._handleImportFiles(fileInput.files)
+        }
+      })
+    }
+
+    modal.classList.add('show')
+  }
+
+  /* ── 处理导入文件 ── */
+  P._handleImportFiles = function(fileList) {
+    var self = this
+    var modal = this._modalOverlay
+    if (!fileList || fileList.length === 0) return
+
+    console.log('[PUA] _handleImportFiles: ' + fileList.length + ' files')
+
+    // 存储解析结果
+    this._importParsed = []
+
+    var filesRead = 0
+    var totalFiles = fileList.length
+
+    for (var i = 0; i < fileList.length; i++) {
+      (function(file) {
+        var reader = new FileReader()
+        reader.onload = function(e) {
+          var text = e.target.result
+          var parsed = self._parseRocheTxt(text, file.name)
+          if (parsed) {
+            self._importParsed.push(parsed)
+            console.log('[PUA] parsed: ' + file.name + ' -> ' + parsed.messages.length + ' msgs, char=' + parsed.charName)
+          } else {
+            console.warn('[PUA] failed to parse: ' + file.name)
+          }
+          filesRead++
+          if (filesRead === totalFiles) {
+            self._showImportPreview()
+          }
+        }
+        reader.readAsText(file, 'UTF-8')
+      })(fileList[i])
+    }
+  }
+
+  /* ── 解析 Roche 导出的 TXT 格式 ── */
+  P._parseRocheTxt = function(text, fileName) {
+    if (!text || !text.trim()) return null
+
+    var lines = text.split('\n')
+    var header = {}
+    var messages = []
+    var currentMsg = null
+    var inHeader = true
+    var separatorSeen = false
+
+    // 解析头部元信息
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i]
+      var trimmed = line.trim()
+
+      // 检查分隔线
+      if (!separatorSeen && trimmed.match(/^-+$/)) {
+        separatorSeen = true
+        inHeader = false
+        continue
+      }
+
+      if (inHeader) {
+        // 解析 "key: value" 格式
+        var colonIdx = trimmed.indexOf('\uFF1A') // 全角冒号
+        if (colonIdx < 0) colonIdx = trimmed.indexOf(':') // 半角冒号
+        if (colonIdx > 0) {
+          var key = trimmed.substring(0, colonIdx).trim()
+          var val = trimmed.substring(colonIdx + 1).trim()
+          // 标准化 key
+          if (key === '\u4F1A\u8BDD') header.charName = val
+          else if (key === '\u6765\u6E90') header.source = val
+          else if (key === '\u5BFC\u51FA\u65F6\u95F4') header.exportTime = val
+          else if (key.indexOf('\u8BB0\u5F55\u65F6\u95F4') >= 0) header.recordTime = val
+          else if (key === '\u6D88\u606F\u6570') header.msgCount = parseInt(val) || 0
+        }
+        continue
+      }
+
+      // 解析消息行: #N [timestamp] senderName
+      var msgMatch = trimmed.match(/^#(\d+)\s+\[([^\]]+)\]\s+(.+)$/)
+      if (msgMatch) {
+        // 保存上一条消息
+        if (currentMsg) {
+          currentMsg.text = currentMsg.text.trim()
+          messages.push(currentMsg)
+        }
+        currentMsg = {
+          index: parseInt(msgMatch[1]),
+          timestamp: msgMatch[2],
+          senderName: msgMatch[3].trim(),
+          text: ''
+        }
+        continue
+      }
+
+      // 消息内容
+      if (currentMsg) {
+        currentMsg.text += line + '\n'
+      }
+    }
+
+    // 保存最后一条消息
+    if (currentMsg) {
+      currentMsg.text = currentMsg.text.trim()
+      messages.push(currentMsg)
+    }
+
+    if (messages.length === 0) {
+      console.warn('[PUA] _parseRocheTxt: no messages found in ' + fileName)
+      return null
+    }
+
+    // 从文件名提取额外信息
+    // 格式: 本次线下记录_谢猫猫_20260605_084527.txt 或 归档记录_Nikto_20260519_085025.txt
+    var nameMatch = fileName.match(/(?:\u672C\u6B21\u7EBF\u4E0B\u8BB0\u5F55|\u5F52\u6863\u8BB0\u5F55)_(.+?)_(\d{8}_\d{6})\.txt/)
+    var fileCharName = nameMatch ? nameMatch[1] : ''
+    var fileDate = nameMatch ? nameMatch[2] : ''
+
+    return {
+      charName: header.charName || fileCharName || '\u672A\u77E5',
+      source: header.source || '',
+      exportTime: header.exportTime || '',
+      recordTime: header.recordTime || '',
+      expectedMsgCount: header.msgCount || 0,
+      fileCharName: fileCharName,
+      fileDate: fileDate,
+      fileName: fileName,
+      messages: messages
+    }
+  }
+
+  /* ── 显示导入预览 ── */
+  P._showImportPreview = function() {
+    var modal = this._modalOverlay
+    if (!modal) return
+    var previewEl = modal.querySelector('#pua-import-preview')
+    var previewContent = modal.querySelector('#pua-import-preview-content')
+    if (!previewEl || !previewContent) return
+
+    if (!this._importParsed || this._importParsed.length === 0) {
+      previewContent.textContent = '\u672A\u80FD\u89E3\u6790\u51FA\u4EFB\u4F55\u6D88\u606F\uFF0C\u8BF7\u68C0\u67E5\u6587\u4EF6\u683C\u5F0F'
+      previewEl.style.display = 'block'
+      return
+    }
+
+    var html = ''
+    for (var i = 0; i < this._importParsed.length; i++) {
+      var p = this._importParsed[i]
+      html += '<div style="margin-bottom:10px;padding:8px;border:1px solid var(--pua-border);border-radius:6px">'
+      html += '<div style="font-weight:600;color:var(--pua-accent-text);margin-bottom:4px">' + this._escHtml(p.fileName) + '</div>'
+      html += '<div style="font-size:9px;color:var(--pua-text-dim)">'
+      html += '\u89D2\u8272: ' + this._escHtml(p.charName)
+      html += ' | \u6765\u6E90: ' + this._escHtml(p.source)
+      html += ' | \u6D88\u606F: ' + p.messages.length + ' \u6761'
+      if (p.recordTime) html += ' | \u65F6\u95F4: ' + this._escHtml(p.recordTime)
+      html += '</div>'
+      // 消息预览
+      var previewCount = Math.min(p.messages.length, 3)
+      for (var j = 0; j < previewCount; j++) {
+        var msg = p.messages[j]
+        var preview = msg.text.substring(0, 80).replace(/<[^>]+>/g, '').trim()
+        if (msg.text.length > 80) preview += '...'
+        html += '<div style="font-size:9px;color:var(--pua-text-sub);margin-top:2px;padding:2px 4px;background:rgba(255,255,255,0.02);border-radius:3px">'
+        html += '<b style="color:var(--pua-accent)">#' + msg.index + '</b> '
+        html += '<span style="color:var(--pua-char)">' + this._escHtml(msg.senderName) + '</span>: '
+        html += this._escHtml(preview)
+        html += '</div>'
+      }
+      if (p.messages.length > 3) {
+        html += '<div style="font-size:8px;color:var(--pua-text-dim);text-align:center">\u8FD8\u6709 ' + (p.messages.length - 3) + ' \u6761\u6D88\u606F...</div>'
+      }
+      html += '</div>'
+    }
+    previewContent.innerHTML = html
+    previewEl.style.display = 'block'
+
+    // 自动填充分支名称
+    var nameInput = modal.querySelector('#pua-import-name')
+    if (nameInput && !nameInput.value && this._importParsed.length > 0) {
+      var first = this._importParsed[0]
+      nameInput.value = first.charName + ' \u00B7 ' + (first.recordTime || first.exportTime || '\u7EBF\u4E0B\u8BB0\u5F55')
+    }
+  }
+
+  /* ── 执行导入 ── */
+  P._doImport = function() {
+    console.log('[PUA] _doImport called')
+    var self = this
+    var modal = this._modalOverlay
+    if (!this._importParsed || this._importParsed.length === 0) {
+      this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6570\u636E')
+      return
+    }
+
+    var nameInput = modal ? modal.querySelector('#pua-import-name') : null
+    var tagsInput = modal ? modal.querySelector('#pua-import-tags') : null
+
+    var branchName = nameInput ? nameInput.value.trim() : ''
+    var tagsStr = tagsInput ? tagsInput.value.trim() : ''
+    var tags = tagsStr ? tagsStr.split(/[,\uFF0C]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
+
+    // 为每个解析结果创建一个分支
+    var created = 0
+    for (var i = 0; i < this._importParsed.length; i++) {
+      var p = this._importParsed[i]
+
+      // 将消息转为统一格式
+      var msgs = p.messages.map(function(m) {
+        return {
+          type: 'unknown',
+          senderName: m.senderName,
+          senderHandle: m.senderName,
+          text: m.text,
+          timestamp: m.timestamp
+        }
+      })
+
+      var bName = branchName
+      if (!bName) {
+        bName = p.charName + ' \u00B7 ' + (p.recordTime || p.exportTime || '\u7EBF\u4E0B\u8BB0\u5F55')
+      } else if (self._importParsed.length > 1) {
+        bName = branchName + ' (' + p.charName + ')'
+      }
+
+      var branch = {
+        id: 'b' + Date.now() + '_' + i,
+        name: bName,
+        charId: '',
+        charName: p.charName,
+        charAvatar: '',
+        sourceConvId: '',
+        source: 'offline',
+        msgCount: msgs.length,
+        createdAt: new Date().toLocaleString('zh-CN'),
+        tags: tags.length > 0 ? tags : ['\u7EBF\u4E0B'],
+        contextDepth: msgs.length,
+        longTermMemory: null,
+        messages: msgs,
+        offlineMeta: {
+          fileName: p.fileName,
+          fileCharName: p.fileCharName,
+          fileDate: p.fileDate,
+          exportTime: p.exportTime,
+          recordTime: p.recordTime,
+          offlineSource: p.source
+        }
+      }
+
+      this.branches.push(branch)
+      created++
+      console.log('[PUA] imported branch: id=' + branch.id + ' name=' + branch.name + ' msgs=' + branch.msgCount + ' char=' + branch.charName)
+    }
+
+    this._saveBranches()
+    this._closeModal()
+    this._importParsed = []
+    this._toast('\u5DF2\u5BFC\u5165 ' + created + ' \u4E2A\u7EBF\u4E0B\u5206\u652F\uFF0C\u5171 ' + this.branches.filter(function(b) { return b.source === 'offline' }).length + ' \u6761\u6D88\u606F')
+    this._render()
+  }
 
   P._renderPlaceholder = function(titleEl, actionsEl, contentEl, icon, title, desc) {
     titleEl.textContent = title
-    actionsEl.innerHTML = '<span style="font-size:10px;color:var(--pua-text-dim)">待开发</span>'
+    actionsEl.innerHTML = '<span style="font-size:10px;color:var(--pua-text-dim)">\u5F85\u5F00\u53D1</span>'
     contentEl.innerHTML = '<div class="pua-placeholder">'
       + '<div class="pua-placeholder-icon">' + icon + '</div>'
       + '<div class="pua-placeholder-title">' + title + '</div>'
@@ -1305,9 +1687,9 @@
       ta.select()
       document.execCommand('copy')
       document.body.removeChild(ta)
-      this._toast('日志已复制到剪贴板')
+      this._toast('\u65E5\u5FD7\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F')
     } catch(e) {
-      this._logBuffer.push({ level: 'info', text: '复制失败，请手动复制下方日志，总共' + this._logBuffer.length + '条', time: new Date().toLocaleTimeString('zh-CN') })
+      this._logBuffer.push({ level: 'info', text: '\u590D\u5236\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u590D\u5236\u4E0B\u65B9\u65E5\u5FD7\uFF0C\u603B\u5171' + this._logBuffer.length + '\u6761', time: new Date().toLocaleTimeString('zh-CN') })
     }
   }
 
@@ -1324,14 +1706,14 @@
     a.download = 'pua-logs-' + Date.now() + '.txt'
     a.click()
     URL.revokeObjectURL(url)
-    this._toast('日志已导出')
+    this._toast('\u65E5\u5FD7\u5DF2\u5BFC\u51FA')
   }
 
   P._clearLogs = function() {
     this._logBuffer = []
     if (this._logList) this._logList.innerHTML = ''
     if (this._logCount) this._logCount.style.display = 'none'
-    this._toast('日志已清除')
+    this._toast('\u65E5\u5FD7\u5DF2\u6E05\u9664')
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1342,12 +1724,12 @@
 
   window.RochePlugin.register({
     id: 'parallel-universe',
-    name: '平行时空档案馆',
-    version: '0.1.6',
-    icon: '☆',
+    name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
+    version: '0.1.7',
+    icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
-      name: '平行时空档案馆',
+      name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
       icon: 'extension',
       iconImage: '',
       mount: function(container, roche) {
