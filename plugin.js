@@ -312,6 +312,8 @@
     '.pua-branch-grid { grid-template-columns:1fr; gap:10px; }',
     '.pua-panel-layout { flex-direction:column; gap:0px; }',
     '.pua-panel-list { width:100%; min-width:100%; }',
+    // 移动端：列表面板默认隐藏（选中条目后），详情面板默认显示
+    '.pua-panel-list.pua-mobile-hide { display:none; }',
     '.pua-panel-detail { display:none; }',
     '.pua-panel-detail.show { display:flex; }',
     '.pua-modal { width:90vw; max-height:85vh; }',
@@ -2022,7 +2024,8 @@
     var h = '<div class="pua-panel-layout">'
 
     // === Left: Item list ===
-    h += '<div class="pua-glass pua-panel-list">'
+    var mobileHideList = (window.innerWidth < 768 && selPreset) ? ' pua-mobile-hide' : ''
+    h += '<div class="pua-glass pua-panel-list' + mobileHideList + '">'
     h += '<div class="pua-panel-header"><span>\u6761\u76EE\u5217\u8868</span><span style="font-size:10px;color:var(--pua-text-dim)">' + this.presets.length + ' \u9879</span></div>'
     h += '<div class="pua-panel-body" id="pua-preset-list">'
     
@@ -2120,13 +2123,6 @@
         el.addEventListener('click', function(e) {
           if (e.target.classList.contains('pua-toggle-item') || e.target.classList.contains('pua-drag-handle')) return
           self.selPreset = this.getAttribute('data-id')
-          // 移动端：隐藏列表、显示详情
-          if (window.innerWidth < 768) {
-            var panelList = document.querySelector('.pua-panel-list')
-            var panelDetail = document.querySelector('.pua-panel-detail')
-            if (panelList) panelList.style.display = 'none'
-            if (panelDetail) panelDetail.classList.add('show')
-          }
           self._render()
         })
         // Drag start
@@ -2294,10 +2290,8 @@
     if (mobileBackBtn) {
       if (window.innerWidth < 768) mobileBackBtn.style.display = ''
       mobileBackBtn.addEventListener('click', function() {
-        var panelList = document.querySelector('.pua-panel-list')
-        var panelDetail = document.querySelector('.pua-panel-detail')
-        if (panelList) panelList.style.display = ''
-        if (panelDetail) panelDetail.classList.remove('show')
+        self.selPreset = ''
+        self._render()
       })
     }
   }
@@ -2602,7 +2596,8 @@
     var h = '<div class="pua-panel-layout">'
 
     // === Left: Item list ===
-    h += '<div class="pua-glass pua-panel-list">'
+    var mobileHideList = (window.innerWidth < 768 && selRegex) ? ' pua-mobile-hide' : ''
+    h += '<div class="pua-glass pua-panel-list' + mobileHideList + '">'
     h += '<div class="pua-panel-header"><span>\u6B63\u5219\u6761\u76EE</span><span style="font-size:10px;color:var(--pua-text-dim)">' + this.regexes.length + ' \u9879</span></div>'
     h += '<div class="pua-panel-body" id="pua-regex-list">'
 
@@ -2707,13 +2702,6 @@
         el.addEventListener('click', function(e) {
           if (e.target.classList.contains('pua-toggle-item') || e.target.classList.contains('pua-drag-handle')) return
           self.selRegex = this.getAttribute('data-id')
-          // 移动端：隐藏列表、显示详情
-          if (window.innerWidth < 768) {
-            var panelList = document.querySelector('.pua-panel-list')
-            var panelDetail = document.querySelector('.pua-panel-detail')
-            if (panelList) panelList.style.display = 'none'
-            if (panelDetail) panelDetail.classList.add('show')
-          }
           self._render()
         })
         // Drag start
@@ -2846,10 +2834,8 @@
     if (mobileBackBtn) {
       if (window.innerWidth < 768) mobileBackBtn.style.display = ''
       mobileBackBtn.addEventListener('click', function() {
-        var panelList = document.querySelector('.pua-panel-list')
-        var panelDetail = document.querySelector('.pua-panel-detail')
-        if (panelList) panelList.style.display = ''
-        if (panelDetail) panelDetail.classList.remove('show')
+        self.selRegex = ''
+        self._render()
       })
     }
   }
