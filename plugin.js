@@ -1,7 +1,8 @@
 /**
- * 平行时空档案馆 v0.1.7
+ * 平行时空档案馆 v0.1.8
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
+ * v0.1.8: 导入自动匹配角色+用户人设选择+消息类型区分(user/assistant/system)
  * v0.1.7: 新增线下记录TXT导入功能 + 分支卡片显示来源标签
  * v0.1.6: 修复角色选择器默认值 + 增强记忆API日志 + 完善_onCharSelect容错
  * v0.1.5: 内置控制台日志面板 + 角色选择器（多char+群聊）+ 修复记忆获取
@@ -701,7 +702,11 @@
 
         var meta = document.createElement('div')
         meta.className = 'pua-branch-meta'
-        meta.innerHTML = '<span>\u6D88\u606F: ' + (b.msgCount || 0) + ' \u6761</span><span>\u521B\u5EFA: ' + (b.createdAt || '-') + '</span>'
+        var metaHtml = '<span>\u6D88\u606F: ' + (b.msgCount || 0) + ' \u6761</span><span>\u521B\u5EFA: ' + (b.createdAt || '-') + '</span>'
+        if (b.userPersona && b.userPersona.name) {
+          metaHtml += '<span>\u4EBA\u8BBE: ' + self._escHtml(b.userPersona.name) + '</span>'
+        }
+        meta.innerHTML = metaHtml
         card.appendChild(meta)
 
         if (b.tags && b.tags.length) {
@@ -765,6 +770,14 @@
     body += '<option value="">\u52A0\u8F7D\u4E2D...</option>'
     body += '</select>'
     body += '<div class="pua-field-hint">\u9009\u62E9\u8981\u521B\u5EFA\u5206\u652F\u7684\u89D2\u8272\u6216\u7FA4\u804A</div>'
+    body += '</div>'
+
+    // 用户人设/面具
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u7528\u6237\u4EBA\u8BBE/\u9762\u5177</div>'
+    body += '<select class="pua-field-input pua-field-select" id="pua-branch-persona">'
+    body += '<option value="">\u9ED8\u8BA4</option>'
+    body += '</select>'
     body += '</div>'
 
     // 上下文深度
@@ -943,6 +956,9 @@
       console.log('[PUA] default selected: ' + first.label + ' convId=' + self._pendingConvId + ' charId=' + self._pendingCharId)
       // 触发change事件同步
       self._onCharSelect()
+
+      // 加载用户人设列表
+      self._loadPersonaOptions()
     })
   }
 
@@ -1002,6 +1018,55 @@
     }
   }
 
+  /* ── 加载用户人设选择器选项 ── */
+  P._loadPersonaOptions = function(targetId) {
+    var self = this
+    var modal = this._modalOverlay
+    var personaId = targetId || 'pua-branch-persona'
+    var personaSelect = modal ? modal.querySelector('#' + personaId) : null
+    if (!personaSelect) return
+
+    if (!this.roche || !this.roche.persona || !this.roche.persona.getUserPersonas) {
+      personaSelect.innerHTML = '<option value="">\u9ED8\u8BA4</option>'
+      return
+    }
+
+    this.roche.persona.getUserPersonas().then(function(personas) {
+      if (!personas || !personas.length) {
+        personaSelect.innerHTML = '<option value="">\u9ED8\u8BA4</option>'
+        return
+      }
+      personaSelect.innerHTML = '<option value="">\u9ED8\u8BA4</option>'
+      var activeId = ''
+      for (var i = 0; i < personas.length; i++) {
+        var p = personas[i]
+        var optEl = document.createElement('option')
+        optEl.value = p.id || ''
+        optEl.textContent = p.name || ('\u4EBA\u8BBE ' + (i + 1))
+        optEl.setAttribute('data-persona-name', p.name || '')
+        personaSelect.appendChild(optEl)
+        if (p.active || p.isDefault) activeId = p.id || ''
+      }
+      // 尝试获取当前激活的人设
+      if (self.roche.persona.getActiveUserPersona) {
+        self.roche.persona.getActiveUserPersona().then(function(active) {
+          if (active && active.id) {
+            personaSelect.value = active.id
+          } else if (activeId) {
+            personaSelect.value = activeId
+          }
+        }).catch(function() {
+          if (activeId) personaSelect.value = activeId
+        })
+      } else if (activeId) {
+        personaSelect.value = activeId
+      }
+    }).catch(function(e) {
+      console.warn('[PUA] getUserPersonas failed', e)
+      personaSelect.innerHTML = '<option value="">\u9ED8\u8BA4</option>'
+    })
+  }
+
   /* ── 执行创建分支 ── */
   P._doCreateBranch = function() {
     console.log('[PUA] _doCreateBranch called')
@@ -1040,13 +1105,24 @@
     var charName = this._pendingCharName || ''
     var charAvatar = this._pendingCharAvatar || ''
 
+    // 读取选中的用户人设
+    var personaSelect = modal ? modal.querySelector('#pua-branch-persona') : null
+    var userPersona = null
+    if (personaSelect && personaSelect.value) {
+      var personaOpt = personaSelect.options[personaSelect.selectedIndex]
+      userPersona = {
+        id: personaSelect.value,
+        name: personaOpt ? (personaOpt.getAttribute('data-persona-name') || personaOpt.textContent || '') : ''
+      }
+    }
+
     console.log('[PUA] _doCreateBranch: convId=' + convId + ' charId=' + charId + ' charName=' + charName + ' depth=' + depth + ' getShort=' + getShort + ' getLong=' + getLong)
 
     if (!branchName) {
       branchName = '\u5206\u652F \u00B7 ' + new Date().toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })
     }
 
-    var tags = tagsStr ? tagsStr.split(/[,\uFF0C]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
+    var tags = tagsStr ? tagsStr.split(/[,，]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
 
     var branch = {
       id: 'b' + Date.now(),
@@ -1062,6 +1138,7 @@
       contextDepth: depth,
       longTermMemory: null,
       messages: [],
+      userPersona: userPersona
     }
 
     // 获取记忆
@@ -1189,17 +1266,32 @@
     if (branch.messages && branch.messages.length) {
       body += '<div style="margin-bottom:12px">'
       body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u804A\u5929\u8BB0\u5F55 (' + branch.messages.length + ' \u6761)</div>'
+      if (branch.userPersona) {
+        body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:4px">\u7528\u6237\u4EBA\u8BBE: ' + this._escHtml(branch.userPersona.name || branch.userPersona.id) + '</div>'
+      }
       body += '<div style="max-height:200px;overflow-y:auto;font-size:10.5px;line-height:1.6">'
       var previewCount = Math.min(branch.messages.length, 10)
       for (var j = branch.messages.length - previewCount; j < branch.messages.length; j++) {
         var msg = branch.messages[j]
-        var sender = msg.senderHandle || msg.senderName || msg.type || 'unknown'
-        var isUser = msg.type === 'user' || msg.senderId === 'user'
-        var roleLabel = isUser ? 'USR' : 'AST'
-        var roleColor = isUser ? 'var(--pua-user)' : 'var(--pua-mem)'
+        var roleLabel = ''
+        var roleColor = ''
+        if (msg.type === 'system') {
+          roleLabel = 'SYS'
+          roleColor = 'var(--pua-world)'
+        } else if (msg.type === 'user') {
+          roleLabel = 'USR'
+          roleColor = 'var(--pua-user)'
+        } else if (msg.type === 'assistant') {
+          roleLabel = 'AST'
+          roleColor = 'var(--pua-mem)'
+        } else {
+          // unknown or missing — show sender name directly
+          roleLabel = msg.senderName || msg.senderHandle || '?'
+          roleColor = 'var(--pua-chat)'
+        }
         var content = (msg.text || msg.content || '').substring(0, 100)
         body += '<div style="margin-bottom:4px;padding:4px 6px;border-radius:4px;background:rgba(255,255,255,0.02)">'
-        body += '<span style="color:' + roleColor + ';font-weight:600;font-size:9px">[' + roleLabel + ']</span> '
+        body += '<span style="color:' + roleColor + ';font-weight:600;font-size:9px">[' + this._escHtml(roleLabel) + ']</span> '
         body += '<span style="color:var(--pua-text-sub)">' + this._escHtml(content) + '</span>'
         body += '</div>'
       }
@@ -1279,6 +1371,23 @@
     body += '<div class="pua-field">'
     body += '<div class="pua-field-label">\u6807\u7B7E\uFF08\u9017\u53F7\u5206\u9694\uFF09</div>'
     body += '<input class="pua-field-input" id="pua-import-tags" placeholder="\u7EBF\u4E0B, \u5F52\u6863, ...">'
+    body += '</div>'
+
+    // 关联角色选择器
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u5173\u8054\u89D2\u8272</div>'
+    body += '<select class="pua-field-input pua-field-select" id="pua-import-char">'
+    body += '<option value="">\u81EA\u52A8\u5339\u914D...</option>'
+    body += '</select>'
+    body += '<div class="pua-field-hint">\u9009\u62E9\u6216\u786E\u8BA4\u5BFC\u5165\u8BB0\u5F55\u5BF9\u5E94\u7684\u89D2\u8272</div>'
+    body += '</div>'
+
+    // 用户人设/面具
+    body += '<div class="pua-field">'
+    body += '<div class="pua-field-label">\u7528\u6237\u4EBA\u8BBE/\u9762\u5177</div>'
+    body += '<select class="pua-field-input pua-field-select" id="pua-import-persona">'
+    body += '<option value="">\u9ED8\u8BA4</option>'
+    body += '</select>'
     body += '</div>'
 
     // 预览区
@@ -1463,8 +1572,29 @@
     var fileCharName = nameMatch ? nameMatch[1] : ''
     var fileDate = nameMatch ? nameMatch[2] : ''
 
+    // 确定角色发送者名称：与 charName 匹配的 senderName
+    var charSenderName = header.charName || fileCharName || ''
+    if (charSenderName && messages.length > 0) {
+      // 尝试精确匹配
+      var found = false
+      for (var k = 0; k < messages.length; k++) {
+        if (messages[k].senderName === charSenderName) { found = true; break }
+      }
+      // 如果没有精确匹配，尝试模糊匹配（包含关系）
+      if (!found) {
+        for (var k2 = 0; k2 < messages.length; k2++) {
+          if (messages[k2].senderName.indexOf(charSenderName) >= 0 || charSenderName.indexOf(messages[k2].senderName) >= 0) {
+            charSenderName = messages[k2].senderName
+            found = true
+            break
+          }
+        }
+      }
+    }
+
     return {
       charName: header.charName || fileCharName || '\u672A\u77E5',
+      charSenderName: charSenderName,
       source: header.source || '',
       exportTime: header.exportTime || '',
       recordTime: header.recordTime || '',
@@ -1527,6 +1657,41 @@
       var first = this._importParsed[0]
       nameInput.value = first.charName + ' \u00B7 ' + (first.recordTime || first.exportTime || '\u7EBF\u4E0B\u8BB0\u5F55')
     }
+
+    // 异步获取角色列表并自动匹配
+    var charSelect = modal.querySelector('#pua-import-char')
+    if (charSelect && this.roche && this.roche.character && this.roche.character.list) {
+      var self = this
+      var firstParsed = this._importParsed[0]
+      var matchCharName = firstParsed ? firstParsed.charName : ''
+      this.roche.character.list().then(function(chars) {
+        if (!chars || !chars.length) return
+        charSelect.innerHTML = '<option value="">\u672A\u5339\u914D</option>'
+        var matchedIdx = -1
+        for (var i = 0; i < chars.length; i++) {
+          var ch = chars[i]
+          var chName = ch.handle || ch.name || ''
+          var optEl = document.createElement('option')
+          optEl.value = ch.id || ''
+          optEl.textContent = chName
+          optEl.setAttribute('data-char-name', chName)
+          optEl.setAttribute('data-char-avatar', ch.avatar || '')
+          charSelect.appendChild(optEl)
+          // 自动匹配：handle或name与解析出的charName一致
+          if (matchCharName && (chName === matchCharName || ch.name === matchCharName)) {
+            matchedIdx = i
+          }
+        }
+        if (matchedIdx >= 0) {
+          charSelect.selectedIndex = matchedIdx + 1 // +1 因为第一个是\u672A\u5339\u914D
+        }
+      }).catch(function(e) {
+        console.warn('[PUA] import char list failed', e)
+      })
+    }
+
+    // 加载用户人设列表
+    this._loadPersonaOptions('pua-import-persona')
   }
 
   /* ── 执行导入 ── */
@@ -1541,10 +1706,35 @@
 
     var nameInput = modal ? modal.querySelector('#pua-import-name') : null
     var tagsInput = modal ? modal.querySelector('#pua-import-tags') : null
+    var charSelect = modal ? modal.querySelector('#pua-import-char') : null
 
     var branchName = nameInput ? nameInput.value.trim() : ''
     var tagsStr = tagsInput ? tagsInput.value.trim() : ''
-    var tags = tagsStr ? tagsStr.split(/[,\uFF0C]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
+    var tags = tagsStr ? tagsStr.split(/[,，]/).map(function(t) { return t.trim() }).filter(function(t) { return t }) : []
+
+    // 读取选中的角色信息
+    var selectedCharId = ''
+    var selectedCharName = ''
+    var selectedCharAvatar = ''
+    if (charSelect && charSelect.value) {
+      selectedCharId = charSelect.value
+      var selOpt = charSelect.options[charSelect.selectedIndex]
+      if (selOpt) {
+        selectedCharName = selOpt.getAttribute('data-char-name') || selOpt.textContent || ''
+        selectedCharAvatar = selOpt.getAttribute('data-char-avatar') || ''
+      }
+    }
+
+    // 读取选中的用户人设
+    var personaSelect = modal ? modal.querySelector('#pua-import-persona') : null
+    var importUserPersona = null
+    if (personaSelect && personaSelect.value) {
+      var personaOpt = personaSelect.options[personaSelect.selectedIndex]
+      importUserPersona = {
+        id: personaSelect.value,
+        name: personaOpt ? (personaOpt.getAttribute('data-persona-name') || personaOpt.textContent || '') : ''
+      }
+    }
 
     // 为每个解析结果创建一个分支
     var created = 0
@@ -1552,9 +1742,16 @@
       var p = this._importParsed[i]
 
       // 将消息转为统一格式
+      var charMatchName = p.charSenderName || p.charName || ''
       var msgs = p.messages.map(function(m) {
+        var msgType = 'unknown'
+        if (charMatchName && m.senderName === charMatchName) {
+          msgType = 'assistant'
+        } else if (charMatchName) {
+          msgType = 'user'
+        }
         return {
-          type: 'unknown',
+          type: msgType,
           senderName: m.senderName,
           senderHandle: m.senderName,
           text: m.text,
@@ -1572,9 +1769,9 @@
       var branch = {
         id: 'b' + Date.now() + '_' + i,
         name: bName,
-        charId: '',
-        charName: p.charName,
-        charAvatar: '',
+        charId: selectedCharId || '',
+        charName: selectedCharId ? selectedCharName : p.charName,
+        charAvatar: selectedCharId ? selectedCharAvatar : '',
         sourceConvId: '',
         source: 'offline',
         msgCount: msgs.length,
@@ -1583,6 +1780,7 @@
         contextDepth: msgs.length,
         longTermMemory: null,
         messages: msgs,
+        userPersona: importUserPersona,
         offlineMeta: {
           fileName: p.fileName,
           fileCharName: p.fileCharName,
@@ -1725,7 +1923,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.1.7',
+    version: '0.1.8',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
