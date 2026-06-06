@@ -622,6 +622,7 @@
     this._loadAsmConfig()
     this._loadAsmOrder()
     this._loadSettings()
+    this._currentMemBranchId = ''
   }
 
   /* ── 捕获控制台日志 ── */
@@ -1989,7 +1990,7 @@
         self._toast('\u8BB0\u5FC6\u7ED1\u5B9A\u5DF2\u4FDD\u5B58')
 
         // 加载绑定的记忆到我们的记忆系统
-        self._loadMemFromBranches(ids)
+        self._loadMemFromBranches(ids, branch.id)
       })
     }
 
@@ -3192,6 +3193,17 @@
       h += '<div class="pua-regex-hint">' + typeHint + '</div>'
       h += '</div>'
       h += '</div>'
+      // 如果是 render 类型，添加预览区域
+      if (selRegex.type === 'render') {
+        h += '<div class="pua-field" style="margin-top:10px">'
+        h += '<div class="pua-field-label">\u6E32\u67D3\u9884\u89C8</div>'
+        h += '<div style="display:flex;gap:6px;margin-bottom:6px">'
+        h += '<input class="pua-field-input" id="regex-preview-input" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." style="flex:1">'
+        h += '<button class="pua-btn pua-btn-sm" id="regex-preview-btn">\u9884\u89C8</button>'
+        h += '</div>'
+        h += '<div id="regex-preview-result" style="background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:6px;padding:10px;min-height:60px;font-size:12px;color:var(--pua-text);overflow:auto;max-height:200px"></div>'
+        h += '</div>'
+      }
       // Depth section
       var dMin = selRegex.dMin || 0
       var dMaxStr = selRegex.dMax === Infinity ? '' : String(selRegex.dMax || '')
@@ -3380,6 +3392,55 @@
       mobileBackBtn.addEventListener('click', function() {
         self.selRegex = ''
         self._render()
+      })
+    }
+
+    // Regex render preview
+    var previewBtn = document.getElementById('regex-preview-btn')
+    if (previewBtn) {
+      var selectedRegex = null
+      for (var sri = 0; sri < self.regexes.length; sri++) {
+        if (self.regexes[sri].id === self.selRegex) { selectedRegex = self.regexes[sri]; break }
+      }
+      previewBtn.addEventListener('click', function() {
+        var inputText = (document.getElementById('regex-preview-input') || {}).value || ''
+        var resultEl = document.getElementById('regex-preview-result')
+        if (!resultEl || !selectedRegex) return
+
+        if (!inputText) {
+          resultEl.innerHTML = '<span style="color:var(--pua-text-dim)">\u8BF7\u8F93\u5165\u6D4B\u8BD5\u6587\u672C</span>'
+          return
+        }
+
+        try {
+          var regex = new RegExp(selectedRegex.regex || selectedRegex.pattern || '', 'g')
+          var htmlTemplate = selectedRegex.html || selectedRegex.replace || ''
+          var matchCount = 0
+
+          // 替换所有匹配
+          var result = inputText.replace(regex, function(match) {
+            matchCount++
+            var output = htmlTemplate
+            // 替换 $0 为完整匹配
+            output = output.replace(/\$0/g, match)
+            // 替换 $1-$9 为捕获组（从回调参数获取）
+            for (var gi = 1; gi <= 9; gi++) {
+              try {
+                var groupVal = arguments[gi] || ''
+                output = output.replace(new RegExp('\\$' + gi, 'g'), groupVal)
+              } catch(e) {}
+            }
+            return output
+          })
+
+          if (matchCount === 0) {
+            resultEl.innerHTML = '<span style="color:var(--pua-text-dim)">\u65E0\u5339\u914D\u7ED3\u679C</span>'
+          } else {
+            resultEl.innerHTML = '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:4px">\u5339\u914D ' + matchCount + ' \u5904</div>' + result
+          }
+        } catch(e) {
+          resultEl.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message || String(e)) + '</span>'
+        }
       })
     }
   }
@@ -3894,6 +3955,50 @@
     }
 
     Promise.all(promises).then(function() {
+      // 合并分支对应的 localStorage 记忆数据
+      if (branch.id) {
+        var localMemData = self._loadMemData(branch.id)
+        if (localMemData) {
+          if (!self.asmData.longTerm) {
+            self.asmData.longTerm = { core: null, facts: [], vectors: [] }
+          }
+          // 合并核心记忆
+          if (localMemData.core) {
+            if (!self.asmData.longTerm.core) {
+              self.asmData.longTerm.core = { summary: '', text: '' }
+            }
+            var localCoreText = localMemData.core.relationship || ''
+            if (localCoreText) {
+              var existingCore = self.asmData.longTerm.core.summary || self.asmData.longTerm.core.text || ''
+              if (existingCore.indexOf(localCoreText) === -1) {
+                self.asmData.longTerm.core.summary = existingCore ? existingCore + '\n' + localCoreText : localCoreText
+                self.asmData.longTerm.core.text = self.asmData.longTerm.core.summary
+              }
+            }
+          }
+          // 合并事实记忆
+          if (localMemData.facts && localMemData.facts.length > 0) {
+            if (!self.asmData.longTerm.facts) self.asmData.longTerm.facts = []
+            for (var lfi = 0; lfi < localMemData.facts.length; lfi++) {
+              var localFact = localMemData.facts[lfi]
+              var factText = localFact.text || localFact.summary || ''
+              if (!factText) continue
+              var exists = false
+              for (var lei = 0; lei < self.asmData.longTerm.facts.length; lei++) {
+                var ef = self.asmData.longTerm.facts[lei]
+                if ((ef.summaryText || ef.action || ef.text || '') === factText) { exists = true; break }
+              }
+              if (!exists) {
+                self.asmData.longTerm.facts.push({
+                  summaryText: localFact.summary || factText,
+                  action: localFact.text || '',
+                  text: localFact.text || ''
+                })
+              }
+            }
+          }
+        }
+      }
       self.asmLoading = false
       self._render()
     }).catch(function() {
@@ -5033,8 +5138,12 @@
     var savedScrollTop = contentEl.scrollTop
     var settings = this._loadSettings()
 
-    // 加载记忆数据
-    var memData = this._loadMemData()
+    // 分支选择器
+    var branches = this._loadBranches()
+    var currentBranchId = this._currentMemBranchId || ''
+
+    // 加载当前分支的记忆数据
+    var memData = currentBranchId ? this._loadMemData(currentBranchId) : { core: { relationship: '', events: '' }, facts: [] }
 
     // 统计
     var coreRelLen = (memData.core && memData.core.relationship) ? memData.core.relationship.length : 0
@@ -5048,6 +5157,18 @@
     }
 
     var h = ''
+
+    // 分支选择器
+    h += '<div class="pua-mem-card" style="margin-bottom:10px">'
+    h += '<div class="pua-mem-card-title">\u2726 \u5F53\u524D\u5206\u652F</div>'
+    h += '<select class="pua-settings-select" id="mem-branch-select" style="width:100%">'
+    h += '<option value="">-- \u9009\u62E9\u5206\u652F --</option>'
+    for (var bi = 0; bi < branches.length; bi++) {
+      var br = branches[bi]
+      h += '<option value="' + br.id + '"' + (br.id === currentBranchId ? ' selected' : '') + '>' + self._escHtml(br.name || br.charName || br.id) + '</option>'
+    }
+    h += '</select>'
+    h += '</div>'
 
     // 统计卡片
     h += '<div class="pua-mem-stat">'
@@ -5097,6 +5218,15 @@
     contentEl.innerHTML = h
     contentEl.scrollTop = savedScrollTop
 
+    // 分支切换事件
+    var branchSelect = document.getElementById('mem-branch-select')
+    if (branchSelect) {
+      branchSelect.addEventListener('change', function() {
+        self._currentMemBranchId = this.value
+        self._render()
+      })
+    }
+
     // 保存核心记忆
     var coreSaveBtn = document.getElementById('mem-core-save')
     if (coreSaveBtn) {
@@ -5106,7 +5236,7 @@
         if (!memData.core) memData.core = { relationship: '', events: '' }
         memData.core.relationship = relEl ? relEl.value : ''
         memData.core.events = evtEl ? evtEl.value : ''
-        self._saveMemData(memData)
+        self._saveMemData(memData, currentBranchId)
         self._toast('\u6838\u5FC3\u8BB0\u5FC6\u5DF2\u4FDD\u5B58')
       })
     }
@@ -5115,7 +5245,7 @@
     var addFactBtn = document.getElementById('mem-fact-add')
     if (addFactBtn) {
       addFactBtn.addEventListener('click', function() {
-        self._showAddFactModal(memData)
+        self._showAddFactModal(memData, currentBranchId)
       })
     }
 
@@ -5123,7 +5253,7 @@
     var embedBtn = document.getElementById('mem-fact-embed')
     if (embedBtn) {
       embedBtn.addEventListener('click', function() {
-        self._generateEmbeddings(memData)
+        self._generateEmbeddings(memData, currentBranchId)
       })
     }
 
@@ -5131,7 +5261,7 @@
     var summarizeBtn = document.getElementById('mem-fact-summarize')
     if (summarizeBtn) {
       summarizeBtn.addEventListener('click', function() {
-        self._summarizeFacts(memData)
+        self._summarizeFacts(memData, currentBranchId)
       })
     }
 
@@ -5141,7 +5271,7 @@
       clearFactBtn.addEventListener('click', function() {
         if (!confirm('\u786E\u5B9A\u6E05\u7A7A\u5168\u90E8\u4E8B\u5B9E\u8BB0\u5FC6\uFF1F')) return
         memData.facts = []
-        self._saveMemData(memData)
+        self._saveMemData(memData, currentBranchId)
         self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u6E05\u7A7A')
         self._render()
       })
@@ -5152,30 +5282,35 @@
     for (var fii = 0; fii < factItems.length; fii++) {
       factItems[fii].addEventListener('click', function() {
         var factId = this.getAttribute('data-fact-id')
-        self._showFactDetail(factId, memData)
+        self._showFactDetail(factId, memData, currentBranchId)
       })
     }
   }
 
-  P._loadMemData = function() {
-    if (this._memDataCache) return this._memDataCache
+  P._loadMemData = function(branchId) {
+    var key = branchId ? 'pua-mem-data-' + branchId : 'pua-mem-data'
+    if (this._memDataCache && this._memDataCacheKey === key) return this._memDataCache
     try {
-      var raw = localStorage.getItem('pua-mem-data')
+      var raw = localStorage.getItem(key)
       if (raw) {
         this._memDataCache = JSON.parse(raw)
+        this._memDataCacheKey = key
         return this._memDataCache
       }
     } catch(e) {}
     this._memDataCache = { core: { relationship: '', events: '' }, facts: [] }
+    this._memDataCacheKey = key
     return this._memDataCache
   }
 
-  P._saveMemData = function(data) {
+  P._saveMemData = function(data, branchId) {
+    var key = branchId ? 'pua-mem-data-' + branchId : 'pua-mem-data'
     this._memDataCache = data
-    try { localStorage.setItem('pua-mem-data', JSON.stringify(data)) } catch(e) {}
+    this._memDataCacheKey = key
+    try { localStorage.setItem(key, JSON.stringify(data)) } catch(e) {}
   }
 
-  P._showAddFactModal = function(memData) {
+  P._showAddFactModal = function(memData, branchId) {
     var self = this
     var modal = this._modalOverlay
     if (!modal) return
@@ -5223,7 +5358,7 @@
         timestamp: new Date().toLocaleString('zh-CN'),
         conversationId: ''
       })
-      self._saveMemData(memData)
+      self._saveMemData(memData, branchId)
       self._closeModal()
       self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u6DFB\u52A0')
       self._render()
@@ -5238,7 +5373,7 @@
     modal.classList.add('show')
   }
 
-  P._showFactDetail = function(factId, memData) {
+  P._showFactDetail = function(factId, memData, branchId) {
     var self = this
     var modal = this._modalOverlay
     if (!modal) return
@@ -5276,7 +5411,7 @@
     deleteBtn.textContent = '\u5220\u9664'
     deleteBtn.addEventListener('click', function() {
       memData.facts = memData.facts.filter(function(f) { return f.id !== factId })
-      self._saveMemData(memData)
+      self._saveMemData(memData, branchId)
       self._closeModal()
       self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u5220\u9664')
       self._render()
@@ -5294,7 +5429,7 @@
       fact.text = (document.getElementById('fact-detail-text') || {}).value || fact.text
       fact.summary = (document.getElementById('fact-detail-summary') || {}).value || fact.summary
       fact.keywords = (document.getElementById('fact-detail-keywords') || {}).value || fact.keywords
-      self._saveMemData(memData)
+      self._saveMemData(memData, branchId)
       self._closeModal()
       self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u66F4\u65B0')
       self._render()
@@ -5314,12 +5449,12 @@
      分支存档记忆联动
      ════════════════════════════════════════════════════════════ */
 
-  P._loadMemFromBranches = function(convIds) {
+  P._loadMemFromBranches = function(convIds, branchId) {
     var self = this
     if (!convIds || convIds.length === 0) return
     if (!this.roche.memory || !this.roche.memory.getLongTerm) return
 
-    var memData = this._loadMemData()
+    var memData = this._loadMemData(branchId)
 
     for (var i = 0; i < convIds.length; i++) {
       (function(convId) {
@@ -5366,13 +5501,13 @@
             }
           }
 
-          self._saveMemData(memData)
+          self._saveMemData(memData, branchId)
         }).catch(function() {})
       })(convIds[i])
     }
   }
 
-  P._summarizeFacts = function(memData) {
+  P._summarizeFacts = function(memData, branchId) {
     var self = this
     var preset = this._getActivePreset()
     if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
@@ -5404,7 +5539,7 @@
 
     function processBatch() {
       if (batchIdx >= toSummarize.length) {
-        self._saveMemData(memData)
+        self._saveMemData(memData, branchId)
         self._toast('\u8BB0\u5FC6\u603B\u7ED3\u5B8C\u6210')
         self._render()
         return
@@ -5469,7 +5604,7 @@
         processBatch()
       }).catch(function(e) {
         self._toast('\u603B\u7ED3\u5931\u8D25: ' + (e.message || e))
-        self._saveMemData(memData)
+        self._saveMemData(memData, branchId)
       })
     }
 
@@ -5745,7 +5880,7 @@
      生成 Embedding
      ════════════════════════════════════════════════════════════ */
 
-  P._generateEmbeddings = function(memData) {
+  P._generateEmbeddings = function(memData, branchId) {
     var self = this
     var preset = this._getActivePreset()
     if (!preset || !preset.vecEndpoint || !preset.vecApiKey || !preset.vecModel) {
@@ -5774,7 +5909,7 @@
     var idx = 0
     function embedNext() {
       if (idx >= toEmbed.length) {
-        self._saveMemData(memData)
+        self._saveMemData(memData, branchId)
         self._toast('\u5411\u91CF\u751F\u6210\u5B8C\u6210')
         self._render()
         return
@@ -5789,7 +5924,7 @@
         embedNext()
       }).catch(function(e) {
         self._toast('\u5411\u91CF\u751F\u6210\u5931\u8D25: ' + (e.message || e))
-        self._saveMemData(memData)
+        self._saveMemData(memData, branchId)
       })
     }
 
@@ -5805,7 +5940,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.8.1',
+    version: '0.9.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
