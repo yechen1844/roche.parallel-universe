@@ -211,7 +211,7 @@
     '  justify-content:center; }',
     '.pua-modal-overlay.show { display:flex; animation:pua-modalIn 0.2s ease; }',
     '@keyframes pua-modalIn { from { opacity:0; } to { opacity:1; } }',
-    '.pua-modal { width:500px; max-height:80vh; background:rgba(20,20,35,0.95); border:1px solid var(--pua-border);',
+    '.pua-modal { width:500px; max-height:80vh; background:#1a1a2e; border:1px solid var(--pua-border);',
     '  border-radius:var(--pua-radius); overflow:hidden; display:flex; flex-direction:column;',
     '  transform:scale(0.95) translateY(10px); transition:var(--pua-transition); }',
     '.pua-modal-overlay.show .pua-modal { transform:scale(1) translateY(0); }',
@@ -222,7 +222,7 @@
     '  background:rgba(255,255,255,0.05); color:var(--pua-text-sub); cursor:pointer; font-size:13px;',
     '  display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); }',
     '.pua-modal-close:hover { background:rgba(255,255,255,0.1); color:var(--pua-text); }',
-    '.pua-modal-body { flex:1; overflow-y:auto; padding:16px; }',
+    '.pua-modal-body { flex:1; overflow-y:auto; padding:16px; color:#e0e0e0; }',
     '.pua-modal-footer { padding:10px 16px; border-top:1px solid var(--pua-border);',
     '  display:flex; gap:8px; justify-content:flex-end; }',
 
@@ -540,13 +540,24 @@
     '/* ── 助手页面 ── */',
     '.pua-assistant-layout { display:flex; flex-direction:column; height:100%; }',
     '.pua-assistant-header { padding:8px 14px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }',
+    '.pua-branch-bar { padding:6px 14px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }',
+    '.pua-branch-select { background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:4px; padding:3px 6px; color:var(--pua-text); font-size:10px; font-family:inherit; outline:none; max-width:120px; }',
+    '.pua-branch-select:focus { border-color:var(--pua-accent); }',
+    '.pua-branch-btn { font-size:9px; padding:2px 6px; border-radius:3px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-branch-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
+    '.pua-branch-btn-danger:hover { border-color:var(--pua-danger); color:var(--pua-danger); }',
     '.pua-assistant-api-select { background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:4px; padding:4px 8px; color:var(--pua-text); font-size:10px; font-family:inherit; outline:none; }',
     '.pua-assistant-api-select:focus { border-color:var(--pua-accent); }',
     '.pua-assistant-chat { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }',
     '.pua-assistant-chat::-webkit-scrollbar { width:4px; }',
     '.pua-assistant-chat::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }',
     '.pua-assistant-msg { max-width:85%; padding:10px 14px; border-radius:12px; font-size:11px; line-height:1.6; word-break:break-word; }',
-    '.pua-assistant-msg-user { align-self:flex-end; background:var(--pua-accent-glow); border:1px solid var(--pua-border-active); color:var(--pua-accent-text); border-bottom-right-radius:4px; }',
+    '.pua-assistant-msg-user { align-self:flex-end; background:var(--pua-accent-glow); border:1px solid var(--pua-border-active); color:var(--pua-accent-text); border-bottom-right-radius:4px; position:relative; }',
+    '.pua-assistant-msg-user:hover .pua-assistant-edit-btn { opacity:1; }',
+    '.pua-assistant-edit-btn { position:absolute; top:4px; right:4px; font-size:10px; padding:2px 5px; border-radius:3px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; opacity:0; transition:var(--pua-transition); }',
+    '.pua-assistant-edit-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
+    '.pua-assistant-msg-user.pua-msg-dimmed { opacity:0.45; }',
+    '.pua-assistant-msg-user.pua-msg-dimmed .pua-assistant-msg-content { text-decoration:line-through; }',
     '.pua-assistant-msg-assistant { align-self:flex-start; background:var(--pua-bg-card); border:1px solid var(--pua-border); color:var(--pua-text); border-bottom-left-radius:4px; }',
     '.pua-assistant-msg-role { font-size:9px; font-weight:600; margin-bottom:4px; opacity:0.6; }',
     '.pua-assistant-attached-badges { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }',
@@ -556,9 +567,14 @@
     '.pua-assistant-badge .badge-remove:hover { opacity:1; }',
     '.pua-assistant-action-card { margin-top:8px; padding:8px 10px; border-radius:8px; background:rgba(78,201,160,0.08); border:1px solid rgba(78,201,160,0.2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }',
     '.pua-assistant-action-label { font-size:10px; color:var(--pua-success); font-weight:600; }',
-    '.pua-assistant-undo-btn { font-size:9px; padding:2px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
-    '.pua-assistant-undo-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
-    '.pua-assistant-undo-btn.done { opacity:0.4; cursor:default; text-decoration:line-through; }',
+    '.pua-action-btns { display:flex; gap:4px; margin-left:auto; }',
+    '.pua-assistant-confirm-btn { font-size:9px; padding:2px 8px; border-radius:4px; border:1px solid var(--pua-success); background:rgba(78,201,160,0.15); color:var(--pua-success); cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-assistant-confirm-btn:hover { background:rgba(78,201,160,0.3); }',
+    '.pua-assistant-dismiss-btn { font-size:9px; padding:2px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-assistant-dismiss-btn:hover { border-color:var(--pua-danger); color:var(--pua-danger); }',
+    '.pua-action-status { font-size:9px; color:var(--pua-text-dim); margin-left:auto; }',
+    '.pua-action-confirmed { border-color:rgba(78,201,160,0.3); }',
+    '.pua-action-ignored { opacity:0.5; border-color:var(--pua-border); }',
     '.pua-assistant-input-area { padding:10px 14px; border-top:1px solid var(--pua-border); }',
     '.pua-assistant-attach-row { display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; align-items:center; }',
     '.pua-assistant-attach-btn { font-size:9px; padding:3px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
@@ -621,15 +637,17 @@
     '.pua-elem-color-picker::-webkit-color-swatch-wrapper { padding:1px; }',
     '.pua-elem-color-picker::-webkit-color-swatch { border:none; border-radius:2px; }',
     '.pua-elem-editor-actions { display:flex; gap:4px; margin-top:6px; padding-top:4px; border-top:1px solid var(--pua-border); }',
+    '.pua-elem-editor-range { -webkit-appearance:none; width:80px; height:4px; background:var(--pua-border); border-radius:2px; outline:none; }',
+    '.pua-elem-editor-range::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--pua-accent); cursor:pointer; }',
     // Prompt modal
     '.pua-prompt-modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:10000; display:flex; align-items:center; justify-content:center; }',
-    '.pua-prompt-modal { width:90%; max-width:600px; max-height:80vh; background:var(--pua-bg-solid); border:1px solid var(--pua-border); border-radius:12px; box-shadow:var(--pua-shadow); display:flex; flex-direction:column; overflow:hidden; }',
+    '.pua-prompt-modal { width:90%; max-width:600px; max-height:80vh; background:#1a1a2e; border:1px solid var(--pua-border); border-radius:12px; box-shadow:var(--pua-shadow); display:flex; flex-direction:column; overflow:hidden; }',
     '.pua-prompt-modal-header { padding:12px 16px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; justify-content:space-between; }',
-    '.pua-prompt-modal-title { font-size:13px; font-weight:600; color:var(--pua-accent-text); }',
-    '.pua-prompt-modal-close { font-size:16px; background:none; border:none; color:var(--pua-text-sub); cursor:pointer; padding:4px; }',
-    '.pua-prompt-modal-close:hover { color:var(--pua-text); }',
-    '.pua-prompt-modal-body { flex:1; overflow-y:auto; padding:12px 16px; }',
-    '.pua-prompt-modal-textarea { width:100%; min-height:200px; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:8px 10px; color:var(--pua-text); font-size:10px; font-family:"Cascadia Code","Fira Code",monospace; line-height:1.5; outline:none; resize:vertical; }',
+    '.pua-prompt-modal-title { font-size:13px; font-weight:600; color:#ffffff; }',
+    '.pua-prompt-modal-close { font-size:16px; background:none; border:none; color:#e0e0e0; cursor:pointer; padding:4px; }',
+    '.pua-prompt-modal-close:hover { color:#ffffff; }',
+    '.pua-prompt-modal-body { flex:1; overflow-y:auto; padding:16px; color:#e0e0e0; }',
+    '.pua-prompt-modal-textarea { width:100%; min-height:200px; background:#0d0d1a; border:1px solid var(--pua-border); border-radius:6px; padding:8px 10px; color:#ffffff; font-size:10px; font-family:"Cascadia Code","Fira Code",monospace; line-height:1.5; outline:none; resize:vertical; }',
     '.pua-prompt-modal-textarea:focus { border-color:var(--pua-accent); }',
     '.pua-prompt-modal-presets { margin-top:8px; display:flex; gap:4px; flex-wrap:wrap; }',
     '.pua-prompt-preset-tag { font-size:8px; padding:2px 6px; border-radius:3px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
@@ -3677,8 +3695,6 @@
         h += '<div class="pua-field" style="margin-top:10px">'
         h += '<div class="pua-field-label">\u6E32\u67D3\u9884\u89C8</div>'
         h += '<div style="display:flex;gap:6px;margin-bottom:6px">'
-        h += '<input class="pua-field-input" id="regex-preview-input" value="\u6D4B\u8BD5\u6587\u672C" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." style="flex:1">'
-        h += '<button class="pua-btn pua-btn-sm" id="regex-preview-btn">\u9884\u89C8</button>'
         h += '<button class="pua-btn pua-btn-sm" id="regex-template-preview-btn">\u6A21\u677F\u9884\u89C8</button>'
         h += '</div>'
         h += '<div id="regex-preview-result" style="background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:6px;padding:10px;min-height:60px;font-size:12px;color:var(--pua-text);overflow:auto;max-height:200px"></div>'
@@ -3968,53 +3984,23 @@
       })
     }
 
-    // Regex render preview
-    var previewBtn = document.getElementById('regex-preview-btn')
-    if (previewBtn) {
-      var selectedRegex = null
-      for (var sri = 0; sri < self.regexes.length; sri++) {
-        if (self.regexes[sri].id === self.selRegex) { selectedRegex = self.regexes[sri]; break }
+    // Regex render preview - auto-render with placeholders on load
+    var selectedRegex = null
+    for (var sri = 0; sri < self.regexes.length; sri++) {
+      if (self.regexes[sri].id === self.selRegex) { selectedRegex = self.regexes[sri]; break }
+    }
+    var regexResultElAuto = document.getElementById('regex-preview-result')
+    if (regexResultElAuto && selectedRegex && selectedRegex.type === 'render') {
+      var htmlTpl = selectedRegex.html || selectedRegex.replace || ''
+      if (htmlTpl) {
+        var autoPreview = htmlTpl
+        autoPreview = autoPreview.replace(/\$&/g, '<span style="color:#ffa500;font-style:italic">$&amp;</span>')
+        autoPreview = autoPreview.replace(/\$0/g, '<span style="color:#ffa500;font-style:italic">$0</span>')
+        for (var agi = 1; agi <= 9; agi++) {
+          autoPreview = autoPreview.replace(new RegExp('\\$' + agi, 'g'), '<span style="color:#ffa500;font-style:italic">$' + agi + '</span>')
+        }
+        regexResultElAuto.innerHTML = '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:4px">\u6A21\u677F\u6E32\u67D3\u9884\u89C8</div>' + autoPreview
       }
-      previewBtn.addEventListener('click', function() {
-        var inputText = (document.getElementById('regex-preview-input') || {}).value || ''
-        var resultEl = document.getElementById('regex-preview-result')
-        if (!resultEl || !selectedRegex) return
-
-        if (!inputText) {
-          resultEl.innerHTML = '<span style="color:var(--pua-text-dim)">\u8BF7\u8F93\u5165\u6D4B\u8BD5\u6587\u672C</span>'
-          return
-        }
-
-        try {
-          var regex = new RegExp(selectedRegex.regex || selectedRegex.pattern || '', 'g')
-          var htmlTemplate = selectedRegex.html || selectedRegex.replace || ''
-          var matchCount = 0
-
-          // 替换所有匹配
-          var result = inputText.replace(regex, function(match) {
-            matchCount++
-            var output = htmlTemplate
-            // 替换 $0 为完整匹配
-            output = output.replace(/\$0/g, match)
-            // 替换 $1-$9 为捕获组（从回调参数获取）
-            for (var gi = 1; gi <= 9; gi++) {
-              try {
-                var groupVal = arguments[gi] || ''
-                output = output.replace(new RegExp('\\$' + gi, 'g'), groupVal)
-              } catch(e) {}
-            }
-            return output
-          })
-
-          if (matchCount === 0) {
-            resultEl.innerHTML = '<span style="color:var(--pua-text-dim)">\u65E0\u5339\u914D\u7ED3\u679C</span>'
-          } else {
-            resultEl.innerHTML = '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:4px">\u5339\u914D ' + matchCount + ' \u5904</div>' + result
-          }
-        } catch(e) {
-          resultEl.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message || String(e)) + '</span>'
-        }
-      })
     }
 
     // Regex management page: element selection mode for preview result
@@ -4073,14 +4059,14 @@
         editorHtml += '<div class="pua-elem-editor-title">\u5143\u7D20\u7F16\u8F91\u5668</div>'
         editorHtml += '<div class="pua-elem-editor-tag">\u6807\u7B7E: &lt;' + el.tagName.toLowerCase() + '&gt;  \u7C7B\u540D: ' + (el.className || '\u65E0') + '</div>'
         editorHtml += '<div class="pua-elem-editor-grid">'
-        editorHtml += _regPropField('\u5BBD\u5EA6', 'width', _regPxVal(computed.width), 'px')
-        editorHtml += _regPropField('\u9AD8\u5EA6', 'height', _regPxVal(computed.height), 'px')
-        editorHtml += _regPropField('\u5B57\u53F7', 'fontSize', _regPxVal(computed.fontSize), 'px')
+        editorHtml += _regPropField('\u5BBD\u5EA6', 'width', _regPxVal(computed.width), 'px', 0, 500, 1)
+        editorHtml += _regPropField('\u9AD8\u5EA6', 'height', _regPxVal(computed.height), 'px', 0, 500, 1)
+        editorHtml += _regPropField('\u5B57\u53F7', 'fontSize', _regPxVal(computed.fontSize), 'px', 8, 72, 1)
         editorHtml += _regPropFieldColor('\u989C\u8272', 'color', computed.color)
         editorHtml += _regPropFieldColor('\u80CC\u666F', 'backgroundColor', computed.backgroundColor)
-        editorHtml += _regPropField('\u5185\u8FB9\u8DDD', 'padding', _regPxVal(computed.padding), 'px')
-        editorHtml += _regPropField('\u5916\u8FB9\u8DDD', 'margin', _regPxVal(computed.margin), 'px')
-        editorHtml += _regPropField('\u5706\u89D2', 'borderRadius', _regPxVal(computed.borderRadius), 'px')
+        editorHtml += _regPropField('\u5185\u8FB9\u8DDD', 'padding', _regPxVal(computed.padding), 'px', 0, 50, 1)
+        editorHtml += _regPropField('\u5916\u8FB9\u8DDD', 'margin', _regPxVal(computed.margin), 'px', 0, 50, 1)
+        editorHtml += _regPropField('\u5706\u89D2', 'borderRadius', _regPxVal(computed.borderRadius), 'px', 0, 50, 1)
         editorHtml += '</div>'
         editorHtml += '<div class="pua-elem-editor-row"><label>\u6587\u672C\u5185\u5BB9</label><input class="pua-elem-editor-input" data-prop="textContent" value="' + self._escHtml(el.textContent) + '"></div>'
         editorHtml += '<div class="pua-elem-editor-actions">'
@@ -4101,6 +4087,19 @@
               textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
             }
           })(colorInputs[ci])
+        }
+
+        // Bind range slider sync
+        var rangeInputs = regexElemInfoDiv.querySelectorAll('.pua-elem-editor-range')
+        for (var ri = 0; ri < rangeInputs.length; ri++) {
+          (function(range) {
+            var prop = range.getAttribute('data-prop')
+            var textIn = regexElemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="' + prop + '"]')
+            if (textIn) {
+              range.addEventListener('input', function() { textIn.value = this.value })
+              textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v })
+            }
+          })(rangeInputs[ri])
         }
 
         // Apply button - also update the HTML textarea
@@ -4153,8 +4152,13 @@
         return m ? m[1] : val
       }
 
-      function _regPropField(label, prop, val, unit) {
-        return '<div class="pua-elem-editor-row"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
+      function _regPropField(label, prop, val, unit, min, max, step) {
+        var sliderHtml = ''
+        if (min !== undefined && max !== undefined) {
+          var numVal = parseFloat(val) || 0
+          sliderHtml = '<input type="range" class="pua-elem-editor-range" data-prop="' + prop + '" min="' + min + '" max="' + max + '" step="' + (step || 1) + '" value="' + numVal + '">'
+        }
+        return '<div class="pua-elem-editor-row"><label>' + label + '</label>' + sliderHtml + '<input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
       }
 
       function _regPropFieldColor(label, prop, val) {
@@ -4188,9 +4192,10 @@
           return
         }
         var preview = htmlTpl
-        preview = preview.replace(/\$0/g, '<span style="color:var(--pua-accent)">[\u5339\u914D\u6587\u672C]</span>')
+        preview = preview.replace(/\$&/g, '<span style="color:#ffa500;font-style:italic">$&amp;</span>')
+        preview = preview.replace(/\$0/g, '<span style="color:#ffa500;font-style:italic">$0</span>')
         for (var gi = 1; gi <= 9; gi++) {
-          preview = preview.replace(new RegExp('\\$' + gi, 'g'), '<span style="color:var(--pua-accent)">[\u6355\u83B7\u7EC4' + gi + ']</span>')
+          preview = preview.replace(new RegExp('\\$' + gi, 'g'), '<span style="color:#ffa500;font-style:italic">$' + gi + '</span>')
         }
         resultEl.innerHTML = '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:4px">\u6A21\u677F\u6E32\u67D3\u9884\u89C8</div>' + preview
       })
@@ -5921,20 +5926,54 @@
     this.roche.storage.get('pua_assistant').then(function(data) {
       if (data) {
         self._assistantData = data
+        // Migrate old format: if has history at top level but no branches
+        if (self._assistantData.history && !self._assistantData.branches) {
+          var defaultBranch = {
+            id: 'branch_' + Date.now(),
+            name: '\u5BF9\u8BDD 1',
+            history: self._assistantData.history || [],
+            undoStack: self._assistantData.undoStack || [],
+            createdAt: new Date().toISOString()
+          }
+          self._assistantData.branches = [defaultBranch]
+          self._assistantData.activeBranchId = defaultBranch.id
+          delete self._assistantData.history
+          delete self._assistantData.undoStack
+          self._saveAssistantData()
+        }
       } else {
-        self._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+        var bid = 'branch_' + Date.now()
+        self._assistantData = { apiChoice: 'sub', branches: [{ id: bid, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid, systemPrompt: '', promptPresets: [] }
       }
     }).catch(function() {
-      self._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+      var bid2 = 'branch_' + Date.now()
+      self._assistantData = { apiChoice: 'sub', branches: [{ id: bid2, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid2, systemPrompt: '', promptPresets: [] }
     })
   }
 
   P._saveAssistantData = function() {
     if (!this.roche || !this.roche.storage) return
-    if (!this._assistantData) this._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+    if (!this._assistantData) {
+      var bid = 'branch_' + Date.now()
+      this._assistantData = { apiChoice: 'sub', branches: [{ id: bid, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid, systemPrompt: '', promptPresets: [] }
+    }
     this.roche.storage.set('pua_assistant', this._assistantData).catch(function(e) {
       console.error('[PUA] save assistant data failed', e)
     })
+  }
+
+  P._getActiveBranch = function() {
+    if (!this._assistantData || !this._assistantData.branches) return null
+    var activeId = this._assistantData.activeBranchId
+    for (var i = 0; i < this._assistantData.branches.length; i++) {
+      if (this._assistantData.branches[i].id === activeId) return this._assistantData.branches[i]
+    }
+    // Fallback: return first branch
+    if (this._assistantData.branches.length > 0) {
+      this._assistantData.activeBranchId = this._assistantData.branches[0].id
+      return this._assistantData.branches[0]
+    }
+    return null
   }
 
   P._getAssistantSystemPrompt = function() {
@@ -5954,12 +5993,23 @@
     actionsEl.innerHTML = ''
 
     if (!this._assistantData) {
-      this._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+      var bid = 'branch_' + Date.now()
+      this._assistantData = { apiChoice: 'sub', branches: [{ id: bid, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid, systemPrompt: '', promptPresets: [] }
+    }
+    if (!this._assistantData.branches) {
+      // Migrate
+      var migBranch = { id: 'branch_' + Date.now(), name: '\u5BF9\u8BDD 1', history: this._assistantData.history || [], undoStack: this._assistantData.undoStack || [], createdAt: new Date().toISOString() }
+      this._assistantData.branches = [migBranch]
+      this._assistantData.activeBranchId = migBranch.id
+      delete this._assistantData.history
+      delete this._assistantData.undoStack
     }
     if (!this._assistantData.promptPresets) this._assistantData.promptPresets = []
     if (!this._assistantAttached) this._assistantAttached = { presets: [], regexes: [] }
     var data = this._assistantData
     var attached = this._assistantAttached
+    var branch = this._getActiveBranch()
+    if (!branch) return
 
     var h = '<div class="pua-assistant-layout">'
 
@@ -5975,21 +6025,37 @@
     h += '<button class="pua-btn pua-btn-sm" id="ast-clear-history" style="margin-left:auto">\u6E05\u7A7A\u5BF9\u8BDD</button>'
     h += '</div>'
 
+    // Branch selector bar
+    h += '<div class="pua-branch-bar">'
+    h += '<select class="pua-branch-select" id="ast-branch-select">'
+    for (var bi = 0; bi < data.branches.length; bi++) {
+      h += '<option value="' + self._escHtml(data.branches[bi].id) + '"' + (data.branches[bi].id === data.activeBranchId ? ' selected' : '') + '>' + self._escHtml(data.branches[bi].name) + '</option>'
+    }
+    h += '</select>'
+    h += '<button class="pua-branch-btn" id="ast-branch-add">\u2795 \u65B0\u5BF9\u8BDD</button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-rename">\u270F\uFE0F</button>'
+    h += '<button class="pua-branch-btn pua-branch-btn-danger" id="ast-branch-delete">\uD83D\uDDD1\uFE0F</button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-export">\uD83D\uDCE5 \u5BFC\u51FA</button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-import">\uD83D\uDCE4 \u5BFC\u5165</button>'
+    h += '<span style="font-size:8px;color:var(--pua-text-dim);margin-left:auto">' + data.branches.length + '/10</span>'
+    h += '</div>'
+
     // Chat area
     h += '<div class="pua-assistant-chat" id="ast-chat">'
 
-    if (!data.history || data.history.length === 0) {
+    if (!branch.history || branch.history.length === 0) {
       h += '<div class="pua-assistant-empty">'
       h += '<div class="pua-assistant-empty-icon">\u2728</div>'
       h += '<div class="pua-assistant-empty-text">\u5411\u52A9\u624B\u8BE2\u95EE\uFF0C\u5982\u201C\u5E2E\u6211\u6DFB\u52A0\u4E00\u4E2A\u89D2\u8272\u626E\u6F14\u9884\u8BBE\u201D</div>'
       h += '</div>'
     } else {
-      for (var mi = 0; mi < data.history.length; mi++) {
-        var msg = data.history[mi]
+      for (var mi = 0; mi < branch.history.length; mi++) {
+        var msg = branch.history[mi]
         if (msg.role === 'user') {
-          h += '<div class="pua-assistant-msg pua-assistant-msg-user">'
+          h += '<div class="pua-assistant-msg pua-assistant-msg-user' + (msg.dimmed ? ' pua-msg-dimmed' : '') + '" data-msg-id="' + self._escHtml(msg.id) + '">'
           h += '<div class="pua-assistant-msg-role">\uD83D\uDC64 \u4F60</div>'
-          h += '<div>' + self._escHtml(msg.content) + '</div>'
+          h += '<div class="pua-assistant-msg-content">' + self._escHtml(msg.content) + '</div>'
+          h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(msg.id) + '">\u270F\uFE0F</button>'
           // Show attached badges
           if (msg.attached && (msg.attached.presets.length > 0 || msg.attached.regexes.length > 0)) {
             h += '<div class="pua-assistant-attached-badges">'
@@ -6083,8 +6149,8 @@
     var clearBtn = contentEl.querySelector('#ast-clear-history')
     if (clearBtn) {
       clearBtn.addEventListener('click', function() {
-        self._assistantData.history = []
-        self._assistantData.undoStack = []
+        var br = self._getActiveBranch()
+        if (br) { br.history = []; br.undoStack = [] }
         self._saveAssistantData()
         self._render()
       })
@@ -6217,15 +6283,173 @@
       })
     }
 
-    // Bind undo buttons
-    var undoBtns = contentEl.querySelectorAll('.pua-assistant-undo-btn:not(.done)')
-    for (var ui = 0; ui < undoBtns.length; ui++) {
+    // Bind branch selector
+    var branchSelect = contentEl.querySelector('#ast-branch-select')
+    if (branchSelect) {
+      branchSelect.addEventListener('change', function() {
+        self._assistantData.activeBranchId = this.value
+        self._saveAssistantData()
+        self._render()
+      })
+    }
+
+    // Bind branch add
+    var branchAddBtn = contentEl.querySelector('#ast-branch-add')
+    if (branchAddBtn) {
+      branchAddBtn.addEventListener('click', function() {
+        if (self._assistantData.branches.length >= 10) {
+          self._toast('\u5BF9\u8BDD\u5206\u652F\u5DF2\u8FBE\u4E0A\u9650(10\u4E2A)\uFF0C\u8BF7\u5BFC\u51FA\u5E76\u5220\u9664\u65E7\u5206\u652F\u540E\u518D\u521B\u5EFA')
+          return
+        }
+        var newId = 'branch_' + Date.now()
+        var num = self._assistantData.branches.length + 1
+        self._assistantData.branches.push({ id: newId, name: '\u5BF9\u8BDD ' + num, history: [], undoStack: [], createdAt: new Date().toISOString() })
+        self._assistantData.activeBranchId = newId
+        self._saveAssistantData()
+        self._render()
+      })
+    }
+
+    // Bind branch rename
+    var branchRenameBtn = contentEl.querySelector('#ast-branch-rename')
+    if (branchRenameBtn) {
+      branchRenameBtn.addEventListener('click', function() {
+        var br = self._getActiveBranch()
+        if (!br) return
+        var newName = prompt('\u91CD\u547D\u540D\u5BF9\u8BDD\u5206\u652F', br.name)
+        if (newName) {
+          br.name = newName
+          self._saveAssistantData()
+          self._render()
+        }
+      })
+    }
+
+    // Bind branch delete
+    var branchDeleteBtn = contentEl.querySelector('#ast-branch-delete')
+    if (branchDeleteBtn) {
+      branchDeleteBtn.addEventListener('click', function() {
+        if (self._assistantData.branches.length <= 1) {
+          self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u5BF9\u8BDD\u5206\u652F')
+          return
+        }
+        var br = self._getActiveBranch()
+        if (!br) return
+        if (!confirm('\u786E\u5B9A\u5220\u9664\u5206\u652F\u201C' + br.name + '\u201D\uFF1F')) return
+        var newBranches = []
+        for (var di = 0; di < self._assistantData.branches.length; di++) {
+          if (self._assistantData.branches[di].id !== br.id) newBranches.push(self._assistantData.branches[di])
+        }
+        self._assistantData.branches = newBranches
+        self._assistantData.activeBranchId = newBranches[0].id
+        self._saveAssistantData()
+        self._render()
+      })
+    }
+
+    // Bind branch export
+    var branchExportBtn = contentEl.querySelector('#ast-branch-export')
+    if (branchExportBtn) {
+      branchExportBtn.addEventListener('click', function() {
+        var br = self._getActiveBranch()
+        if (!br) return
+        var json = JSON.stringify(br, null, 2)
+        var blob = new Blob([json], { type: 'application/json' })
+        var url = URL.createObjectURL(blob)
+        var a = document.createElement('a')
+        a.href = url
+        a.download = 'pua-assistant-branch-' + br.name + '.json'
+        a.click()
+        URL.revokeObjectURL(url)
+        self._toast('\u5DF2\u5BFC\u51FA\u5206\u652F: ' + br.name)
+      })
+    }
+
+    // Bind branch import
+    var branchImportBtn = contentEl.querySelector('#ast-branch-import')
+    if (branchImportBtn) {
+      branchImportBtn.addEventListener('click', function() {
+        if (self._assistantData.branches.length >= 10) {
+          self._toast('\u5BF9\u8BDD\u5206\u652F\u5DF2\u8FBE\u4E0A\u9650(10\u4E2A)\uFF0C\u65E0\u6CD5\u5BFC\u5165')
+          return
+        }
+        var fileInput = document.createElement('input')
+        fileInput.type = 'file'
+        fileInput.accept = '.json'
+        fileInput.addEventListener('change', function(e3) {
+          var file = e3.target.files[0]
+          if (!file) return
+          var reader = new FileReader()
+          reader.onload = function(ev) {
+            try {
+              var imported = JSON.parse(ev.target.result)
+              if (!imported.history) throw new Error('\u65E0\u6548\u683C\u5F0F')
+              imported.id = 'branch_' + Date.now()
+              if (!imported.name) imported.name = '\u5BFC\u5165\u7684\u5BF9\u8BDD'
+              imported.createdAt = imported.createdAt || new Date().toISOString()
+              imported.undoStack = imported.undoStack || []
+              self._assistantData.branches.push(imported)
+              self._assistantData.activeBranchId = imported.id
+              self._saveAssistantData()
+              self._render()
+              self._toast('\u5DF2\u5BFC\u5165\u5206\u652F: ' + imported.name)
+            } catch(err) {
+              self._toast('\u5BFC\u5165\u5931\u8D25: ' + (err.message || err))
+            }
+          }
+          reader.readAsText(file)
+        })
+        fileInput.click()
+      })
+    }
+
+    // Bind confirm/dismiss buttons on action cards
+    var confirmBtns = contentEl.querySelectorAll('.pua-assistant-confirm-btn')
+    for (var cfi = 0; cfi < confirmBtns.length; cfi++) {
       (function(btn) {
         btn.addEventListener('click', function() {
           var actionId = this.getAttribute('data-action-id')
-          if (actionId) self._undoAssistantAction(actionId)
+          if (actionId) self._confirmAssistantAction(actionId)
         })
-      })(undoBtns[ui])
+      })(confirmBtns[cfi])
+    }
+    var dismissBtns = contentEl.querySelectorAll('.pua-assistant-dismiss-btn')
+    for (var dbi = 0; dbi < dismissBtns.length; dbi++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var actionId = this.getAttribute('data-action-id')
+          if (actionId) self._dismissAssistantAction(actionId)
+        })
+      })(dismissBtns[dbi])
+    }
+
+    // Bind edit buttons on user messages
+    var editBtns = contentEl.querySelectorAll('.pua-assistant-edit-btn')
+    for (var ebi = 0; ebi < editBtns.length; ebi++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation()
+          var msgId = this.getAttribute('data-edit-msg-id')
+          var branch = self._getActiveBranch()
+          if (!branch) return
+          for (var mi2 = 0; mi2 < branch.history.length; mi2++) {
+            if (branch.history[mi2].id === msgId) {
+              var input = contentEl.querySelector('#ast-input')
+              if (input) {
+                input.value = branch.history[mi2].content
+                input.classList.add('expanded')
+                input.focus()
+              }
+              branch.history[mi2].dimmed = true
+              self._saveAssistantData()
+              // Dim the message in DOM
+              var msgEl = this.closest('.pua-assistant-msg-user')
+              if (msgEl) msgEl.classList.add('pua-msg-dimmed')
+              break
+            }
+          }
+        })
+      })(editBtns[ebi])
     }
 
     // Bind code block copy buttons
@@ -6279,7 +6503,6 @@
       (function(previewDiv) {
         var regexStr = previewDiv.getAttribute('data-regex') || ''
         var htmlTpl = previewDiv.getAttribute('data-html') || ''
-        var testInput = previewDiv.querySelector('.pua-regex-preview-input')
         var outputDiv = previewDiv.querySelector('.pua-regex-preview-output')
         var elemSelectToggle = previewDiv.querySelector('.pua-elem-select-toggle')
         var elemInfoDiv = previewDiv.querySelector('.pua-elem-info')
@@ -6287,26 +6510,17 @@
         var selectedEl = null
         var originalStyles = null
 
-        function renderPreview() {
-          var testText = testInput.value || '\u6D4B\u8BD5\u6587\u672C'
-          try {
-            var re = new RegExp(regexStr, 'g')
-            var match = re.exec(testText)
-            if (match) {
-              var htmlResult = htmlTpl.replace(/\$&/g, match[0])
-              for (var gi = 1; gi < match.length; gi++) {
-                htmlResult = htmlResult.replace(new RegExp('\\$' + gi, 'g'), match[gi] || '')
-              }
-              outputDiv.innerHTML = htmlResult
-            } else {
-              outputDiv.innerHTML = '<span style="opacity:0.5">\u65E0\u5339\u914D</span>'
-            }
-          } catch(e) {
-            outputDiv.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message) + '</span>'
+        // Render preview with placeholder content
+        function renderPlaceholderPreview() {
+          var preview = htmlTpl
+          preview = preview.replace(/\$&/g, '<span style="color:#ffa500;font-style:italic">$&amp;</span>')
+          preview = preview.replace(/\$0/g, '<span style="color:#ffa500;font-style:italic">$0</span>')
+          for (var gi = 1; gi <= 9; gi++) {
+            preview = preview.replace(new RegExp('\\$' + gi, 'g'), '<span style="color:#ffa500;font-style:italic">$' + gi + '</span>')
           }
+          outputDiv.innerHTML = preview
         }
-        testInput.addEventListener('input', renderPreview)
-        renderPreview()
+        renderPlaceholderPreview()
 
         // Element selection mode
         elemSelectToggle.addEventListener('click', function() {
@@ -6347,14 +6561,14 @@
           editorHtml += '<div class="pua-elem-editor-title">\u5143\u7D20\u7F16\u8F91\u5668</div>'
           editorHtml += '<div class="pua-elem-editor-tag">\u6807\u7B7E: &lt;' + el.tagName.toLowerCase() + '&gt;  \u7C7B\u540D: ' + (el.className || '\u65E0') + '</div>'
           editorHtml += '<div class="pua-elem-editor-grid">'
-          editorHtml += _propField('\u5BBD\u5EA6', 'width', _pxVal(computed.width), 'px')
-          editorHtml += _propField('\u9AD8\u5EA6', 'height', _pxVal(computed.height), 'px')
-          editorHtml += _propField('\u5B57\u53F7', 'fontSize', _pxVal(computed.fontSize), 'px')
+          editorHtml += _propField('\u5BBD\u5EA6', 'width', _pxVal(computed.width), 'px', 0, 500, 1)
+          editorHtml += _propField('\u9AD8\u5EA6', 'height', _pxVal(computed.height), 'px', 0, 500, 1)
+          editorHtml += _propField('\u5B57\u53F7', 'fontSize', _pxVal(computed.fontSize), 'px', 8, 72, 1)
           editorHtml += _propFieldColor('\u989C\u8272', 'color', computed.color)
           editorHtml += _propFieldColor('\u80CC\u666F', 'backgroundColor', computed.backgroundColor)
-          editorHtml += _propField('\u5185\u8FB9\u8DDD', 'padding', _pxVal(computed.padding), 'px')
-          editorHtml += _propField('\u5916\u8FB9\u8DDD', 'margin', _pxVal(computed.margin), 'px')
-          editorHtml += _propField('\u5706\u89D2', 'borderRadius', _pxVal(computed.borderRadius), 'px')
+          editorHtml += _propField('\u5185\u8FB9\u8DDD', 'padding', _pxVal(computed.padding), 'px', 0, 50, 1)
+          editorHtml += _propField('\u5916\u8FB9\u8DDD', 'margin', _pxVal(computed.margin), 'px', 0, 50, 1)
+          editorHtml += _propField('\u5706\u89D2', 'borderRadius', _pxVal(computed.borderRadius), 'px', 0, 50, 1)
           editorHtml += '</div>'
           editorHtml += '<div class="pua-elem-editor-row"><label>\u6587\u672C\u5185\u5BB9</label><input class="pua-elem-editor-input" data-prop="textContent" value="' + self._escHtml(el.textContent) + '"></div>'
           editorHtml += '<div class="pua-elem-editor-actions">'
@@ -6376,6 +6590,19 @@
                 textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
               }
             })(colorInputs[ci])
+          }
+
+          // Bind range slider sync
+          var rangeInputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-range')
+          for (var ri = 0; ri < rangeInputs.length; ri++) {
+            (function(range) {
+              var prop = range.getAttribute('data-prop')
+              var textIn = elemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="' + prop + '"]')
+              if (textIn) {
+                range.addEventListener('input', function() { textIn.value = this.value })
+                textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v })
+              }
+            })(rangeInputs[ri])
           }
 
           // Apply button
@@ -6434,8 +6661,13 @@
           return m ? m[1] : val
         }
 
-        function _propField(label, prop, val, unit) {
-          return '<div class="pua-elem-editor-row"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
+        function _propField(label, prop, val, unit, min, max, step) {
+          var sliderHtml = ''
+          if (min !== undefined && max !== undefined) {
+            var numVal = parseFloat(val) || 0
+            sliderHtml = '<input type="range" class="pua-elem-editor-range" data-prop="' + prop + '" min="' + min + '" max="' + max + '" step="' + (step || 1) + '" value="' + numVal + '">'
+          }
+          return '<div class="pua-elem-editor-row"><label>' + label + '</label>' + sliderHtml + '<input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
         }
 
         function _propFieldColor(label, prop, val) {
@@ -6474,35 +6706,34 @@
     // Render action cards
     for (var ai = 0; ai < actions.length; ai++) {
       var action = actions[ai]
+      var actionStatus = action.status || 'confirmed'
       var label = ''
-      if (action.type === 'addPreset') label = '\u2705 \u5DF2\u6DFB\u52A0\u9884\u8BBE: ' + self._escHtml(action.data.title || '')
-      else if (action.type === 'addRegex') label = '\u2705 \u5DF2\u6DFB\u52A0\u6B63\u5219: ' + self._escHtml(action.data.name || '')
-      else if (action.type === 'editPreset') label = '\u2705 \u5DF2\u4FEE\u6539\u9884\u8BBE: ' + self._escHtml(action.data.title || '')
-      else if (action.type === 'editRegex') label = '\u2705 \u5DF2\u4FEE\u6539\u6B63\u5219: ' + self._escHtml(action.data.name || '')
+      var confirmLabel = ''
+      if (action.type === 'addPreset') { label = '\uD83D\uDCCB \u6DFB\u52A0\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = '\u2705 \u6DFB\u52A0\u5230\u9884\u8BBE' }
+      else if (action.type === 'addRegex') { label = '\u2699\uFE0F \u6DFB\u52A0\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = '\u2705 \u6DFB\u52A0\u5230\u6B63\u5219' }
+      else if (action.type === 'editPreset') { label = '\uD83D\uDCCB \u4FEE\u6539\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = '\u2705 \u5E94\u7528\u4FEE\u6539' }
+      else if (action.type === 'editRegex') { label = '\u2699\uFE0F \u4FEE\u6539\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = '\u2705 \u5E94\u7528\u4FEE\u6539' }
 
-      // Check if undone
-      var undone = false
-      if (self._assistantData && self._assistantData.undoStack) {
-        for (var usi = 0; usi < self._assistantData.undoStack.length; usi++) {
-          if (self._assistantData.undoStack[usi].actionId === action.id && self._assistantData.undoStack[usi].undone) {
-            undone = true
-            break
-          }
-        }
-      }
-
-      h += '<div class="pua-assistant-action-card">'
+      h += '<div class="pua-assistant-action-card' + (actionStatus === 'ignored' ? ' pua-action-ignored' : '') + (actionStatus === 'confirmed' ? ' pua-action-confirmed' : '') + '">'
       h += '<span class="pua-assistant-action-label">' + label + '</span>'
-      // Add regex preview button for addRegex and editRegex actions
+      // Add regex preview for addRegex and editRegex actions
       if ((action.type === 'addRegex' || action.type === 'editRegex') && action.data.regex && action.data.html) {
         h += '<div class="pua-regex-preview pua-regex-preview-auto" data-regex="' + self._escHtml(action.data.regex) + '" data-html="' + self._escHtml(action.data.html) + '">'
-        h += '<input class="pua-regex-preview-input" value="\u6D4B\u8BD5\u6587\u672C" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." />'
         h += '<div class="pua-regex-preview-output"></div>'
         h += '<div style="display:flex;gap:4px;margin-top:4px"><button class="pua-code-block-btn pua-elem-select-toggle">\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20</button></div>'
         h += '<div class="pua-elem-info" style="display:none"></div>'
         h += '</div>'
       }
-      h += '<button class="pua-assistant-undo-btn' + (undone ? ' done' : '') + '" data-action-id="' + self._escHtml(action.id) + '">' + (undone ? '\u5DF2\u64A4\u9500' : '\u21A9\uFE0F \u64A4\u9500') + '</button>'
+      if (actionStatus === 'pending') {
+        h += '<div class="pua-action-btns">'
+        h += '<button class="pua-assistant-confirm-btn" data-action-id="' + self._escHtml(action.id) + '">' + confirmLabel + '</button>'
+        h += '<button class="pua-assistant-dismiss-btn" data-action-id="' + self._escHtml(action.id) + '">\u274C \u5FFD\u7565</button>'
+        h += '</div>'
+      } else if (actionStatus === 'confirmed') {
+        h += '<span class="pua-action-status">\u2705 \u5DF2\u6DFB\u52A0</span>'
+      } else if (actionStatus === 'ignored') {
+        h += '<span class="pua-action-status">\u274C \u5DF2\u5FFD\u7565</span>'
+      }
       h += '</div>'
     }
 
@@ -6609,7 +6840,12 @@
     var text = input.value.trim()
     if (!text) return
 
-    if (!this._assistantData) this._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+    if (!this._assistantData) {
+      var bid = 'branch_' + Date.now()
+      this._assistantData = { apiChoice: 'sub', branches: [{ id: bid, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid, systemPrompt: '', promptPresets: [] }
+    }
+    var branch = this._getActiveBranch()
+    if (!branch) return
 
     // Build full content with attached items
     var attached = this._assistantAttached || { presets: [], regexes: [] }
@@ -6642,7 +6878,7 @@
       actions: [],
       timestamp: new Date().toISOString()
     }
-    this._assistantData.history.push(userMsg)
+    branch.history.push(userMsg)
     input.value = ''
     input.classList.remove('expanded')
 
@@ -6692,7 +6928,7 @@
 
     // Build messages array
     var messages = [{ role: 'system', content: this._getAssistantSystemPrompt() }]
-    var history = this._assistantData.history
+    var history = branch.history
     var startIdx = Math.max(0, history.length - 20) // Last 20 messages
     for (var hi = startIdx; hi < history.length; hi++) {
       // Use full content (with attached items) for the most recent user message
@@ -6726,14 +6962,14 @@
 
       var content = (data.choices[0].message || {}).content || ''
 
-      // Parse action tags
+      // Parse action tags - do NOT auto-add, store pending data for user confirmation
       var actions = []
       var addPresetMatch = content.match(/\u3010ADD_PRESET\u3011([\s\S]*?)\u3010\/ADD_PRESET\u3011/)
       if (addPresetMatch) {
         try {
           var pd = JSON.parse(addPresetMatch[1].trim())
           var actionId = 'action_' + Date.now()
-          var newPreset = {
+          var pendingPreset = {
             id: 'p' + Date.now(),
             title: pd.title || '\u672A\u547D\u540D',
             role: pd.role || 'system',
@@ -6746,10 +6982,7 @@
             dMin: 0,
             dMax: Infinity
           }
-          self.presets.push(newPreset)
-          self._savePresets()
-          actions.push({ type: 'addPreset', data: { id: newPreset.id, title: newPreset.title }, id: actionId })
-          self._assistantData.undoStack.push({ actionId: actionId, undone: false, type: 'addPreset', itemId: newPreset.id })
+          actions.push({ type: 'addPreset', data: { id: pendingPreset.id, title: pendingPreset.title }, id: actionId, pending: pendingPreset, status: 'pending' })
         } catch(e) {}
       }
 
@@ -6758,7 +6991,7 @@
         try {
           var rd = JSON.parse(addRegexMatch[1].trim())
           var actionId2 = 'action_' + Date.now() + '_r'
-          var newRegex = {
+          var pendingRegex = {
             id: 'r' + Date.now(),
             name: rd.name || '\u672A\u547D\u540D',
             regex: rd.regex || '',
@@ -6768,10 +7001,7 @@
             dMin: 0,
             dMax: Infinity
           }
-          self.regexes.push(newRegex)
-          self._saveRegexes()
-          actions.push({ type: 'addRegex', data: { id: newRegex.id, name: newRegex.name, regex: newRegex.regex, html: newRegex.html }, id: actionId2 })
-          self._assistantData.undoStack.push({ actionId: actionId2, undone: false, type: 'addRegex', itemId: newRegex.id })
+          actions.push({ type: 'addRegex', data: { id: pendingRegex.id, name: pendingRegex.name, regex: pendingRegex.regex, html: pendingRegex.html }, id: actionId2, pending: pendingRegex, status: 'pending' })
         } catch(e2) {}
       }
 
@@ -6780,17 +7010,14 @@
         try {
           var epd = JSON.parse(editPresetMatch[1].trim())
           var actionId3 = 'action_' + Date.now() + '_ep'
+          var beforeEdit = null
           for (var epi = 0; epi < self.presets.length; epi++) {
             if (self.presets[epi].id === epd.id) {
-              var beforeEdit = { title: self.presets[epi].title, content: self.presets[epi].content }
-              if (epd.title) self.presets[epi].title = epd.title
-              if (epd.content) self.presets[epi].content = epd.content
-              self._savePresets()
-              actions.push({ type: 'editPreset', data: { id: epd.id, title: self.presets[epi].title }, id: actionId3 })
-              self._assistantData.undoStack.push({ actionId: actionId3, undone: false, type: 'editPreset', itemId: epd.id, before: beforeEdit })
+              beforeEdit = { title: self.presets[epi].title, content: self.presets[epi].content }
               break
             }
           }
+          actions.push({ type: 'editPreset', data: { id: epd.id, title: epd.title || '' }, id: actionId3, pending: epd, before: beforeEdit, status: 'pending' })
         } catch(e3) {}
       }
 
@@ -6799,18 +7026,14 @@
         try {
           var erd = JSON.parse(editRegexMatch[1].trim())
           var actionId4 = 'action_' + Date.now() + '_er'
+          var beforeEdit2 = null
           for (var eri = 0; eri < self.regexes.length; eri++) {
             if (self.regexes[eri].id === erd.id) {
-              var beforeEdit2 = { name: self.regexes[eri].name, regex: self.regexes[eri].regex, html: self.regexes[eri].html }
-              if (erd.name) self.regexes[eri].name = erd.name
-              if (erd.regex) self.regexes[eri].regex = erd.regex
-              if (erd.html) self.regexes[eri].html = erd.html
-              self._saveRegexes()
-              actions.push({ type: 'editRegex', data: { id: erd.id, name: self.regexes[eri].name, regex: self.regexes[eri].regex, html: self.regexes[eri].html }, id: actionId4 })
-              self._assistantData.undoStack.push({ actionId: actionId4, undone: false, type: 'editRegex', itemId: erd.id, before: beforeEdit2 })
+              beforeEdit2 = { name: self.regexes[eri].name, regex: self.regexes[eri].regex, html: self.regexes[eri].html }
               break
             }
           }
+          actions.push({ type: 'editRegex', data: { id: erd.id, name: erd.name || '', regex: erd.regex || '', html: erd.html || '' }, id: actionId4, pending: erd, before: beforeEdit2, status: 'pending' })
         } catch(e4) {}
       }
 
@@ -6822,7 +7045,8 @@
         actions: actions,
         timestamp: new Date().toISOString()
       }
-      self._assistantData.history.push(assistantMsg)
+      var activeBranch = self._getActiveBranch()
+      if (activeBranch) activeBranch.history.push(assistantMsg)
       self._saveAssistantData()
 
       self._assistantSending = false
@@ -6848,7 +7072,8 @@
     var msgDiv = document.createElement('div')
     msgDiv.className = 'pua-assistant-msg pua-assistant-msg-user'
     var h = '<div class="pua-assistant-msg-role">\uD83D\uDC64 \u4F60</div>'
-    h += '<div>' + self._escHtml(userMsg.content) + '</div>'
+    h += '<div class="pua-assistant-msg-content">' + self._escHtml(userMsg.content) + '</div>'
+    h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(userMsg.id) + '">\u270F\uFE0F</button>'
     if (userMsg.attached && (userMsg.attached.presets.length > 0 || userMsg.attached.regexes.length > 0)) {
       h += '<div class="pua-assistant-attached-badges">'
       for (var api = 0; api < userMsg.attached.presets.length; api++) {
@@ -6864,69 +7089,79 @@
     chatEl.scrollTop = chatEl.scrollHeight
   }
 
-  P._undoAssistantAction = function(actionId) {
-    if (!this._assistantData || !this._assistantData.undoStack) return
-
-    for (var i = 0; i < this._assistantData.undoStack.length; i++) {
-      var entry = this._assistantData.undoStack[i]
-      if (entry.actionId === actionId && !entry.undone) {
-        if (entry.type === 'addPreset') {
-          // Remove the added preset
-          for (var pi = 0; pi < this.presets.length; pi++) {
-            if (this.presets[pi].id === entry.itemId) {
-              this.presets.splice(pi, 1)
+  P._confirmAssistantAction = function(actionId) {
+    var branch = this._getActiveBranch()
+    if (!branch) return
+    // Find the action in history
+    for (var hi = 0; hi < branch.history.length; hi++) {
+      var msg = branch.history[hi]
+      if (msg.actions) {
+        for (var ai = 0; ai < msg.actions.length; ai++) {
+          var action = msg.actions[ai]
+          if (action.id === actionId && action.status === 'pending') {
+            if (action.type === 'addPreset' && action.pending) {
+              this.presets.push(action.pending)
               this._savePresets()
-              break
-            }
-          }
-        } else if (entry.type === 'addRegex') {
-          // Remove the added regex
-          for (var ri = 0; ri < this.regexes.length; ri++) {
-            if (this.regexes[ri].id === entry.itemId) {
-              this.regexes.splice(ri, 1)
+            } else if (action.type === 'addRegex' && action.pending) {
+              this.regexes.push(action.pending)
               this._saveRegexes()
-              break
-            }
-          }
-        } else if (entry.type === 'editPreset') {
-          // Restore original values
-          for (var pi2 = 0; pi2 < this.presets.length; pi2++) {
-            if (this.presets[pi2].id === entry.itemId) {
-              if (entry.before) {
-                if (entry.before.title) this.presets[pi2].title = entry.before.title
-                if (entry.before.content) this.presets[pi2].content = entry.before.content
+            } else if (action.type === 'editPreset' && action.pending) {
+              for (var epi = 0; epi < this.presets.length; epi++) {
+                if (this.presets[epi].id === action.pending.id) {
+                  if (action.pending.title) this.presets[epi].title = action.pending.title
+                  if (action.pending.content) this.presets[epi].content = action.pending.content
+                  this._savePresets()
+                  break
+                }
               }
-              this._savePresets()
-              break
-            }
-          }
-        } else if (entry.type === 'editRegex') {
-          // Restore original values
-          for (var ri2 = 0; ri2 < this.regexes.length; ri2++) {
-            if (this.regexes[ri2].id === entry.itemId) {
-              if (entry.before) {
-                if (entry.before.name) this.regexes[ri2].name = entry.before.name
-                if (entry.before.regex) this.regexes[ri2].regex = entry.before.regex
-                if (entry.before.html) this.regexes[ri2].html = entry.before.html
+            } else if (action.type === 'editRegex' && action.pending) {
+              for (var eri = 0; eri < this.regexes.length; eri++) {
+                if (this.regexes[eri].id === action.pending.id) {
+                  if (action.pending.name) this.regexes[eri].name = action.pending.name
+                  if (action.pending.regex) this.regexes[eri].regex = action.pending.regex
+                  if (action.pending.html) this.regexes[eri].html = action.pending.html
+                  this._saveRegexes()
+                  break
+                }
               }
-              this._saveRegexes()
-              break
             }
+            action.status = 'confirmed'
+            this._saveAssistantData()
+            this._toast('\u5DF2\u6DFB\u52A0')
+            this._render()
+            return
           }
         }
+      }
+    }
+  }
 
-        entry.undone = true
-        this._saveAssistantData()
-        this._toast('\u5DF2\u64A4\u9500')
-        this._render()
-        return
+  P._dismissAssistantAction = function(actionId) {
+    var branch = this._getActiveBranch()
+    if (!branch) return
+    for (var hi = 0; hi < branch.history.length; hi++) {
+      var msg = branch.history[hi]
+      if (msg.actions) {
+        for (var ai = 0; ai < msg.actions.length; ai++) {
+          var action = msg.actions[ai]
+          if (action.id === actionId && action.status === 'pending') {
+            action.status = 'ignored'
+            this._saveAssistantData()
+            this._toast('\u5DF2\u5FFD\u7565')
+            this._render()
+            return
+          }
+        }
       }
     }
   }
 
   P._showPromptModal = function() {
     var self = this
-    if (!this._assistantData) this._assistantData = { apiChoice: 'sub', history: [], undoStack: [], systemPrompt: '', promptPresets: [] }
+    if (!this._assistantData) {
+      var bid = 'branch_' + Date.now()
+      this._assistantData = { apiChoice: 'sub', branches: [{ id: bid, name: '\u5BF9\u8BDD 1', history: [], undoStack: [], createdAt: new Date().toISOString() }], activeBranchId: bid, systemPrompt: '', promptPresets: [] }
+    }
     if (!this._assistantData.promptPresets) this._assistantData.promptPresets = []
 
     var currentPrompt = this._assistantData.systemPrompt || this._getDefaultSystemPrompt()
