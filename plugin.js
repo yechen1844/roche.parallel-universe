@@ -363,7 +363,7 @@
     '.asm-conn { width:20px; display:flex; flex-direction:column; align-items:center; position:relative; }',
     '.asm-dot { width:8px; height:8px; border-radius:50%; margin-top:12px; flex-shrink:0; }',
     '.asm-line { width:2px; flex:1; min-height:8px; }',
-    '.asm-card { flex:1; background:var(--pua-bg-card); border-radius:8px; padding:10px 14px; border-left:3px solid var(--pua-border); cursor:default; transition:opacity 0.15s; }',
+    '.asm-card { flex:1; background:var(--pua-bg-card); border-radius:8px; padding:8px 12px; border-left:3px solid var(--pua-border); cursor:pointer; transition:opacity 0.15s; min-height:36px; }',
     '.asm-card:hover { opacity:0.9; }',
     '.asm-card.draggable { cursor:grab; }',
     '.asm-card.draggable:active { cursor:grabbing; }',
@@ -385,6 +385,8 @@
     '.asm-type-world .asm-card { border-left-color:#e0a040; }',
     '.asm-type-memory .asm-dot, .asm-type-memory .asm-line { background:#ef6a8a; }',
     '.asm-type-memory .asm-card { border-left-color:#ef6a8a; }',
+    '.asm-type-recall .asm-dot, .asm-type-recall .asm-line { background:#c070e0; }',
+    '.asm-type-recall .asm-card { border-left-color:#c070e0; }',
     '.asm-type-chat .asm-dot, .asm-type-chat .asm-line { background:#6a7a9a; }',
     '.asm-type-chat .asm-card { border-left-color:#6a7a9a; }',
     '.asm-config-section { background:var(--pua-bg-card); border-radius:8px; padding:12px; }',
@@ -2591,6 +2593,7 @@
       h += '<div style="flex:1"></div>'
       h += '<button class="pua-btn pua-btn-sm pua-mobile-back" style="display:none" data-id="' + selPreset.id + '">\u2190 \u8FD4\u56DE\u5217\u8868</button>'
       h += '<button class="pua-btn pua-btn-danger pua-btn-sm pua-preset-delete" data-id="' + selPreset.id + '">\u5220\u9664</button>'
+      h += '<button class="pua-btn pua-btn-sm" id="preset-save-btn" style="background:var(--pua-accent);color:#000">\u2726 \u4FDD\u5B58</button>'
       h += '</div>'
       // Content textarea
       h += '<div class="pua-detail-body">'
@@ -2690,19 +2693,18 @@
 
     // --- Detail editor events ---
 
-    // Title change
+    // Title change (no auto-save, just update memory)
     var titleInput = document.querySelector('.pua-preset-title')
     if (titleInput) {
-      titleInput.addEventListener('change', function() {
+      titleInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].title = this.value; break }
         }
-        self._savePresets()
       })
     }
 
-    // Role change
+    // Role change (no auto-save, just update memory)
     var roleSelect = document.querySelector('.pua-preset-role')
     if (roleSelect) {
       roleSelect.addEventListener('change', function() {
@@ -2710,47 +2712,39 @@
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].role = this.value; break }
         }
-        self._savePresets()
       })
     }
 
-    // Content change (debounced save)
+    // Content change (no auto-save, just update memory)
     var contentTextarea = document.querySelector('.pua-preset-content')
     if (contentTextarea) {
-      contentTextarea._saveTimer = null
       contentTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].content = this.value; break }
         }
-        // Debounce save
-        if (this._saveTimer) clearTimeout(this._saveTimer)
-        var el = this
-        this._saveTimer = setTimeout(function() { self._savePresets(); el._saveTimer = null }, 500)
       })
     }
 
-    // Output regex change
+    // Output regex change (no auto-save, just update memory)
     var outRegexInput = document.querySelector('.pua-preset-outregex')
     if (outRegexInput) {
-      outRegexInput.addEventListener('change', function() {
+      outRegexInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].outRegex = this.value; break }
         }
-        self._savePresets()
       })
     }
 
-    // Input regex change
+    // Input regex change (no auto-save, just update memory)
     var inRegexInput = document.querySelector('.pua-preset-inregex')
     if (inRegexInput) {
-      inRegexInput.addEventListener('change', function() {
+      inRegexInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].inRegex = this.value; break }
         }
-        self._savePresets()
       })
     }
 
@@ -2780,30 +2774,28 @@
       })
     }
 
-    // Depth min
+    // Depth min (no auto-save, just update memory)
     var dMinInput = document.querySelector('.pua-preset-dmin')
     if (dMinInput) {
-      dMinInput.addEventListener('change', function() {
+      dMinInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         var val = parseInt(this.value) || 0
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].dMin = val; break }
         }
-        self._savePresets()
       })
     }
 
-    // Depth max
+    // Depth max (no auto-save, just update memory)
     var dMaxInput = document.querySelector('.pua-preset-dmax')
     if (dMaxInput) {
-      dMaxInput.addEventListener('change', function() {
+      dMaxInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         var val = this.value ? parseInt(this.value) : Infinity
         if (val < 0) val = 0
         for (var i = 0; i < self.presets.length; i++) {
           if (self.presets[i].id === id) { self.presets[i].dMax = val; break }
         }
-        self._savePresets()
       })
     }
 
@@ -2813,6 +2805,15 @@
       delBtn.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
         self._delPreset(id)
+      })
+    }
+
+    // Save button
+    var saveBtn = document.getElementById('preset-save-btn')
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        self._savePresets()
+        self._toast('\u9884\u8BBE\u5DF2\u4FDD\u5B58')
       })
     }
 
@@ -3175,6 +3176,7 @@
       h += '<div style="flex:1"></div>'
       h += '<button class="pua-btn pua-btn-sm pua-mobile-back-regex" style="display:none" data-id="' + selRegex.id + '">\u2190 \u8FD4\u56DE\u5217\u8868</button>'
       h += '<button class="pua-btn pua-btn-danger pua-btn-sm pua-regex-delete" data-id="' + selRegex.id + '">\u5220\u9664</button>'
+      h += '<button class="pua-btn pua-btn-sm" id="regex-save-btn" style="background:var(--pua-accent);color:#000">\u2726 \u4FDD\u5B58</button>'
       h += '</div>'
       // Content area
       h += '<div class="pua-detail-body">'
@@ -3200,6 +3202,7 @@
         h += '<div style="display:flex;gap:6px;margin-bottom:6px">'
         h += '<input class="pua-field-input" id="regex-preview-input" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." style="flex:1">'
         h += '<button class="pua-btn pua-btn-sm" id="regex-preview-btn">\u9884\u89C8</button>'
+        h += '<button class="pua-btn pua-btn-sm" id="regex-template-preview-btn">\u6A21\u677F\u9884\u89C8</button>'
         h += '</div>'
         h += '<div id="regex-preview-result" style="background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:6px;padding:10px;min-height:60px;font-size:12px;color:var(--pua-text);overflow:auto;max-height:200px"></div>'
         h += '</div>'
@@ -3294,19 +3297,18 @@
 
     // --- Detail editor events ---
 
-    // Name change
+    // Name change (no auto-save, just update memory)
     var nameInput = document.querySelector('.pua-regex-name')
     if (nameInput) {
-      nameInput.addEventListener('change', function() {
+      nameInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].name = this.value; break }
         }
-        self._saveRegexes()
       })
     }
 
-    // Type change
+    // Type change (no auto-save, just update memory + re-render for preview area)
     var typeSelect = document.querySelector('.pua-regex-type-select')
     if (typeSelect) {
       typeSelect.addEventListener('change', function() {
@@ -3314,65 +3316,54 @@
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].type = this.value; break }
         }
-        self._saveRegexes()
         self._render()
       })
     }
 
-    // Regex pattern change (debounced save)
+    // Regex pattern change (no auto-save, just update memory)
     var patternTextarea = document.querySelector('.pua-regex-pattern')
     if (patternTextarea) {
-      patternTextarea._saveTimer = null
       patternTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].regex = this.value; break }
         }
-        if (this._saveTimer) clearTimeout(this._saveTimer)
-        var el = this
-        this._saveTimer = setTimeout(function() { self._saveRegexes(); el._saveTimer = null }, 500)
       })
     }
 
-    // HTML template change (debounced save)
+    // HTML template change (no auto-save, just update memory)
     var htmlTextarea = document.querySelector('.pua-regex-html')
     if (htmlTextarea) {
-      htmlTextarea._saveTimer = null
       htmlTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].html = this.value; break }
         }
-        if (this._saveTimer) clearTimeout(this._saveTimer)
-        var el = this
-        this._saveTimer = setTimeout(function() { self._saveRegexes(); el._saveTimer = null }, 500)
       })
     }
 
-    // Depth min
+    // Depth min (no auto-save, just update memory)
     var dMinInput = document.querySelector('.pua-regex-dmin')
     if (dMinInput) {
-      dMinInput.addEventListener('change', function() {
+      dMinInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         var val = parseInt(this.value) || 0
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].dMin = val; break }
         }
-        self._saveRegexes()
       })
     }
 
-    // Depth max
+    // Depth max (no auto-save, just update memory)
     var dMaxInput = document.querySelector('.pua-regex-dmax')
     if (dMaxInput) {
-      dMaxInput.addEventListener('change', function() {
+      dMaxInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
         var val = this.value ? parseInt(this.value) : Infinity
         if (val < 0) val = 0
         for (var i = 0; i < self.regexes.length; i++) {
           if (self.regexes[i].id === id) { self.regexes[i].dMax = val; break }
         }
-        self._saveRegexes()
       })
     }
 
@@ -3382,6 +3373,15 @@
       delBtn.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
         self._delRegex(id)
+      })
+    }
+
+    // Save button
+    var regexSaveBtn = document.getElementById('regex-save-btn')
+    if (regexSaveBtn) {
+      regexSaveBtn.addEventListener('click', function() {
+        self._saveRegexes()
+        self._toast('\u6B63\u5219\u5DF2\u4FDD\u5B58')
       })
     }
 
@@ -3441,6 +3441,30 @@
         } catch(e) {
           resultEl.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message || String(e)) + '</span>'
         }
+      })
+    }
+
+    // Template preview button
+    var tplPreviewBtn = document.getElementById('regex-template-preview-btn')
+    if (tplPreviewBtn) {
+      var selectedRegexForTpl = null
+      for (var sri2 = 0; sri2 < self.regexes.length; sri2++) {
+        if (self.regexes[sri2].id === self.selRegex) { selectedRegexForTpl = self.regexes[sri2]; break }
+      }
+      tplPreviewBtn.addEventListener('click', function() {
+        var resultEl = document.getElementById('regex-preview-result')
+        if (!resultEl || !selectedRegexForTpl) return
+        var htmlTpl = selectedRegexForTpl.html || selectedRegexForTpl.replace || ''
+        if (!htmlTpl) {
+          resultEl.innerHTML = '<span style="color:var(--pua-text-dim)">\u65E0\u66FF\u6362\u6A21\u677F</span>'
+          return
+        }
+        var preview = htmlTpl
+        preview = preview.replace(/\$0/g, '<span style="color:var(--pua-accent)">[\u5339\u914D\u6587\u672C]</span>')
+        for (var gi = 1; gi <= 9; gi++) {
+          preview = preview.replace(new RegExp('\\$' + gi, 'g'), '<span style="color:var(--pua-accent)">[\u6355\u83B7\u7EC4' + gi + ']</span>')
+        }
+        resultEl.innerHTML = '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:4px">\u6A21\u677F\u6E32\u67D3\u9884\u89C8</div>' + preview
       })
     }
   }
@@ -3726,6 +3750,7 @@
     order.push({ type: 'world-pre', id: 'world-pre' })
     order.push({ type: 'memory-core', id: 'memory-core' })
     order.push({ type: 'memory-fact', id: 'memory-fact' })
+    order.push({ type: 'recall', id: 'recall' })
     order.push({ type: 'chat', id: 'chat' })
     order.push({ type: 'world-mid', id: 'world-mid' })
     order.push({ type: 'world-post', id: 'world-post' })
@@ -4079,6 +4104,7 @@
       { color: '#4ec9a0', label: '\u7528\u6237\u4EBA\u8BBE' },
       { color: '#e0a040', label: '\u4E16\u754C\u4E66' },
       { color: '#ef6a8a', label: '\u8BB0\u5FC6' },
+      { color: '#c070e0', label: '\u53EC\u56DE\u8BB0\u5FC6' },
       { color: '#6a7a9a', label: '\u804A\u5929\u8BB0\u5F55' }
     ]
     for (var li = 0; li < legends.length; li++) {
@@ -4219,6 +4245,11 @@
           meta = factCount + ' \u6761'
           body = '\u70B9\u51FB\u67E5\u770B \xB7 \u53EF\u62D6\u62FD'
           break
+        case 'recall':
+          typeClass = 'asm-type-recall'
+          title = '\u53EC\u56DE\u8BB0\u5FC6'
+          body = '\u70B9\u51FB\u67E5\u770B \xB7 \u53EF\u62D6\u62FD'
+          break
         case 'chat':
           typeClass = 'asm-type-chat'
           var chatCount = this.asmData.shortTerm ? this.asmData.shortTerm.length : 0
@@ -4347,13 +4378,15 @@
             if (this.asmData.chars[dci].id === id) { charObj3 = this.asmData.chars[dci]; break }
           }
         }
+        var charName3 = charObj3 ? (charObj3.handle || charObj3.name || '') : ''
         var charText3 = charObj3 ? (charObj3.persona || charObj3.bio || '') : ''
-        h += '<div class="pua-field"><div class="pua-field-label">\u89D2\u8272\u8BBE\u5B9A</div>'
+        h += '<div class="pua-field"><div class="pua-field-label">\u89D2\u8272\u8BBE\u5B9A' + (charName3 ? ' \xB7 ' + this._escHtml(charName3) : '') + '</div>'
         h += '<textarea class="pua-detail-textarea" readonly>' + this._escHtml(charText3) + '</textarea></div>'
         break
       case 'user':
+        var userName = this.asmData.userPersona ? (this.asmData.userPersona.name || 'User') : ''
         var userText = this.asmData.userPersona ? (this.asmData.userPersona.persona || this.asmData.userPersona.bio || '') : ''
-        h += '<div class="pua-field"><div class="pua-field-label">\u7528\u6237\u4EBA\u8BBE</div>'
+        h += '<div class="pua-field"><div class="pua-field-label">\u7528\u6237\u4EBA\u8BBE' + (userName ? ' \xB7 ' + this._escHtml(userName) : '') + '</div>'
         h += '<textarea class="pua-detail-textarea" readonly>' + this._escHtml(userText) + '</textarea></div>'
         break
       case 'world-pre':
@@ -4387,6 +4420,11 @@
           h += this._escHtml(facts[fdi].summaryText || facts[fdi].action || facts[fdi].text || '')
           h += '</div>'
         }
+        h += '</div>'
+        break
+      case 'recall':
+        h += '<div class="pua-field"><div class="pua-field-label">\u53EC\u56DE\u8BB0\u5FC6</div>'
+        h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u53EC\u56DE\u8BB0\u5FC6\u5C06\u6839\u636E\u5F53\u524D\u5BF9\u8BDD\u52A8\u6001\u68C0\u7D22\u76F8\u5173\u4E8B\u5B9E\u8BB0\u5FC6\uFF0C\u5E76\u6CE8\u5165\u5230\u4E0A\u4E0B\u6587\u4E2D</div>'
         h += '</div>'
         break
       case 'chat':
@@ -4559,6 +4597,9 @@
             }
             if (factStr) messages.push({ role: 'system', content: '[\u4E8B\u5B9E\u8BB0\u5FC6]\n' + factStr })
           }
+          break
+        case 'recall':
+          // \u53EC\u56DE\u8BB0\u5FC6\u5728\u5B9E\u9645\u53D1\u9001\u65F6\u52A8\u6001\u68C0\u7D22\uFF0C\u6B64\u5904\u4EC5\u4F5C\u4E3A\u5360\u4F4D
           break
         case 'chat':
           var msgs = this.asmData.shortTerm || []
@@ -5134,6 +5175,7 @@
     var self = this
     titleEl.textContent = '\u8BB0\u5FC6\u7CFB\u7EDF'
     actionsEl.innerHTML = ''
+    try {
 
     var savedScrollTop = contentEl.scrollTop
     var settings = this._loadSettings()
@@ -5285,6 +5327,9 @@
         self._showFactDetail(factId, memData, currentBranchId)
       })
     }
+    } catch(e) {
+      contentEl.innerHTML = '<div style="padding:20px;color:#ff6b6b">\u8BB0\u5FC6\u7CFB\u7EDF\u52A0\u8F7D\u5931\u8D25: ' + self._escHtml(e.message || String(e)) + '</div>'
+    }
   }
 
   P._loadMemData = function(branchId) {
@@ -5293,11 +5338,25 @@
     try {
       var raw = localStorage.getItem(key)
       if (raw) {
-        this._memDataCache = JSON.parse(raw)
+        var parsed = JSON.parse(raw)
+        // 兼容旧格式：core 可能是字符串
+        if (parsed && typeof parsed.core === 'string') {
+          parsed.core = { relationship: parsed.core, events: '' }
+        }
+        if (!parsed.core || typeof parsed.core !== 'object') {
+          parsed.core = { relationship: '', events: '' }
+        }
+        if (!parsed.core.relationship) parsed.core.relationship = ''
+        if (!parsed.core.events) parsed.core.events = ''
+        if (!parsed.facts || !Array.isArray(parsed.facts)) parsed.facts = []
+        this._memDataCache = parsed
         this._memDataCacheKey = key
         return this._memDataCache
       }
-    } catch(e) {}
+    } catch(e) {
+      // 损坏的数据，清除并返回默认
+      try { localStorage.removeItem(key) } catch(e2) {}
+    }
     this._memDataCache = { core: { relationship: '', events: '' }, facts: [] }
     this._memDataCacheKey = key
     return this._memDataCache
@@ -5940,7 +5999,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.9.0',
+    version: '0.9.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
