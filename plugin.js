@@ -187,6 +187,8 @@
     '.pua-regex-type { font-size:9px; padding:1px 5px; border-radius:3px; font-weight:600; }',
     '.pua-regex-type-render { background:rgba(239,106,138,0.12); color:var(--pua-mem); }',
     '.pua-regex-type-prompt { background:rgba(91,141,239,0.12); color:var(--pua-preset); }',
+    '.pua-regex-type-filter { background:rgba(91,141,239,0.12); color:var(--pua-preset); }',
+    '.pua-regex-type-replace { background:rgba(255,183,77,0.15); color:var(--pua-accent); }',
     '.pua-regex-textarea { width:100%; min-height:70px; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:8px 10px; color:var(--pua-text); font-size:11px; font-family:monospace; outline:none; resize:vertical; }',
     '.pua-regex-textarea:focus { border-color:var(--pua-accent); }',
     '.pua-regex-hint { font-size:9px; color:var(--pua-text-dim); margin-top:2px; }',
@@ -2764,9 +2766,11 @@
       h += '<div class="pua-regex-section">'
       h += '<div class="pua-regex-section-title">\uD83D\uDD10 \u63D0\u793A\u8BCD\u66FF\u6362\uFF08\u4FEE\u6539\u53D1\u7ED9AI\u7684\u6587\u672C\uFF09</div>'
       h += '<div class="pua-regex-row"><label>\u8F93\u51FA\u8FC7\u6EE4</label>'
+      h += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:rgba(91,141,239,0.12);color:var(--pua-preset)">发送过滤</span>'
       h += '<input type="text" class="pua-preset-outregex" value="' + self._escHtml(selPreset.outRegex) + '" placeholder="\u5339\u914D\u5185\u5BB9\u53EA\u53D1\u7ED9AI" data-id="' + selPreset.id + '">'
       h += '<button class="pua-toggle-item' + (selPreset.outRegexOn ? ' on' : '') + ' pua-preset-oregex-toggle" data-id="' + selPreset.id + '"></button></div>'
       h += '<div class="pua-regex-row"><label>\u8F93\u5165\u8FC7\u6EE4</label>'
+      h += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:rgba(91,141,239,0.12);color:var(--pua-preset)">发送过滤</span>'
       h += '<input type="text" class="pua-preset-inregex" value="' + self._escHtml(selPreset.inRegex) + '" placeholder="\u5339\u914D\u5185\u5BB9\u4ECEA-I\u56DE\u590D\u79FB\u9664" data-id="' + selPreset.id + '">'
       h += '<button class="pua-toggle-item' + (selPreset.inRegexOn ? ' on' : '') + ' pua-preset-iregex-toggle" data-id="' + selPreset.id + '"></button></div>'
       // Depth
@@ -3499,8 +3503,20 @@
 
     for (var j = 0; j < this.regexes.length; j++) {
       var r = this.regexes[j]
-      var typeClass = r.type === 'prompt' ? 'pua-regex-type-prompt' : 'pua-regex-type-render'
-      var typeLabel = r.type === 'prompt' ? 'PROMPT' : 'RENDER'
+      var typeClass, typeLabel
+      if (r.type === 'render') {
+        typeClass = 'pua-regex-type-render'
+        typeLabel = '前端渲染'
+      } else if (r.type === 'filter') {
+        typeClass = 'pua-regex-type-filter'
+        typeLabel = '后端过滤'
+      } else if (r.type === 'replace') {
+        typeClass = 'pua-regex-type-replace'
+        typeLabel = '后端替换'
+      } else {
+        typeClass = 'pua-regex-type-prompt'
+        typeLabel = '后端过滤'
+      }
       h += '<div class="pua-entry-item' + (r.id === this.selRegex ? ' selected' : '') + '" data-id="' + r.id + '" draggable="true">'
       h += '<span class="pua-drag-handle">\u2630</span>'
       h += '<div class="pua-entry-info"><div class="pua-entry-title">' + self._escHtml(r.name) + '</div>'
@@ -3519,9 +3535,11 @@
       h += '<div class="pua-field" style="margin:0"><div class="pua-field-label">\u540D\u79F0</div>'
       h += '<input class="pua-field-input pua-regex-name" style="width:180px" value="' + self._escHtml(selRegex.name) + '" data-id="' + selRegex.id + '"></div>'
       h += '<div class="pua-field" style="margin:0"><div class="pua-field-label">\u7C7B\u578B</div>'
-      h += '<select class="pua-field-input pua-field-select pua-regex-type-select" style="width:120px" data-id="' + selRegex.id + '">'
-      h += '<option value="render"' + (selRegex.type === 'render' ? ' selected' : '') + '>Render</option>'
-      h += '<option value="prompt"' + (selRegex.type === 'prompt' ? ' selected' : '') + '>Prompt</option>'
+      h += '<select class="pua-field-input pua-field-select pua-regex-type-select" style="width:150px" data-id="' + selRegex.id + '">'
+      h += '<option value="render"' + (selRegex.type === 'render' ? ' selected' : '') + '>前端渲染 (Render)</option>'
+      h += '<option value="prompt"' + (selRegex.type === 'prompt' ? ' selected' : '') + '>后端过滤 (Prompt)</option>'
+      h += '<option value="filter"' + (selRegex.type === 'filter' ? ' selected' : '') + '>后端过滤 (Filter)</option>'
+      h += '<option value="replace"' + (selRegex.type === 'replace' ? ' selected' : '') + '>后端替换 (Replace)</option>'
       h += '</select></div>'
       h += '<div style="flex:1"></div>'
       h += '<button class="pua-btn pua-btn-sm pua-mobile-back-regex" style="display:none" data-id="' + selRegex.id + '">\u2190 \u8FD4\u56DE\u5217\u8868</button>'
@@ -3541,7 +3559,7 @@
       h += '<div style="flex:1;display:flex;flex-direction:column">'
       h += '<div class="pua-field-label" style="margin-bottom:3px">\u66FF\u6362\u6A21\u677F</div>'
       h += '<textarea class="pua-detail-textarea pua-regex-html" data-id="' + selRegex.id + '" placeholder="\u8F93\u5165\u66FF\u6362\u6A21\u677F...">' + self._escHtml(selRegex.html) + '</textarea>'
-      var typeHint = selRegex.type === 'prompt' ? '$1 $2 \u5F15\u7528\u6355\u83B7\u7EC4\uFF0C\u66FF\u6362\u53D1\u7ED9AI\u7684\u63D0\u793A\u8BCD' : '$1 $2 \u5F15\u7528\u6355\u83B7\u7EC4\uFF0C\u524D\u7AEF\u6E32\u67D3\u66FF\u6362'
+      var typeHint = selRegex.type === 'render' ? '前端渲染：仅影响显示，不影响发送给AI的内容' : selRegex.type === 'replace' ? '后端替换：替换发送给AI的文本内容' : '后端过滤：过滤/替换发送给AI的文本内容'
       h += '<div class="pua-regex-hint">' + typeHint + '</div>'
       h += '</div>'
       h += '</div>'
@@ -3574,7 +3592,7 @@
       h += '<div class="pua-detail-footer">'
       h += '<span>\u5339\u914D: ' + regexLen + ' \u5B57\u7B26</span>'
       h += '<span>\u66FF\u6362: ' + htmlLen + ' \u5B57\u7B26</span>'
-      h += '<span>\u7C7B\u578B: ' + (selRegex.type === 'prompt' ? 'PROMPT' : 'RENDER') + '</span>'
+      h += '<span>\u7C7B\u578B: ' + (selRegex.type === 'render' ? '前端渲染' : selRegex.type === 'replace' ? '后端替换' : '后端过滤') + '</span>'
       h += '<span>\u6DF1\u5EA6: ' + dMin + ' ~ ' + (selRegex.dMax === Infinity ? '\u221E' : String(selRegex.dMax)) + '</span>'
       h += '</div>'
     } else {
@@ -4916,9 +4934,28 @@
         }
         h += '<div class="pua-field"><div class="pua-field-label">\u4E16\u754C\u4E66\u8BCD\u6761 (' + groupEntries.length + ')</div>'
         for (var gei = 0; gei < groupEntries.length; gei++) {
+          var entry = groupEntries[gei]
+          var isConstant = entry.selective === false || (!entry.keys && !entry.key)
+          var badgeStyle = isConstant
+            ? 'background:rgba(78,201,160,0.15);color:#4ec9a0'
+            : 'background:rgba(91,141,239,0.15);color:#5b8def'
+          var badgeText = isConstant ? '常驻' : '关键词'
+          var keyInfo = ''
+          if (!isConstant) {
+            var entryKeys = entry.keys || entry.key || ''
+            var entrySecKeys = entry.secondary_keys || entry.secondaryKeys || ''
+            if (entryKeys) keyInfo = this._escHtml(String(entryKeys))
+            if (entrySecKeys) keyInfo += (keyInfo ? ' | ' : '') + this._escHtml(String(entrySecKeys))
+          }
           h += '<div style="margin-bottom:8px;padding:6px 8px;background:var(--pua-bg-input);border-radius:4px">'
-          h += '<div style="font-size:11px;font-weight:600;color:var(--pua-text)">' + this._escHtml(groupEntries[gei].name || groupEntries[gei].key || '') + '</div>'
-          h += '<div style="font-size:10px;color:var(--pua-text-sub);margin-top:2px">' + this._escHtml((groupEntries[gei].content || groupEntries[gei].text || '').substring(0, 500)) + '</div>'
+          h += '<div style="display:flex;align-items:center;gap:6px">'
+          h += '<span style="font-size:11px;font-weight:600;color:var(--pua-text)">' + this._escHtml(entry.name || entry.key || '') + '</span>'
+          h += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;' + badgeStyle + '">' + badgeText + '</span>'
+          h += '</div>'
+          if (keyInfo) {
+            h += '<div style="font-size:9px;color:var(--pua-preset);margin-top:2px">关键词: ' + keyInfo + '</div>'
+          }
+          h += '<div style="font-size:10px;color:var(--pua-text-sub);margin-top:2px">' + this._escHtml((entry.content || entry.text || '').substring(0, 500)) + '</div>'
           h += '</div>'
         }
         if (groupEntries.length === 0) h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u8BCD\u6761</div>'
@@ -4940,8 +4977,37 @@
         h += '</div>'
         break
       case 'recall':
-        h += '<div class="pua-field"><div class="pua-field-label">\u53EC\u56DE\u8BB0\u5FC6</div>'
-        h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u53EC\u56DE\u8BB0\u5FC6\u5C06\u6839\u636E\u5F53\u524D\u5BF9\u8BDD\u52A8\u6001\u68C0\u7D22\u76F8\u5173\u4E8B\u5B9E\u8BB0\u5FC6\uFF0C\u5E76\u6CE8\u5165\u5230\u4E0A\u4E0B\u6587\u4E2D</div>'
+        var recallSettings = this._loadSettings()
+        var recallMode = recallSettings.recallMode || 'vector'
+        var recallMax = recallSettings.recallMaxCount || 8
+        var modeLabel = recallMode === 'subapi' ? '副 API 召回' : '向量检索'
+        h += '<div class="pua-field"><div class="pua-field-label">召回记忆</div>'
+        h += '<div style="margin-bottom:8px;padding:6px 8px;background:var(--pua-bg-input);border-radius:4px">'
+        h += '<div style="font-size:10px;color:var(--pua-text-sub)"><span style="font-weight:600;color:var(--pua-accent)">模式：</span>' + this._escHtml(modeLabel) + ' (' + recallMode + ')</div>'
+        h += '<div style="font-size:10px;color:var(--pua-text-sub);margin-top:2px"><span style="font-weight:600;color:var(--pua-accent)">最大数量：</span>' + recallMax + '</div>'
+        h += '</div>'
+        // 预览召回结果
+        var recallFacts = (this.asmData.longTerm && this.asmData.longTerm.facts) ? this.asmData.longTerm.facts : []
+        if (recallFacts.length > 0) {
+          var sampleQuery = ''
+          var msgs = this.asmData.shortTerm || []
+          if (msgs.length > 0) {
+            var lastMsg = msgs[msgs.length - 1]
+            sampleQuery = (lastMsg.text || lastMsg.content || '').substring(0, 200)
+          }
+          if (!sampleQuery) sampleQuery = '对话上下文'
+          var recalled = this._recallMemoriesSync(sampleQuery, recallFacts, recallMax)
+          h += '<div style="font-size:10px;color:var(--pua-text-dim);margin-bottom:4px">预览召回结果（基于最近对话）：</div>'
+          for (var ri = 0; ri < recalled.length; ri++) {
+            h += '<div style="margin-bottom:4px;padding:4px 8px;background:var(--pua-bg-input);border-radius:4px;font-size:10px;color:var(--pua-text-sub)">'
+            h += '<span style="color:var(--pua-accent);font-weight:600">#' + (ri + 1) + '</span> '
+            h += this._escHtml(recalled[ri].summaryText || recalled[ri].action || recalled[ri].text || '')
+            h += '</div>'
+          }
+          if (recalled.length === 0) h += '<div style="font-size:10px;color:var(--pua-text-dim)">无匹配的召回记忆</div>'
+        } else {
+          h += '<div style="font-size:10px;color:var(--pua-text-dim)">无事实记忆可供召回</div>'
+        }
         h += '</div>'
         break
       case 'chat':
@@ -5080,7 +5146,15 @@
           if (groupEntries.length > 0) {
             var entryTexts = []
             for (var ei = 0; ei < groupEntries.length; ei++) {
-              entryTexts.push(groupEntries[ei].content || groupEntries[ei].text || '')
+              var wbEntry = groupEntries[ei]
+              var wbIsConstant = wbEntry.selective === false || (!wbEntry.keys && !wbEntry.key)
+              // 常驻词条始终包含，关键词词条在预览中也包含（实际发送时需匹配）
+              if (wbIsConstant) {
+                entryTexts.push(wbEntry.content || wbEntry.text || '')
+              } else {
+                // 关键词词条：预览时全部包含，标记为关键词匹配
+                entryTexts.push(wbEntry.content || wbEntry.text || '')
+              }
             }
             var wbText = ''
             for (var eti = 0; eti < entryTexts.length; eti++) {
@@ -5116,7 +5190,34 @@
           }
           break
         case 'recall':
-          // \u53EC\u56DE\u8BB0\u5FC6\u5728\u5B9E\u9645\u53D1\u9001\u65F6\u52A8\u6001\u68C0\u7D22\uFF0C\u6B64\u5904\u4EC5\u4F5C\u4E3A\u5360\u4F4D
+          // 召回记忆：根据当前对话动态检索相关事实记忆
+          var recallFacts2 = (this.asmData.longTerm && this.asmData.longTerm.facts) ? this.asmData.longTerm.facts : []
+          if (recallFacts2.length > 0) {
+            var recallQuery2 = ''
+            var recallMsgs = this.asmData.shortTerm || []
+            if (recallMsgs.length > 0) {
+              var lastRecallMsg = recallMsgs[recallMsgs.length - 1]
+              recallQuery2 = (lastRecallMsg.text || lastRecallMsg.content || '').substring(0, 200)
+            }
+            if (!recallQuery2) recallQuery2 = '对话上下文'
+            var recallSettings2 = this._loadSettings()
+            var recallMax2 = recallSettings2.recallMaxCount || 8
+            var recalledFacts = this._recallMemoriesSync(recallQuery2, recallFacts2, recallMax2)
+            if (recalledFacts.length > 0) {
+              var recallTexts = []
+              for (var rci = 0; rci < recalledFacts.length; rci++) {
+                recallTexts.push(recalledFacts[rci].summaryText || recalledFacts[rci].action || recalledFacts[rci].text || '')
+              }
+              var recallStr = ''
+              for (var rsi = 0; rsi < recallTexts.length; rsi++) {
+                if (recallTexts[rsi]) {
+                  if (recallStr) recallStr += '\n'
+                  recallStr += recallTexts[rsi]
+                }
+              }
+              if (recallStr) messages.push({ role: 'system', content: '[召回记忆]\n' + recallStr })
+            }
+          }
           break
         case 'chat':
           var msgs = this.asmData.shortTerm || []
@@ -5174,7 +5275,84 @@
       }
     }
 
+    // Store the assembled context for later viewing
+    var contextParts = []
+    for (var ci = 0; ci < messages.length; ci++) {
+      contextParts.push('[' + messages[ci].role.toUpperCase() + ']\n' + (messages[ci].content || ''))
+    }
+    this._lastAsmContext = contextParts.join('\n\n---\n\n')
+
     return messages
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     上下文查看器
+     ════════════════════════════════════════════════════════════ */
+
+  P._viewContext = function(messageId) {
+    var self = this
+    var contextStr = this._lastAsmContext || ''
+
+    // 如果没有缓存的上下文，尝试构建
+    if (!contextStr) {
+      var messages = this._buildMessages()
+      var parts = []
+      for (var i = 0; i < messages.length; i++) {
+        parts.push('[' + messages[i].role.toUpperCase() + ']\n' + (messages[i].content || ''))
+      }
+      contextStr = parts.join('\n\n---\n\n')
+      this._lastAsmContext = contextStr
+    }
+
+    var h = '<div style="font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow-y:auto;background:var(--pua-bg-input);border-radius:6px;padding:12px;margin-bottom:12px">'
+    h += this._escHtml(contextStr)
+    h += '</div>'
+    h += '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    h += '<button class="pua-btn pua-btn-sm" id="ctx-copy-btn">复制</button>'
+    h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="ctx-download-btn">下载</button>'
+    h += '</div>'
+
+    this._openModal('上下文查看' + (messageId ? ' - 消息 #' + messageId : ''), h)
+
+    // 绑定复制按钮
+    var modal = this._modalOverlay
+    if (modal) {
+      var copyBtn = modal.querySelector('#ctx-copy-btn')
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(contextStr).then(function() {
+              self._toast('已复制到剪贴板')
+            }).catch(function() {
+              self._toast('复制失败')
+            })
+          } else {
+            // 回退方案
+            var ta = document.createElement('textarea')
+            ta.value = contextStr
+            ta.style.position = 'fixed'
+            ta.style.opacity = '0'
+            document.body.appendChild(ta)
+            ta.select()
+            try { document.execCommand('copy'); self._toast('已复制到剪贴板') } catch(e) { self._toast('复制失败') }
+            document.body.removeChild(ta)
+          }
+        })
+      }
+      var downloadBtn = modal.querySelector('#ctx-download-btn')
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', function() {
+          var blob = new Blob([contextStr], { type: 'text/plain;charset=utf-8' })
+          var url = URL.createObjectURL(blob)
+          var a = document.createElement('a')
+          a.href = url
+          a.download = 'context_' + new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + '.txt'
+          a.click()
+          URL.revokeObjectURL(url)
+          self._toast('已下载')
+        })
+      }
+    }
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -6836,6 +7014,50 @@
     }
     // 默认向量模式（含BM25混合）
     return self._hybridRecall(query, facts, topK)
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     同步召回预览（用于详情面板展示，不依赖异步API）
+     ════════════════════════════════════════════════════════════ */
+
+  P._recallMemoriesSync = function(query, facts, topK) {
+    if (!facts || facts.length === 0) return []
+    var queryLower = (query || '').toLowerCase()
+    var queryWords = queryLower.split(/[\s,，。.!?！？;；:：、]+/).filter(function(w) { return w.length > 1 })
+    var scored = []
+    for (var i = 0; i < facts.length; i++) {
+      var f = facts[i]
+      var text = (f.summaryText || f.action || f.text || '').toLowerCase()
+      var score = 0
+      // 关键词匹配评分
+      for (var wi = 0; wi < queryWords.length; wi++) {
+        if (text.indexOf(queryWords[wi]) !== -1) score += 1
+      }
+      // 也检查 keywords 字段
+      if (f.keywords) {
+        var kw = f.keywords.toLowerCase()
+        for (var wi2 = 0; wi2 < queryWords.length; wi2++) {
+          if (kw.indexOf(queryWords[wi2]) !== -1) score += 2
+        }
+      }
+      // 如果有 embedding 相似度缓存，使用之
+      if (f._simScore) score += f._simScore
+      if (score > 0) scored.push({ fact: f, score: score })
+    }
+    scored.sort(function(a, b) { return b.score - a.score })
+    var results = []
+    var limit = Math.min(topK || 8, scored.length)
+    for (var ri = 0; ri < limit; ri++) {
+      results.push(scored[ri].fact)
+    }
+    // 如果没有匹配的，返回前 topK 条
+    if (results.length === 0) {
+      var fallback = Math.min(topK || 8, facts.length)
+      for (var fi = 0; fi < fallback; fi++) {
+        results.push(facts[fi])
+      }
+    }
+    return results
   }
 
   /* ════════════════════════════════════════════════════════════
