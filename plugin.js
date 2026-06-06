@@ -1,8 +1,8 @@
 /**
- * 平行时空档案馆 v0.2.0
+ * 平行时空档案馆 v0.7.0
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
- * v0.2.0: 移动端响应式适配 — 侧边栏抽屉/面板垂直堆叠/触摸优化/UI重构
+ * v0.7.0: 美化分支存档配置 + 设置页面 + 记忆系统页面 + 自定义Checkbox
  * v0.1.9: 预设编辑器正式完成 — 增删排序/详情编辑/正则深度/持久化存储/导入导出/ES5修复
  * v0.1.7: 新增线下记录TXT导入功能 + 分支卡片显示来源标签
  * v0.1.6: 修复角色选择器默认值 + 增强记忆API日志 + 完善_onCharSelect容错
@@ -296,6 +296,62 @@
     '  width:14px; height:14px; border-radius:50%; display:flex; align-items:center;',
     '  justify-content:center; position:absolute; top:-5px; right:-5px; }',
 
+    '/* ── 配置区域美化（分支存档） ── */',
+    '.pua-config-section { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:8px; padding:12px; margin-bottom:10px; position:relative; overflow:hidden; }',
+    '.pua-config-section::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--pua-accent-glow),transparent); }',
+    '.pua-config-title { font-size:11px; font-weight:600; color:var(--pua-accent); margin-bottom:4px; display:flex; align-items:center; gap:6px; }',
+    '.pua-config-title::before { content:""; width:3px; height:12px; border-radius:2px; background:var(--pua-accent); }',
+    '.pua-config-desc { font-size:9px; color:var(--pua-text-dim); margin-bottom:8px; line-height:1.5; }',
+    '.pua-config-list { max-height:140px; overflow-y:auto; }',
+    '.pua-config-list::-webkit-scrollbar { width:3px; }',
+    '.pua-config-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }',
+    '.pua-check-item { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:var(--pua-transition); margin-bottom:1px; }',
+    '.pua-check-item:hover { background:rgba(255,255,255,0.03); }',
+    '.pua-check-box { width:16px; height:16px; border-radius:4px; border:1.5px solid var(--pua-border); background:var(--pua-bg-input); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:var(--pua-transition); position:relative; }',
+    '.pua-check-item.checked .pua-check-box { background:var(--pua-accent); border-color:var(--pua-accent); }',
+    '.pua-check-item.checked .pua-check-box::after { content:"\\2713"; font-size:10px; color:#121216; font-weight:700; }',
+    '.pua-check-label { font-size:10.5px; color:var(--pua-text-sub); transition:var(--pua-transition); }',
+    '.pua-check-item.checked .pua-check-label { color:var(--pua-text); }',
+    '.pua-check-icon { font-size:12px; flex-shrink:0; }',
+    '.pua-check-sub { margin-left:24px; }',
+    '.pua-config-save { margin-top:8px; }',
+    '.pua-wb-group { margin-bottom:4px; padding:4px 6px; background:var(--pua-bg-input); border-radius:6px; border:1px solid transparent; transition:var(--pua-transition); }',
+    '.pua-wb-group.expanded { border-color:var(--pua-border-active); }',
+    '.pua-wb-group-header { display:flex; align-items:center; gap:6px; cursor:pointer; }',
+    '.pua-wb-group-name { font-size:10.5px; color:var(--pua-text-sub); flex:1; }',
+    '.pua-wb-entries { margin-top:4px; padding-top:4px; border-top:1px solid var(--pua-border); display:none; }',
+    '.pua-wb-group.expanded .pua-wb-entries { display:block; }',
+
+    '/* ── 设置页面 ── */',
+    '.pua-settings-section { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:8px; padding:14px; margin-bottom:12px; }',
+    '.pua-settings-title { font-size:12px; font-weight:600; color:var(--pua-accent); margin-bottom:10px; display:flex; align-items:center; gap:6px; }',
+    '.pua-settings-title::before { content:""; width:3px; height:14px; border-radius:2px; background:var(--pua-accent); }',
+    '.pua-settings-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }',
+    '.pua-settings-label { font-size:10.5px; color:var(--pua-text-sub); min-width:80px; }',
+    '.pua-settings-input { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:6px 10px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; transition:var(--pua-transition); }',
+    '.pua-settings-input:focus { border-color:var(--pua-accent); box-shadow:0 0 0 2px var(--pua-accent-glow); }',
+    '.pua-settings-hint { font-size:9px; color:var(--pua-text-dim); margin-top:2px; }',
+    '.pua-settings-toggle { display:flex; align-items:center; justify-content:space-between; padding:6px 0; }',
+    '.pua-settings-toggle-label { font-size:10.5px; color:var(--pua-text-sub); }',
+
+    '/* ── 记忆系统页面 ── */',
+    '.pua-mem-layout { display:flex; gap:14px; height:100%; }',
+    '.pua-mem-sidebar { width:220px; min-width:220px; display:flex; flex-direction:column; }',
+    '.pua-mem-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }',
+    '.pua-mem-card { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:8px; padding:12px; margin-bottom:8px; position:relative; }',
+    '.pua-mem-card-title { font-size:11px; font-weight:600; color:var(--pua-accent-text); margin-bottom:4px; }',
+    '.pua-mem-card-text { font-size:10px; color:var(--pua-text-sub); line-height:1.5; max-height:60px; overflow-y:auto; }',
+    '.pua-mem-card-meta { font-size:9px; color:var(--pua-text-dim); margin-top:4px; display:flex; gap:8px; }',
+    '.pua-mem-core { border-left:3px solid var(--pua-mem); }',
+    '.pua-mem-fact { border-left:3px solid var(--pua-accent); }',
+    '.pua-mem-recall { border-left:3px solid var(--pua-preset); }',
+    '.pua-mem-empty { text-align:center; padding:30px; color:var(--pua-text-dim); font-size:11px; }',
+    '.pua-mem-stat { display:flex; gap:12px; margin-bottom:12px; }',
+    '.pua-mem-stat-item { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:8px; padding:10px 14px; flex:1; text-align:center; }',
+    '.pua-mem-stat-num { font-size:20px; font-weight:700; color:var(--pua-accent); }',
+    '.pua-mem-stat-label { font-size:9px; color:var(--pua-text-dim); margin-top:2px; }',
+    '.pua-mem-actions { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }',
+
     '/* ── 移动端响应式 ── */',
     '/* ── 上下文组装 ── */',
     '.asm-layout { display:flex; gap:16px; height:100%; }',
@@ -340,6 +396,81 @@
     '.asm-legend-item { display:flex; align-items:center; gap:3px; font-size:9px; color:var(--pua-text-dim); }',
     '.asm-legend-dot { width:6px; height:6px; border-radius:50%; }',
     '.asm-block.drag-over .asm-card { border-top:2px solid var(--pua-accent); }',
+
+    '/* ── 配置区域（分支详情内） ── */',
+    '.pua-config-section { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:10px; padding:12px 14px; margin-bottom:12px; position:relative; overflow:hidden; }',
+    '.pua-config-section::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--pua-accent-glow),transparent); }',
+    '.pua-config-section-title { font-size:11px; font-weight:600; color:var(--pua-accent); margin-bottom:4px; display:flex; align-items:center; gap:6px; }',
+    '.pua-config-section-desc { font-size:9px; color:var(--pua-text-dim); margin-bottom:8px; line-height:1.5; }',
+    '.pua-config-section-body { max-height:160px; overflow-y:auto; }',
+    '.pua-config-section-body::-webkit-scrollbar { width:3px; }',
+    '.pua-config-section-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }',
+    '.pua-config-save { margin-top:8px; }',
+
+    '/* ── 自定义 Checkbox ── */',
+    '.pua-check-item { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:var(--pua-transition); margin-bottom:2px; }',
+    '.pua-check-item:hover { background:rgba(255,255,255,0.03); }',
+    '.pua-check-box { width:16px; height:16px; border-radius:4px; border:1.5px solid var(--pua-border); background:var(--pua-bg-input); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:var(--pua-transition); font-size:10px; color:transparent; }',
+    '.pua-check-item.checked .pua-check-box { border-color:var(--pua-accent); background:var(--pua-accent); color:#121216; }',
+    '.pua-check-label { font-size:10.5px; color:var(--pua-text-sub); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }',
+    '.pua-check-item.checked .pua-check-label { color:var(--pua-text); }',
+    '.pua-check-icon { font-size:11px; margin-right:2px; }',
+    '.pua-check-group { margin-bottom:4px; }',
+    '.pua-check-group-header { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-check-group-header:hover { background:rgba(255,255,255,0.03); }',
+    '.pua-check-group-name { font-size:10.5px; color:var(--pua-text); font-weight:500; flex:1; }',
+    '.pua-check-group-arrow { font-size:9px; color:var(--pua-text-dim); transition:transform 0.2s; }',
+    '.pua-check-group.open .pua-check-group-arrow { transform:rotate(90deg); }',
+    '.pua-check-group-entries { margin-left:24px; display:none; }',
+    '.pua-check-group.open .pua-check-group-entries { display:block; }',
+
+    '/* ── 设置页面 ── */',
+    '.pua-settings-group { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:var(--pua-radius); padding:16px; margin-bottom:14px; position:relative; overflow:hidden; }',
+    '.pua-settings-group::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--pua-accent-glow),transparent); }',
+    '.pua-settings-title { font-size:12px; font-weight:600; color:var(--pua-accent); margin-bottom:10px; display:flex; align-items:center; gap:6px; }',
+    '.pua-settings-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }',
+    '.pua-settings-label { font-size:11px; color:var(--pua-text-sub); min-width:90px; }',
+    '.pua-settings-input { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:6px 10px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; transition:var(--pua-transition); }',
+    '.pua-settings-input:focus { border-color:var(--pua-accent); box-shadow:0 0 0 2px var(--pua-accent-glow); }',
+    '.pua-settings-hint { font-size:9px; color:var(--pua-text-dim); margin-top:2px; margin-left:100px; }',
+    '.pua-settings-toggle-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }',
+    '.pua-settings-toggle-label { font-size:11px; color:var(--pua-text-sub); }',
+    '.pua-settings-select { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:6px 10px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; cursor:pointer; -webkit-appearance:none; appearance:none; }',
+
+    '/* ── 记忆系统页面 ── */',
+    '.pua-mem-layout { display:flex; gap:14px; height:100%; }',
+    '.pua-mem-sidebar { width:240px; min-width:240px; display:flex; flex-direction:column; }',
+    '.pua-mem-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }',
+    '.pua-mem-card { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:10px; padding:14px; margin-bottom:10px; position:relative; overflow:hidden; }',
+    '.pua-mem-card::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--pua-accent-glow),transparent); }',
+    '.pua-mem-card-title { font-size:12px; font-weight:600; color:var(--pua-accent-text); margin-bottom:6px; display:flex; align-items:center; gap:6px; }',
+    '.pua-mem-card-body { font-size:11px; color:var(--pua-text-sub); line-height:1.6; white-space:pre-wrap; max-height:200px; overflow-y:auto; }',
+    '.pua-mem-card-meta { font-size:9px; color:var(--pua-text-dim); margin-top:6px; display:flex; gap:8px; }',
+    '.pua-mem-fact-item { padding:8px 10px; border-radius:6px; background:var(--pua-bg-card); border:1px solid var(--pua-border); margin-bottom:6px; cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-mem-fact-item:hover { border-color:var(--pua-border-active); }',
+    '.pua-mem-fact-item.selected { border-color:var(--pua-accent); background:var(--pua-accent-glow); }',
+    '.pua-mem-fact-summary { font-size:10.5px; color:var(--pua-text); margin-bottom:2px; }',
+    '.pua-mem-fact-kw { font-size:9px; color:var(--pua-text-dim); }',
+    '.pua-mem-fact-time { font-size:8px; color:var(--pua-text-dim); float:right; }',
+    '.pua-mem-stat { display:flex; gap:12px; margin-bottom:14px; }',
+    '.pua-mem-stat-item { background:var(--pua-bg-card); border:1px solid var(--pua-border); border-radius:8px; padding:10px 14px; flex:1; text-align:center; }',
+    '.pua-mem-stat-num { font-size:20px; font-weight:700; color:var(--pua-accent); }',
+    '.pua-mem-stat-label { font-size:9px; color:var(--pua-text-dim); margin-top:2px; }',
+    '.pua-mem-detail { flex:1; overflow-y:auto; padding:10px; }',
+    '.pua-mem-detail-textarea { width:100%; min-height:120px; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:6px; padding:8px 10px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; resize:vertical; }',
+    '.pua-mem-detail-textarea:focus { border-color:var(--pua-accent); }',
+
+    '@media (max-width:767px) {',
+    '.pua-mem-layout { flex-direction:column; }',
+    '.pua-mem-sidebar { width:100%; min-width:100%; max-height:200px; }',
+    '.pua-mem-sidebar.pua-mobile-hide { display:none; }',
+    '.pua-mem-main { display:none; }',
+    '.pua-mem-main.show { display:flex; }',
+    '.pua-settings-row { flex-direction:column; align-items:flex-start; gap:4px; }',
+    '.pua-settings-label { min-width:auto; }',
+    '.pua-settings-hint { margin-left:0; }',
+    '}',
+
     '.asm-empty { text-align:center; padding:40px 20px; color:var(--pua-text-dim); font-size:12px; }',
     '.asm-loading { text-align:center; padding:40px 20px; color:var(--pua-text-dim); font-size:12px; }',
 
@@ -387,6 +518,8 @@
     '.asm-layout { flex-direction:column; }',
     '.asm-config { width:100%; min-width:100%; }',
     '.asm-visual { min-height:300px; }',
+    '.pua-mem-layout { flex-direction:column; }',
+    '.pua-mem-sidebar { width:100%; min-width:100%; }',
     '}',
     '@media (min-width:768px) {',
     '.pua-sidebar-open-btn { display:none; }',
@@ -452,6 +585,8 @@
     // 移动端状态
     this._sidebarOpen = false
     this._mobileDetailOpen = false
+    // 设置数据
+    this.settings = null
   }
 
   var P = ParallelUniverse.prototype
@@ -485,6 +620,7 @@
     this._loadRegexes()
     this._loadAsmConfig()
     this._loadAsmOrder()
+    this._loadSettings()
   }
 
   /* ── 捕获控制台日志 ── */
@@ -857,8 +993,8 @@
       case 'presets': this._renderPresets(titleEl, actionsEl, contentEl); break
       case 'regex': this._renderRegexes(titleEl, actionsEl, contentEl); break
       case 'assembly': this._renderAssembly(titleEl, actionsEl, contentEl); break
-      case 'memory': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u263D', '\u8BB0\u5FC6\u7CFB\u7EDF', '\u526FAPI\u603B\u7ED3\u3001\u6838\u5FC3\u8BB0\u5FC6\u8986\u5199\u3001\u4E8B\u5B9E\u8BB0\u5FC6\u538B\u7F29\u3001\u5411\u91CF\u8BB0\u5FC6\u9884\u7559'); break
-      case 'settings': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2691', '\u8BBE\u7F6E', '\u526FAPI\u914D\u7F6E\u3001\u4E3B\u9898\u7F8E\u5316\u3001\u5BFC\u5165\u5BFC\u51FA\u3001\u517C\u5BB9\u6027'); break
+      case 'memory': this._renderMemory(titleEl, actionsEl, contentEl); break
+      case 'settings': this._renderSettings(titleEl, actionsEl, contentEl); break
     }
   }
 
@@ -1558,30 +1694,39 @@
     }
 
     // ===== 记忆绑定配置 =====
-    body += '<div style="margin-bottom:12px">'
-    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u8BB0\u5FC6\u7ED1\u5B9A</div>'
-    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u9009\u62E9\u8981\u5173\u8054\u7684\u4F1A\u8BDD\uFF0C\u83B7\u53D6\u5176\u6838\u5FC3\u8BB0\u5FC6\u548C\u4E8B\u5B9E\u8BB0\u5FC6</div>'
-    body += '<div id="branch-mem-list" style="max-height:120px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
-    body += '<button class="pua-btn pua-btn-sm" id="branch-mem-save" style="margin-top:4px">\u4FDD\u5B58\u8BB0\u5FC6\u7ED1\u5B9A</button>'
+    body += '<div class="pua-config-section">'
+    body += '<div class="pua-config-section-title">\u2726 \u8BB0\u5FC6\u7ED1\u5B9A</div>'
+    body += '<div class="pua-config-section-desc">\u9009\u62E9\u8981\u5173\u8054\u7684\u4F1A\u8BDD\uFF0C\u83B7\u53D6\u5176\u6838\u5FC3\u8BB0\u5FC6\u548C\u4E8B\u5B9E\u8BB0\u5FC6</div>'
+    body += '<div class="pua-config-section-body" id="branch-mem-list">'
+    body += '<div style="text-align:center;padding:12px;color:var(--pua-text-dim);font-size:10px">\u52A0\u8F7D\u4E2D...</div>'
+    body += '</div>'
+    body += '<button class="pua-btn pua-btn-sm pua-config-save" id="branch-mem-save">\u4FDD\u5B58\u8BB0\u5FC6\u7ED1\u5B9A</button>'
     body += '</div>'
 
     // ===== 世界书挂载配置 =====
-    body += '<div style="margin-bottom:12px">'
-    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u4E16\u754C\u4E66\u6302\u8F7D</div>'
-    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u5168\u5C40\u4E16\u754C\u4E66\u81EA\u52A8\u6302\u8F7D\uFF0C\u672C\u5730\u4E16\u754C\u4E66\u9700\u624B\u52A8\u9009\u62E9</div>'
-    body += '<div style="font-size:10px;color:var(--pua-text);margin-bottom:4px">'
-    body += '<input type="checkbox" id="branch-wb-global" checked> \u5168\u5C40\u4E16\u754C\u4E66\uFF08\u81EA\u52A8\u6302\u8F7D\uFF09'
+    body += '<div class="pua-config-section">'
+    body += '<div class="pua-config-section-title">\u2726 \u4E16\u754C\u4E66\u6302\u8F7D</div>'
+    body += '<div class="pua-config-section-desc">\u5168\u5C40\u4E16\u754C\u4E66\u81EA\u52A8\u6302\u8F7D\uFF0C\u672C\u5730\u4E16\u754C\u4E66\u9700\u624B\u52A8\u9009\u62E9</div>'
+    body += '<div id="branch-wb-global-item" class="pua-check-item checked">'
+    body += '<div class="pua-check-box">\u2713</div>'
+    body += '<span class="pua-check-icon">\uD83C\uDF0D</span>'
+    body += '<span class="pua-check-label">\u5168\u5C40\u4E16\u754C\u4E66\uFF08\u81EA\u52A8\u6302\u8F7D\uFF09</span>'
     body += '</div>'
-    body += '<div id="branch-wb-local" style="max-height:160px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
-    body += '<button class="pua-btn pua-btn-sm" id="branch-wb-save" style="margin-top:4px">\u4FDD\u5B58\u4E16\u754C\u4E66\u6302\u8F7D</button>'
+    body += '<input type="checkbox" id="branch-wb-global" checked style="display:none">'
+    body += '<div class="pua-config-section-body" id="branch-wb-local">'
+    body += '<div style="text-align:center;padding:12px;color:var(--pua-text-dim);font-size:10px">\u52A0\u8F7D\u4E2D...</div>'
+    body += '</div>'
+    body += '<button class="pua-btn pua-btn-sm pua-config-save" id="branch-wb-save">\u4FDD\u5B58\u4E16\u754C\u4E66\u6302\u8F7D</button>'
     body += '</div>'
 
     // ===== 角色人设配置 =====
-    body += '<div style="margin-bottom:12px">'
-    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u89D2\u8272\u4EBA\u8BBE</div>'
-    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u9009\u62E9\u8981\u5305\u542B\u7684\u89D2\u8272\u4EBA\u8BBE\uFF08\u7FA4\u804A\u9700\u624B\u52A8\u9009\u62E9\uFF09</div>'
-    body += '<div id="branch-char-list" style="max-height:120px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
-    body += '<button class="pua-btn pua-btn-sm" id="branch-char-save" style="margin-top:4px">\u4FDD\u5B58\u89D2\u8272\u4EBA\u8BBE</button>'
+    body += '<div class="pua-config-section">'
+    body += '<div class="pua-config-section-title">\u2726 \u89D2\u8272\u4EBA\u8BBE</div>'
+    body += '<div class="pua-config-section-desc">\u9009\u62E9\u8981\u5305\u542B\u7684\u89D2\u8272\u4EBA\u8BBE\uFF08\u7FA4\u804A\u9700\u624B\u52A8\u9009\u62E9\uFF09</div>'
+    body += '<div class="pua-config-section-body" id="branch-char-list">'
+    body += '<div style="text-align:center;padding:12px;color:var(--pua-text-dim);font-size:10px">\u52A0\u8F7D\u4E2D...</div>'
+    body += '</div>'
+    body += '<button class="pua-btn pua-btn-sm pua-config-save" id="branch-char-save">\u4FDD\u5B58\u89D2\u8272\u4EBA\u8BBE</button>'
     body += '</div>'
 
     var modalBody = modal.querySelector('.pua-modal-body')
@@ -1649,32 +1794,48 @@
             if (branch.memoryConvIds[bi] === cvId) { isBound = true; break }
           }
           if (branch.sourceConvId === cvId) isBound = true
-          h += '<div style="margin-bottom:2px"><label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
-          h += '<input type="checkbox" class="branch-mem-check" data-conv-id="' + cvId + '"' + (isBound ? ' checked' : '') + '>'
-          h += (isGroup ? '\uD83D\uDC65 ' : '\uD83D\uDC64 ') + self._escHtml(cvName)
-          h += '</label></div>'
+          h += '<div class="pua-check-item' + (isBound ? ' checked' : '') + '" data-conv-id="' + cvId + '">'
+          h += '<div class="pua-check-box">\u2713</div>'
+          h += '<span class="pua-check-icon">' + (isGroup ? '\uD83D\uDC65' : '\uD83D\uDC64') + '</span>'
+          h += '<span class="pua-check-label">' + self._escHtml(cvName) + '</span>'
+          h += '</div>'
         }
-        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u4F1A\u8BDD</div>'
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u65E0\u4F1A\u8BDD</div>'
         memList.innerHTML = h
+        // 绑定点击事件
+        var items = memList.querySelectorAll('.pua-check-item')
+        for (var ii = 0; ii < items.length; ii++) {
+          items[ii].addEventListener('click', function() {
+            this.classList.toggle('checked')
+          })
+        }
       }).catch(function() {
         var memList = document.getElementById('branch-mem-list')
-        if (memList) memList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+        if (memList) memList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
       var memListEl = document.getElementById('branch-mem-list')
-      if (memListEl) memListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+      if (memListEl) memListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 异步加载世界书 =====
     if (this.roche.worldbook && this.roche.worldbook.list) {
       this.roche.worldbook.list().then(function(cats) {
         var wbLocal = document.getElementById('branch-wb-local')
-        var wbGlobal = document.getElementById('branch-wb-global')
+        var wbGlobalItem = document.getElementById('branch-wb-global-item')
+        var wbGlobalCheck = document.getElementById('branch-wb-global')
         if (!wbLocal) return
 
-        // 设置全局checkbox
-        if (wbGlobal) {
-          wbGlobal.checked = branch.mountedWorldbooks ? (branch.mountedWorldbooks.global !== false) : true
+        // 全局checkbox
+        if (wbGlobalCheck) {
+          wbGlobalCheck.checked = branch.mountedWorldbooks ? (branch.mountedWorldbooks.global !== false) : true
+        }
+        if (wbGlobalItem) {
+          if (wbGlobalCheck && !wbGlobalCheck.checked) wbGlobalItem.classList.remove('checked')
+          wbGlobalItem.addEventListener('click', function() {
+            this.classList.toggle('checked')
+            wbGlobalCheck.checked = this.classList.contains('checked')
+          })
         }
 
         // 本地世界书
@@ -1687,23 +1848,55 @@
         for (var li = 0; li < localCats.length; li++) {
           var cat = localCats[li]
           var isMounted = branch.mountedWorldbooks && branch.mountedWorldbooks.local && branch.mountedWorldbooks.local[cat.id]
-          h += '<div style="margin-bottom:4px;padding:4px 6px;background:var(--pua-bg-input);border-radius:4px">'
-          h += '<label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
-          h += '<input type="checkbox" class="branch-wb-cat-check" data-cat-id="' + cat.id + '"' + (isMounted ? ' checked' : '') + '>'
-          h += '\uD83D\uDCD6 ' + self._escHtml(cat.name || cat.id)
-          h += '</label>'
-          h += '<div class="branch-wb-entries" data-cat-id="' + cat.id + '" style="margin-left:16px;display:' + (isMounted ? 'block' : 'none') + '"></div>'
+          h += '<div class="pua-check-group' + (isMounted ? ' open' : '') + '" data-cat-id="' + cat.id + '">'
+          h += '<div class="pua-check-group-header">'
+          h += '<div class="pua-check-item' + (isMounted ? ' checked' : '') + ' branch-wb-cat-check" data-cat-id="' + cat.id + '">'
+          h += '<div class="pua-check-box">\u2713</div>'
+          h += '<span class="pua-check-icon">\uD83D\uDCD6</span>'
+          h += '<span class="pua-check-label">' + self._escHtml(cat.name || cat.id) + '</span>'
+          h += '</div>'
+          h += '<span class="pua-check-group-arrow">\u25B6</span>'
+          h += '</div>'
+          h += '<div class="pua-check-group-entries" data-cat-id="' + cat.id + '"></div>'
           h += '</div>'
         }
-        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u672C\u5730\u4E16\u754C\u4E66</div>'
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u65E0\u672C\u5730\u4E16\u754C\u4E66</div>'
         wbLocal.innerHTML = h
+
+        // 绑定分组点击事件
+        var groups = wbLocal.querySelectorAll('.pua-check-group')
+        for (var gi = 0; gi < groups.length; gi++) {
+          (function(group) {
+            var header = group.querySelector('.pua-check-group-header')
+            var catCheck = group.querySelector('.branch-wb-cat-check')
+            if (header) {
+              header.addEventListener('click', function(e) {
+                // 如果点击的是checkbox区域，切换checked
+                if (catCheck && catCheck.contains(e.target)) {
+                  catCheck.classList.toggle('checked')
+                  if (catCheck.classList.contains('checked')) {
+                    group.classList.add('open')
+                    // 勾选所有词条
+                    var entryChecks = group.querySelectorAll('.branch-wb-entry-check')
+                    for (var eci = 0; eci < entryChecks.length; eci++) {
+                      entryChecks[eci].classList.add('checked')
+                    }
+                  }
+                } else {
+                  // 点击箭头区域，切换展开/折叠
+                  group.classList.toggle('open')
+                }
+              })
+            }
+          })(groups[gi])
+        }
 
         // 加载每个本地分类的词条
         for (var ci = 0; ci < localCats.length; ci++) {
           (function(cat) {
             if (self.roche.worldbook && self.roche.worldbook.getEntries) {
               self.roche.worldbook.getEntries({ categoryId: cat.id }).then(function(entries) {
-                var entriesDiv = document.querySelector('.branch-wb-entries[data-cat-id="' + cat.id + '"]')
+                var entriesDiv = wbLocal.querySelector('.pua-check-group-entries[data-cat-id="' + cat.id + '"]')
                 if (!entriesDiv) return
                 var eh = ''
                 for (var ei = 0; ei < (entries || []).length; ei++) {
@@ -1716,40 +1909,30 @@
                       if (isEntryMounted[emi] === entry.id) { entryChecked = true; break }
                     }
                   }
-                  eh += '<div style="margin-bottom:1px"><label style="font-size:9px;color:var(--pua-text-sub);display:flex;align-items:center;gap:3px">'
-                  eh += '<input type="checkbox" class="branch-wb-entry-check" data-cat-id="' + cat.id + '" data-entry-id="' + entry.id + '"' + (entryChecked ? ' checked' : '') + '>'
-                  eh += self._escHtml(entry.name || entry.key || entry.id)
-                  eh += '</label></div>'
+                  eh += '<div class="pua-check-item branch-wb-entry-check' + (entryChecked ? ' checked' : '') + '" data-cat-id="' + cat.id + '" data-entry-id="' + entry.id + '">'
+                  eh += '<div class="pua-check-box">\u2713</div>'
+                  eh += '<span class="pua-check-label">' + self._escHtml(entry.name || entry.key || entry.id) + '</span>'
+                  eh += '</div>'
                 }
-                entriesDiv.innerHTML = eh || '<div style="font-size:9px;color:var(--pua-text-dim)">\u65E0\u8BCD\u6761</div>'
+                entriesDiv.innerHTML = eh || '<div style="font-size:9px;color:var(--pua-text-dim);padding:4px 8px">\u65E0\u8BCD\u6761</div>'
+                // 绑定词条点击
+                var entryItems = entriesDiv.querySelectorAll('.pua-check-item')
+                for (var eii = 0; eii < entryItems.length; eii++) {
+                  entryItems[eii].addEventListener('click', function() {
+                    this.classList.toggle('checked')
+                  })
+                }
               }).catch(function() {})
             }
           })(localCats[ci])
         }
-
-        // 绑定分组checkbox展开/折叠词条
-        var catChecks = document.querySelectorAll('.branch-wb-cat-check')
-        for (var cci = 0; cci < catChecks.length; cci++) {
-          catChecks[cci].addEventListener('change', function() {
-            var catId = this.getAttribute('data-cat-id')
-            var entriesDiv = document.querySelector('.branch-wb-entries[data-cat-id="' + catId + '"]')
-            if (entriesDiv) entriesDiv.style.display = this.checked ? 'block' : 'none'
-            // 勾选分组时，勾选所有词条
-            if (this.checked) {
-              var entryChecks = document.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
-              for (var eci = 0; eci < entryChecks.length; eci++) {
-                entryChecks[eci].checked = true
-              }
-            }
-          })
-        }
       }).catch(function() {
         var wbLocal = document.getElementById('branch-wb-local')
-        if (wbLocal) wbLocal.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+        if (wbLocal) wbLocal.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
       var wbLocalEl = document.getElementById('branch-wb-local')
-      if (wbLocalEl) wbLocalEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+      if (wbLocalEl) wbLocalEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 异步加载角色列表 =====
@@ -1766,20 +1949,28 @@
           }
           if (branch.charId === ch.id) isSelected = true
           var displayName = ch.handle || ch.name || '?'
-          h += '<div style="margin-bottom:2px"><label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
-          h += '<input type="checkbox" class="branch-char-check" data-char-id="' + ch.id + '"' + (isSelected ? ' checked' : '') + '>'
-          h += self._escHtml(displayName)
-          h += '</label></div>'
+          h += '<div class="pua-check-item' + (isSelected ? ' checked' : '') + ' branch-char-check" data-char-id="' + ch.id + '">'
+          h += '<div class="pua-check-box">\u2713</div>'
+          h += '<span class="pua-check-icon">\uD83D\uDC64</span>'
+          h += '<span class="pua-check-label">' + self._escHtml(displayName) + '</span>'
+          h += '</div>'
         }
-        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u89D2\u8272</div>'
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u65E0\u89D2\u8272</div>'
         charList.innerHTML = h
+        // 绑定点击事件
+        var items = charList.querySelectorAll('.pua-check-item')
+        for (var ii = 0; ii < items.length; ii++) {
+          items[ii].addEventListener('click', function() {
+            this.classList.toggle('checked')
+          })
+        }
       }).catch(function() {
         var charList = document.getElementById('branch-char-list')
-        if (charList) charList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+        if (charList) charList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
       var charListEl = document.getElementById('branch-char-list')
-      if (charListEl) charListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+      if (charListEl) charListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 保存按钮事件 =====
@@ -1787,10 +1978,10 @@
     var memSaveBtn = document.getElementById('branch-mem-save')
     if (memSaveBtn) {
       memSaveBtn.addEventListener('click', function() {
-        var checks = document.querySelectorAll('.branch-mem-check')
+        var items = document.querySelectorAll('#branch-mem-list .pua-check-item')
         var ids = []
-        for (var i = 0; i < checks.length; i++) {
-          if (checks[i].checked) ids.push(checks[i].getAttribute('data-conv-id'))
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].classList.contains('checked')) ids.push(items[i].getAttribute('data-conv-id'))
         }
         branch.memoryConvIds = ids
         self._saveBranches()
@@ -1804,17 +1995,15 @@
       wbSaveBtn.addEventListener('click', function() {
         var globalCheck = document.getElementById('branch-wb-global')
         var local = {}
-        // 分组级别
         var catChecks = document.querySelectorAll('.branch-wb-cat-check')
         for (var i = 0; i < catChecks.length; i++) {
-          if (catChecks[i].checked) {
+          if (catChecks[i].classList.contains('checked')) {
             var catId = catChecks[i].getAttribute('data-cat-id')
-            // 检查是否有词条级别的勾选
             var entryChecks = document.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
             if (entryChecks.length > 0) {
               var entryIds = []
               for (var ei = 0; ei < entryChecks.length; ei++) {
-                if (entryChecks[ei].checked) entryIds.push(entryChecks[ei].getAttribute('data-entry-id'))
+                if (entryChecks[ei].classList.contains('checked')) entryIds.push(entryChecks[ei].getAttribute('data-entry-id'))
               }
               local[catId] = entryIds.length === entryChecks.length ? true : entryIds
             } else {
@@ -1835,10 +2024,10 @@
     var charSaveBtn = document.getElementById('branch-char-save')
     if (charSaveBtn) {
       charSaveBtn.addEventListener('click', function() {
-        var checks = document.querySelectorAll('.branch-char-check')
+        var items = document.querySelectorAll('#branch-char-list .pua-check-item')
         var ids = []
-        for (var i = 0; i < checks.length; i++) {
-          if (checks[i].checked) ids.push(checks[i].getAttribute('data-char-id'))
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].classList.contains('checked')) ids.push(items[i].getAttribute('data-char-id'))
         }
         branch.selectedCharIds = ids
         self._saveBranches()
@@ -4437,6 +4626,392 @@
   }
 
   /* ════════════════════════════════════════════════════════════
+     设置页面
+     ════════════════════════════════════════════════════════════ */
+
+  P._renderSettings = function(titleEl, actionsEl, contentEl) {
+    var self = this
+    titleEl.textContent = '\u8BBE\u7F6E'
+    actionsEl.innerHTML = ''
+
+    var savedScrollTop = contentEl.scrollTop
+
+    // 加载设置
+    var settings = this._loadSettings()
+
+    var h = ''
+
+    // 副 API 配置
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 \u526F API \u914D\u7F6E</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
+    h += '<input class="pua-settings-input" id="set-sub-endpoint" placeholder="https://api.example.com/v1" value="' + this._escHtml(settings.subEndpoint || '') + '"></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
+    h += '<input class="pua-settings-input" id="set-sub-key" type="password" placeholder="sk-..." value="' + this._escHtml(settings.subApiKey || '') + '"></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6A21\u578B</span>'
+    h += '<input class="pua-settings-input" id="set-sub-model" placeholder="gpt-4o-mini" value="' + this._escHtml(settings.subModel || '') + '"></div>'
+    h += '<div class="pua-settings-hint">\u7528\u4E8E\u8BB0\u5FC6\u603B\u7ED3\u3001\u6838\u5FC3\u8BB0\u5FC6\u538B\u7F29\u3001\u53EC\u56DE\u8BB0\u5FC6\u7B49\u64CD\u4F5C</div>'
+    h += '</div>'
+
+    // 向量 API 配置
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 \u5411\u91CF API \u914D\u7F6E</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
+    h += '<input class="pua-settings-input" id="set-vec-endpoint" placeholder="https://api.example.com/v1" value="' + this._escHtml(settings.vecEndpoint || '') + '"></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
+    h += '<input class="pua-settings-input" id="set-vec-key" type="password" placeholder="sk-..." value="' + this._escHtml(settings.vecApiKey || '') + '"></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6A21\u578B</span>'
+    h += '<input class="pua-settings-input" id="set-vec-model" placeholder="text-embedding-3-small" value="' + this._escHtml(settings.vecModel || '') + '"></div>'
+    h += '<div class="pua-settings-hint">\u7528\u4E8E\u751F\u6210\u8BB0\u5FC6\u5411\u91CF\uFF0C\u652F\u6301\u6DF7\u5408\u68C0\u7D22\u53EC\u56DE</div>'
+    h += '</div>'
+
+    // 记忆参数
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 \u8BB0\u5FC6\u53C2\u6570</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6BCF\u8F6E\u53D1\u9001\u4E8B\u5B9E\u8BB0\u5FC6</span>'
+    h += '<input class="pua-settings-input" id="set-mem-fact-send" type="number" min="1" max="100" value="' + (settings.factSendCount || 10) + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u6761</span></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u603B\u7ED3\u95F4\u9694</span>'
+    h += '<input class="pua-settings-input" id="set-mem-summarize-interval" type="number" min="1" max="200" value="' + (settings.summarizeInterval || 30) + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u8F6E</span></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6838\u5FC3\u8BB0\u5FC6\u5B57\u6570\u4E0A\u9650</span>'
+    h += '<input class="pua-settings-input" id="set-mem-core-limit" type="number" min="100" max="10000" value="' + (settings.coreCharLimit || 2000) + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u5B57</span></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u53EC\u56DE\u8BB0\u5FC6\u4E0A\u9650</span>'
+    h += '<input class="pua-settings-input" id="set-mem-recall-max" type="number" min="1" max="20" value="' + (settings.recallMaxCount || 8) + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u6761</span></div>'
+    h += '<div class="pua-settings-toggle-row"><span class="pua-settings-toggle-label">\u53EC\u56DE\u65B9\u5F0F</span>'
+    h += '<select class="pua-settings-select" id="set-mem-recall-mode">'
+    h += '<option value="vector"' + (settings.recallMode === 'vector' ? ' selected' : '') + '>\u5411\u91CF\u68C0\u7D22\uFF08\u4FBF\u5B9C\uFF09</option>'
+    h += '<option value="subapi"' + (settings.recallMode === 'subapi' ? ' selected' : '') + '>\u526F API \u53EC\u56DE\uFF08\u7CBE\u51C6\u4F46\u66F4\u8D35\uFF09</option>'
+    h += '</select></div>'
+    h += '<div class="pua-settings-hint">\u5411\u91CF\u68C0\u7D22\u4F7F\u7528 BM25+\u5411\u91CF\u6DF7\u5408\uFF0C\u6210\u672C\u4F4E\uFF1B\u526F API \u53EC\u56DE\u7531 AI \u5224\u65AD\u76F8\u5173\u6027\uFF0C\u66F4\u7CBE\u51C6\u4F46\u6D88\u8017\u989D\u5EA6</div>'
+    h += '</div>'
+
+    // 保存按钮
+    h += '<div style="text-align:right;margin-top:6px">'
+    h += '<button class="pua-btn pua-btn-gold" id="set-save-btn">\u4FDD\u5B58\u8BBE\u7F6E</button>'
+    h += '</div>'
+
+    contentEl.innerHTML = h
+    contentEl.scrollTop = savedScrollTop
+
+    // 保存事件
+    var saveBtn = document.getElementById('set-save-btn')
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        var s = {
+          subEndpoint: (document.getElementById('set-sub-endpoint') || {}).value || '',
+          subApiKey: (document.getElementById('set-sub-key') || {}).value || '',
+          subModel: (document.getElementById('set-sub-model') || {}).value || '',
+          vecEndpoint: (document.getElementById('set-vec-endpoint') || {}).value || '',
+          vecApiKey: (document.getElementById('set-vec-key') || {}).value || '',
+          vecModel: (document.getElementById('set-vec-model') || {}).value || '',
+          factSendCount: parseInt((document.getElementById('set-mem-fact-send') || {}).value) || 10,
+          summarizeInterval: parseInt((document.getElementById('set-mem-summarize-interval') || {}).value) || 30,
+          coreCharLimit: parseInt((document.getElementById('set-mem-core-limit') || {}).value) || 2000,
+          recallMaxCount: parseInt((document.getElementById('set-mem-recall-max') || {}).value) || 8,
+          recallMode: (document.getElementById('set-mem-recall-mode') || {}).value || 'vector'
+        }
+        self._saveSettings(s)
+        self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
+      })
+    }
+  }
+
+  P._loadSettings = function() {
+    if (this._settingsCache) return this._settingsCache
+    try {
+      var raw = localStorage.getItem('pua-settings')
+      if (raw) {
+        this._settingsCache = JSON.parse(raw)
+        return this._settingsCache
+      }
+    } catch(e) {}
+    this._settingsCache = {
+      subEndpoint: '', subApiKey: '', subModel: '',
+      vecEndpoint: '', vecApiKey: '', vecModel: '',
+      factSendCount: 10, summarizeInterval: 30,
+      coreCharLimit: 2000, recallMaxCount: 8, recallMode: 'vector'
+    }
+    return this._settingsCache
+  }
+
+  P._saveSettings = function(s) {
+    this._settingsCache = s
+    try { localStorage.setItem('pua-settings', JSON.stringify(s)) } catch(e) {}
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     记忆系统页面
+     ════════════════════════════════════════════════════════════ */
+
+  P._renderMemory = function(titleEl, actionsEl, contentEl) {
+    var self = this
+    titleEl.textContent = '\u8BB0\u5FC6\u7CFB\u7EDF'
+    actionsEl.innerHTML = ''
+
+    var savedScrollTop = contentEl.scrollTop
+    var settings = this._loadSettings()
+
+    // 加载记忆数据
+    var memData = this._loadMemData()
+
+    // 统计
+    var coreRelLen = (memData.core && memData.core.relationship) ? memData.core.relationship.length : 0
+    var coreEvtLen = (memData.core && memData.core.events) ? memData.core.events.length : 0
+    var factCount = memData.facts ? memData.facts.length : 0
+    var totalFactChars = 0
+    if (memData.facts) {
+      for (var fi = 0; fi < memData.facts.length; fi++) {
+        totalFactChars += (memData.facts[fi].text || '').length
+      }
+    }
+
+    var h = ''
+
+    // 统计卡片
+    h += '<div class="pua-mem-stat">'
+    h += '<div class="pua-mem-stat-item"><div class="pua-mem-stat-num">' + (coreRelLen + coreEvtLen) + '</div><div class="pua-mem-stat-label">\u6838\u5FC3\u8BB0\u5FC6\u5B57\u6570</div></div>'
+    h += '<div class="pua-mem-stat-item"><div class="pua-mem-stat-num">' + factCount + '</div><div class="pua-mem-stat-label">\u4E8B\u5B9E\u8BB0\u5FC6</div></div>'
+    h += '<div class="pua-mem-stat-item"><div class="pua-mem-stat-num">' + totalFactChars + '</div><div class="pua-mem-stat-label">\u4E8B\u5B9E\u8BB0\u5FC6\u603B\u5B57\u6570</div></div>'
+    h += '</div>'
+
+    // 核心记忆
+    h += '<div class="pua-mem-card">'
+    h += '<div class="pua-mem-card-title">\u2726 \u6838\u5FC3\u8BB0\u5FC6</div>'
+    h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u5173\u7CFB\u4E0E\u5267\u60C5\u8FDB\u5C55</div>'
+    h += '<textarea class="pua-mem-detail-textarea" id="mem-core-rel">' + this._escHtml(memData.core && memData.core.relationship || '') + '</textarea></div>'
+    h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u4E8B\u4EF6\u6458\u8981</div>'
+    h += '<textarea class="pua-mem-detail-textarea" id="mem-core-evt">' + this._escHtml(memData.core && memData.core.events || '') + '</textarea></div>'
+    h += '<div class="pua-mem-card-meta"><span>\u5B57\u6570\u9650\u5236: ' + (settings.coreCharLimit || 2000) + '</span><span>\u5F53\u524D: ' + (coreRelLen + coreEvtLen) + '</span></div>'
+    h += '<button class="pua-btn pua-btn-sm" id="mem-core-save" style="margin-top:6px">\u4FDD\u5B58\u6838\u5FC3\u8BB0\u5FC6</button>'
+    h += '</div>'
+
+    // 事实记忆列表
+    h += '<div class="pua-mem-card">'
+    h += '<div class="pua-mem-card-title">\u2726 \u4E8B\u5B9E\u8BB0\u5FC6 (' + factCount + ' \u6761)</div>'
+    if (memData.facts && memData.facts.length > 0) {
+      for (var mi = 0; mi < memData.facts.length; mi++) {
+        var fact = memData.facts[mi]
+        h += '<div class="pua-mem-fact-item" data-fact-id="' + (fact.id || mi) + '">'
+        h += '<div class="pua-mem-fact-summary">' + this._escHtml(fact.summary || fact.text || '') + '</div>'
+        if (fact.keywords) {
+          h += '<div class="pua-mem-fact-kw">\u5173\u952E\u8BCD: ' + this._escHtml(fact.keywords) + '</div>'
+        }
+        h += '<span class="pua-mem-fact-time">' + (fact.timestamp || '') + '</span>'
+        h += '</div>'
+      }
+    } else {
+      h += '<div style="font-size:11px;color:var(--pua-text-dim);text-align:center;padding:20px">\u6682\u65E0\u4E8B\u5B9E\u8BB0\u5FC6\uFF0C\u901A\u8FC7\u5206\u652F\u5B58\u6863\u83B7\u53D6\u6216\u624B\u52A8\u6DFB\u52A0</div>'
+    }
+    h += '<div style="display:flex;gap:6px;margin-top:8px">'
+    h += '<button class="pua-btn pua-btn-sm" id="mem-fact-add">+ \u6DFB\u52A0\u4E8B\u5B9E\u8BB0\u5FC6</button>'
+    h += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="mem-fact-clear">\u6E05\u7A7A\u5168\u90E8</button>'
+    h += '</div>'
+    h += '</div>'
+
+    contentEl.innerHTML = h
+    contentEl.scrollTop = savedScrollTop
+
+    // 保存核心记忆
+    var coreSaveBtn = document.getElementById('mem-core-save')
+    if (coreSaveBtn) {
+      coreSaveBtn.addEventListener('click', function() {
+        var relEl = document.getElementById('mem-core-rel')
+        var evtEl = document.getElementById('mem-core-evt')
+        if (!memData.core) memData.core = { relationship: '', events: '' }
+        memData.core.relationship = relEl ? relEl.value : ''
+        memData.core.events = evtEl ? evtEl.value : ''
+        self._saveMemData(memData)
+        self._toast('\u6838\u5FC3\u8BB0\u5FC6\u5DF2\u4FDD\u5B58')
+      })
+    }
+
+    // 添加事实记忆
+    var addFactBtn = document.getElementById('mem-fact-add')
+    if (addFactBtn) {
+      addFactBtn.addEventListener('click', function() {
+        self._showAddFactModal(memData)
+      })
+    }
+
+    // 清空事实记忆
+    var clearFactBtn = document.getElementById('mem-fact-clear')
+    if (clearFactBtn) {
+      clearFactBtn.addEventListener('click', function() {
+        if (!confirm('\u786E\u5B9A\u6E05\u7A7A\u5168\u90E8\u4E8B\u5B9E\u8BB0\u5FC6\uFF1F')) return
+        memData.facts = []
+        self._saveMemData(memData)
+        self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u6E05\u7A7A')
+        self._render()
+      })
+    }
+
+    // 点击事实记忆查看详情
+    var factItems = contentEl.querySelectorAll('.pua-mem-fact-item')
+    for (var fii = 0; fii < factItems.length; fii++) {
+      factItems[fii].addEventListener('click', function() {
+        var factId = this.getAttribute('data-fact-id')
+        self._showFactDetail(factId, memData)
+      })
+    }
+  }
+
+  P._loadMemData = function() {
+    if (this._memDataCache) return this._memDataCache
+    try {
+      var raw = localStorage.getItem('pua-mem-data')
+      if (raw) {
+        this._memDataCache = JSON.parse(raw)
+        return this._memDataCache
+      }
+    } catch(e) {}
+    this._memDataCache = { core: { relationship: '', events: '' }, facts: [] }
+    return this._memDataCache
+  }
+
+  P._saveMemData = function(data) {
+    this._memDataCache = data
+    try { localStorage.setItem('pua-mem-data', JSON.stringify(data)) } catch(e) {}
+  }
+
+  P._showAddFactModal = function(memData) {
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
+
+    var body = ''
+    body += '<div class="pua-field"><div class="pua-field-label">\u4E8B\u5B9E\u5185\u5BB9</div>'
+    body += '<textarea class="pua-detail-textarea" id="fact-text" placeholder="\u8F93\u5165\u4E8B\u5B9E\u8BB0\u5FC6\u5185\u5BB9..." style="min-height:80px"></textarea></div>'
+    body += '<div class="pua-field"><div class="pua-field-label">\u4E00\u53E5\u8BDD\u6458\u8981</div>'
+    body += '<input class="pua-field-input" id="fact-summary" placeholder="\u7B80\u77ED\u6458\u8981"></div>'
+    body += '<div class="pua-field"><div class="pua-field-label">\u5173\u952E\u8BCD</div>'
+    body += '<input class="pua-field-input" id="fact-keywords" placeholder="\u7528\u9017\u53F7\u5206\u9694"></div>'
+
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (modalBody) modalBody.innerHTML = body
+
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u6DFB\u52A0\u4E8B\u5B9E\u8BB0\u5FC6'
+
+    // Footer
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+
+    var saveBtn = document.createElement('button')
+    saveBtn.className = 'pua-btn pua-btn-gold'
+    saveBtn.textContent = '\u4FDD\u5B58'
+    saveBtn.addEventListener('click', function() {
+      var text = (document.getElementById('fact-text') || {}).value || ''
+      var summary = (document.getElementById('fact-summary') || {}).value || ''
+      var keywords = (document.getElementById('fact-keywords') || {}).value || ''
+      if (!text) { self._toast('\u8BF7\u8F93\u5165\u4E8B\u5B9E\u5185\u5BB9'); return }
+      if (!memData.facts) memData.facts = []
+      memData.facts.push({
+        id: 'f' + Date.now(),
+        text: text,
+        summary: summary || text.substring(0, 50),
+        keywords: keywords,
+        embedding: null,
+        timestamp: new Date().toLocaleString('zh-CN'),
+        conversationId: ''
+      })
+      self._saveMemData(memData)
+      self._closeModal()
+      self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u6DFB\u52A0')
+      self._render()
+    })
+
+    footer.appendChild(cancelBtn)
+    footer.appendChild(saveBtn)
+
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    modal.classList.add('show')
+  }
+
+  P._showFactDetail = function(factId, memData) {
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
+
+    var fact = null
+    if (memData.facts) {
+      for (var i = 0; i < memData.facts.length; i++) {
+        if (memData.facts[i].id === factId) { fact = memData.facts[i]; break }
+      }
+    }
+    if (!fact) return
+
+    var body = ''
+    body += '<div class="pua-field"><div class="pua-field-label">\u4E8B\u5B9E\u5185\u5BB9</div>'
+    body += '<textarea class="pua-detail-textarea" id="fact-detail-text" style="min-height:100px">' + this._escHtml(fact.text || '') + '</textarea></div>'
+    body += '<div class="pua-field"><div class="pua-field-label">\u4E00\u53E5\u8BDD\u6458\u8981</div>'
+    body += '<input class="pua-field-input" id="fact-detail-summary" value="' + this._escHtml(fact.summary || '') + '"></div>'
+    body += '<div class="pua-field"><div class="pua-field-label">\u5173\u952E\u8BCD</div>'
+    body += '<input class="pua-field-input" id="fact-detail-keywords" value="' + this._escHtml(fact.keywords || '') + '"></div>'
+    body += '<div style="font-size:9px;color:var(--pua-text-dim)">\u65F6\u95F4: ' + (fact.timestamp || '-') + ' | \u4F1A\u8BDD: ' + (fact.conversationId || '-') + '</div>'
+
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (modalBody) modalBody.innerHTML = body
+
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u4E8B\u5B9E\u8BB0\u5FC6\u8BE6\u60C5'
+
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+
+    var deleteBtn = document.createElement('button')
+    deleteBtn.className = 'pua-btn pua-btn-danger'
+    deleteBtn.textContent = '\u5220\u9664'
+    deleteBtn.addEventListener('click', function() {
+      memData.facts = memData.facts.filter(function(f) { return f.id !== factId })
+      self._saveMemData(memData)
+      self._closeModal()
+      self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u5220\u9664')
+      self._render()
+    })
+
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+
+    var saveBtn = document.createElement('button')
+    saveBtn.className = 'pua-btn pua-btn-gold'
+    saveBtn.textContent = '\u4FDD\u5B58'
+    saveBtn.addEventListener('click', function() {
+      fact.text = (document.getElementById('fact-detail-text') || {}).value || fact.text
+      fact.summary = (document.getElementById('fact-detail-summary') || {}).value || fact.summary
+      fact.keywords = (document.getElementById('fact-detail-keywords') || {}).value || fact.keywords
+      self._saveMemData(memData)
+      self._closeModal()
+      self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u66F4\u65B0')
+      self._render()
+    })
+
+    footer.appendChild(deleteBtn)
+    footer.appendChild(cancelBtn)
+    footer.appendChild(saveBtn)
+
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    modal.classList.add('show')
+  }
+
+  /* ════════════════════════════════════════════════════════════
      注册入口
      ════════════════════════════════════════════════════════════ */
 
@@ -4445,7 +5020,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.2.0',
+    version: '0.7.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
