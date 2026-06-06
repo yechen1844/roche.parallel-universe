@@ -5181,15 +5181,21 @@
     var settings = this._loadSettings()
 
     // 分支选择器
-    var branches = this._loadBranches()
+    var branches = (this._loadBranches && this._loadBranches()) || []
     var currentBranchId = this._currentMemBranchId || ''
 
     // 加载当前分支的记忆数据
     var memData = currentBranchId ? this._loadMemData(currentBranchId) : { core: { relationship: '', events: '' }, facts: [] }
+    // 最终安全兜底
+    if (!memData) memData = { core: { relationship: '', events: '' }, facts: [] }
+    if (!memData.core) memData.core = { relationship: '', events: '' }
+    if (!memData.core.relationship) memData.core.relationship = ''
+    if (!memData.core.events) memData.core.events = ''
+    if (!memData.facts || !Array.isArray(memData.facts)) memData.facts = []
 
     // 统计
-    var coreRelLen = (memData.core && memData.core.relationship) ? memData.core.relationship.length : 0
-    var coreEvtLen = (memData.core && memData.core.events) ? memData.core.events.length : 0
+    var coreRelLen = (memData.core.relationship || '').length || 0
+    var coreEvtLen = (memData.core.events || '').length || 0
     var factCount = memData.facts ? memData.facts.length : 0
     var totalFactChars = 0
     if (memData.facts) {
