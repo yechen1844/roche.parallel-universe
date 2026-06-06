@@ -565,9 +565,11 @@
     // 预设编辑器数据
     this.presets = []
     this.selPreset = ''
+    this._promptPresetData = null
     // 正则管理数据
     this.regexes = []
     this.selRegex = ''
+    this._regexPresetData = null
     // 上下文组装数据
     this.asmBranchId = ''
     this.asmConfig = {
@@ -621,6 +623,8 @@
     this._loadBranches()
     this._loadPresets()
     this._loadRegexes()
+    this._loadRegexPresets()
+    this._loadPromptPresets()
     this._loadAsmConfig()
     this._loadAsmOrder()
     this._loadSettings()
@@ -784,6 +788,88 @@
     this.roche.storage.set('pua_regexes', { regexes: this.regexes }).catch(function(e) {
       console.error('[PUA] save regexes failed', e)
     })
+  }
+
+  /* ── 正则预设管理 ── */
+  P._loadRegexPresets = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.get('pua_regex_presets').then(function(data) {
+      if (data && data.presets && data.presets.length) {
+        self._regexPresetData = data
+      } else {
+        self._regexPresetData = {
+          presets: [{ id: 'rpreset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', regexes: self.regexes.slice() }],
+          activePresetId: 'rpreset-default'
+        }
+        self._saveRegexPresets()
+      }
+    }).catch(function() {
+      self._regexPresetData = {
+        presets: [{ id: 'rpreset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', regexes: self.regexes.slice() }],
+        activePresetId: 'rpreset-default'
+      }
+      self._saveRegexPresets()
+    })
+  }
+
+  P._saveRegexPresets = function() {
+    if (!this.roche || !this.roche.storage) return
+    if (!this._regexPresetData) return
+    this.roche.storage.set('pua_regex_presets', this._regexPresetData).catch(function(e) {
+      console.error('[PUA] save regex presets failed', e)
+    })
+  }
+
+  P._getActiveRegexPreset = function() {
+    if (!this._regexPresetData) return null
+    var presets = this._regexPresetData.presets || []
+    var activeId = this._regexPresetData.activePresetId || ''
+    for (var i = 0; i < presets.length; i++) {
+      if (presets[i].id === activeId) return presets[i]
+    }
+    return presets[0] || null
+  }
+
+  /* ── 预设编辑器预设管理 ── */
+  P._loadPromptPresets = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.get('pua_prompt_presets').then(function(data) {
+      if (data && data.presets && data.presets.length) {
+        self._promptPresetData = data
+      } else {
+        self._promptPresetData = {
+          presets: [{ id: 'ppreset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', items: self.presets.slice() }],
+          activePresetId: 'ppreset-default'
+        }
+        self._savePromptPresets()
+      }
+    }).catch(function() {
+      self._promptPresetData = {
+        presets: [{ id: 'ppreset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', items: self.presets.slice() }],
+        activePresetId: 'ppreset-default'
+      }
+      self._savePromptPresets()
+    })
+  }
+
+  P._savePromptPresets = function() {
+    if (!this.roche || !this.roche.storage) return
+    if (!this._promptPresetData) return
+    this.roche.storage.set('pua_prompt_presets', this._promptPresetData).catch(function(e) {
+      console.error('[PUA] save prompt presets failed', e)
+    })
+  }
+
+  P._getActivePromptPreset = function() {
+    if (!this._promptPresetData) return null
+    var presets = this._promptPresetData.presets || []
+    var activeId = this._promptPresetData.activePresetId || ''
+    for (var i = 0; i < presets.length; i++) {
+      if (presets[i].id === activeId) return presets[i]
+    }
+    return presets[0] || null
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1809,27 +1895,15 @@
     toAsmBtn.setAttribute('data-id', branch.id)
     toAsmBtn.addEventListener('click', function() {
       self.asmBranchId = branch.id
+      self._currentMemBranchId = branch.id
       self.currentPage = 'assembly'
       self._fetchAsmData()
-    })
-
-    var toMemBtn = document.createElement('button')
-    toMemBtn.className = 'pua-btn pua-btn-gold'
-    toMemBtn.textContent = '\u53D1\u9001\u5230\u8BB0\u5FC6\u7CFB\u7EDF'
-    toMemBtn.setAttribute('data-id', branch.id)
-    toMemBtn.addEventListener('click', function() {
-      self._currentMemBranchId = branch.id
-      self.currentPage = 'memory'
-      // 如果分支有绑定记忆，自动加载
       if (branch.memoryConvIds && branch.memoryConvIds.length > 0) {
         self._loadMemFromBranches(branch.memoryConvIds, branch.id)
-      } else {
-        self._render()
       }
     })
 
     footer.appendChild(toAsmBtn)
-    footer.appendChild(toMemBtn)
     footer.appendChild(deleteBtn)
     footer.appendChild(closeBtn)
 
@@ -2608,7 +2682,24 @@
       if (this.presets[i].id === this.selPreset) { selPreset = this.presets[i]; break }
     }
 
-    var h = '<div class="pua-panel-layout">'
+    // ── 预设编辑器预设选择器 ──
+    var ppData = this._promptPresetData || { presets: [], activePresetId: '' }
+    var ppPresets = ppData.presets || []
+    var ppActiveId = ppData.activePresetId || ''
+
+    var presetBar = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+    presetBar += '<select class="pua-settings-select" id="prompt-preset-select" style="flex:1;min-width:120px">'
+    for (var ppi = 0; ppi < ppPresets.length; ppi++) {
+      presetBar += '<option value="' + ppPresets[ppi].id + '"' + (ppPresets[ppi].id === ppActiveId ? ' selected' : '') + '>' + self._escHtml(ppPresets[ppi].name) + '</option>'
+    }
+    presetBar += '</select>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="prompt-preset-save">\u4FDD\u5B58\u9884\u8BBE</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="prompt-preset-new">\u65B0\u5EFA\u9884\u8BBE</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="prompt-preset-rename">\u91CD\u547D\u540D</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="prompt-preset-delete">\u5220\u9664\u9884\u8BBE</button>'
+    presetBar += '</div>'
+
+    var h = presetBar + '<div class="pua-panel-layout">'
 
     // === Left: Item list ===
     var mobileHideList = (window.innerWidth < 768 && selPreset) ? ' pua-mobile-hide' : ''
@@ -2684,6 +2775,101 @@
     h += '</div></div>'
 
     contentEl.innerHTML = h
+
+    // ── 预设编辑器预设事件绑定 ──
+    var ppSelect = contentEl.querySelector('#prompt-preset-select')
+    if (ppSelect) {
+      ppSelect.addEventListener('change', function() {
+        if (!self._promptPresetData) return
+        self._promptPresetData.activePresetId = this.value
+        var target = null
+        var ps = self._promptPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === this.value) { target = ps[k]; break }
+        }
+        if (target && target.items) {
+          self.presets = target.items
+          self.selPreset = self.presets.length > 0 ? self.presets[0].id : ''
+          self._savePresets()
+        }
+        self._savePromptPresets()
+        self._render()
+      })
+    }
+    var ppSaveBtn = contentEl.querySelector('#prompt-preset-save')
+    if (ppSaveBtn) {
+      ppSaveBtn.addEventListener('click', function() {
+        if (!self._promptPresetData) return
+        var activeId = self._promptPresetData.activePresetId
+        var ps = self._promptPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === activeId) { ps[k].items = self.presets.slice(); break }
+        }
+        self._savePromptPresets()
+        self._toast('\u9884\u8BBE\u5DF2\u4FDD\u5B58')
+      })
+    }
+    var ppNewBtn = contentEl.querySelector('#prompt-preset-new')
+    if (ppNewBtn) {
+      ppNewBtn.addEventListener('click', function() {
+        var name = prompt('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0', '\u65B0\u9884\u8BBE\u96C6')
+        if (!name) return
+        if (!self._promptPresetData) {
+          self._promptPresetData = { presets: [], activePresetId: '' }
+        }
+        var newP = { id: 'ppreset-' + Date.now(), name: name, items: self.presets.slice() }
+        self._promptPresetData.presets.push(newP)
+        self._promptPresetData.activePresetId = newP.id
+        self._savePromptPresets()
+        self._render()
+      })
+    }
+    var ppRenameBtn = contentEl.querySelector('#prompt-preset-rename')
+    if (ppRenameBtn) {
+      ppRenameBtn.addEventListener('click', function() {
+        if (!self._promptPresetData) return
+        var cur = self._promptPresetData.activePresetId
+        var p = null
+        var ps = self._promptPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === cur) { p = ps[k]; break }
+        }
+        if (!p) return
+        var name = prompt('\u91CD\u547D\u540D\u9884\u8BBE', p.name)
+        if (!name) return
+        p.name = name
+        self._savePromptPresets()
+        self._render()
+      })
+    }
+    var ppDeleteBtn = contentEl.querySelector('#prompt-preset-delete')
+    if (ppDeleteBtn) {
+      ppDeleteBtn.addEventListener('click', function() {
+        if (!self._promptPresetData) return
+        var ps = self._promptPresetData.presets || []
+        if (ps.length <= 1) { self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u9884\u8BBE'); return }
+        if (!confirm('\u786E\u5B9A\u5220\u9664\u5F53\u524D\u9884\u8BBE\uFF1F')) return
+        var cur = self._promptPresetData.activePresetId
+        var newPs = []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id !== cur) newPs.push(ps[k])
+        }
+        self._promptPresetData.presets = newPs
+        self._promptPresetData.activePresetId = newPs[0] ? newPs[0].id : ''
+        var target = null
+        for (var k2 = 0; k2 < newPs.length; k2++) {
+          if (newPs[k2].id === self._promptPresetData.activePresetId) { target = newPs[k2]; break }
+        }
+        if (target && target.items) {
+          self.presets = target.items
+          self.selPreset = self.presets.length > 0 ? self.presets[0].id : ''
+          self._savePresets()
+        }
+        self._savePromptPresets()
+        self._render()
+      })
+    }
+
     this._bindPresetEvents()
 
     // 恢复列表滚动位置到选中条目
@@ -3020,7 +3206,17 @@
         var confirmBtn = document.getElementById('pua-preset-import-confirm')
         if (!previewEl || !resultEl) return
 
-        if (data && data.categories && Array.isArray(data.categories)) {
+        if (data && data.type === 'pua_plugin_presets' && data.presets && Array.isArray(data.presets)) {
+          // 插件格式
+          var html = '<div style="margin-bottom:6px;padding:6px;border:1px solid var(--pua-border);border-radius:4px">'
+          html += '<div style="font-weight:600;color:var(--pua-accent-text)">\u63D2\u4EF6\u683C\u5F0F\u5BFC\u5165</div>'
+          html += '<div style="font-size:9px;color:var(--pua-text-dim)">' + data.presets.length + ' \u4E2A\u6761\u76EE</div>'
+          html += '</div>'
+          html += '<div style="font-size:11px;color:var(--pua-user);font-weight:600;margin-top:4px">\u5171 ' + data.presets.length + ' \u4E2A\u9884\u8BBE\u6761\u76EE\uFF0C\u70B9\u51FB\u786E\u8BA4\u5BFC\u5165</div>'
+          resultEl.innerHTML = html
+          previewEl.style.display = 'block'
+          if (confirmBtn) confirmBtn.style.display = ''
+        } else if (data && data.categories && Array.isArray(data.categories)) {
           var count = 0
           var html = ''
           for (var ci = 0; ci < data.categories.length; ci++) {
@@ -3047,7 +3243,7 @@
           previewEl.style.display = 'block'
           if (confirmBtn) confirmBtn.style.display = ''
         } else {
-          resultEl.textContent = '\u65E0\u6CD5\u8BC6\u522B\u7684\u683C\u5F0F\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A Roche \u5BFC\u51FA\u7684\u9884\u8BBE JSON'
+          resultEl.textContent = '\u65E0\u6CD5\u8BC6\u522B\u7684\u683C\u5F0F\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A\u6709\u6548\u7684\u9884\u8BBE JSON'
           previewEl.style.display = 'block'
         }
       } catch(err) {
@@ -3070,7 +3266,27 @@
     var data = this._parsedPresetData
     var count = 0
 
-    if (data.categories && Array.isArray(data.categories)) {
+    if (data.type === 'pua_plugin_presets' && data.presets && Array.isArray(data.presets)) {
+      // 插件格式：直接导入完整预设对象
+      for (var pi0 = 0; pi0 < data.presets.length; pi0++) {
+        var src0 = data.presets[pi0]
+        var newP = {
+          id: 'p' + Date.now() + '_' + count,
+          title: src0.title || '\u672A\u547D\u540D',
+          role: src0.role || 'system',
+          on: src0.on !== undefined ? src0.on : true,
+          content: src0.content || '',
+          outRegex: src0.outRegex || '',
+          outRegexOn: src0.outRegexOn || false,
+          inRegex: src0.inRegex || '',
+          inRegexOn: src0.inRegexOn || false,
+          dMin: src0.dMin || 0,
+          dMax: src0.dMax || Infinity
+        }
+        this.presets.push(newP)
+        count++
+      }
+    } else if (data.categories && Array.isArray(data.categories)) {
       for (var ci = 0; ci < data.categories.length; ci++) {
         var presets = data.categories[ci].presets || []
         for (var pi = 0; pi < presets.length; pi++) {
@@ -3125,37 +3341,83 @@
       this._toast('\u6CA1\u6709\u53EF\u5BFC\u51FA\u7684\u9884\u8BBE')
       return
     }
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
 
-    var exportPresets = []
-    for (var i = 0; i < this.presets.length; i++) {
-      var p = this.presets[i]
-      exportPresets.push({
-        title: p.title,
-        content: p.content,
-        outputRegex: p.outRegex || '',
-        isOutputRegexEnabled: p.outRegexOn || false,
-        inputRegex: p.inRegex || '',
-        isInputRegexEnabled: p.inRegexOn || false
-      })
-    }
+    var body = '<div style="margin-bottom:12px;font-size:11px;color:var(--pua-text-sub)">\u8BF7\u9009\u62E9\u5BFC\u51FA\u683C\u5F0F\uFF1A</div>'
+    body += '<div style="display:flex;flex-direction:column;gap:8px">'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer;transition:var(--pua-transition)" id="export-preset-roche">'
+    body += '<input type="radio" name="export-preset-fmt" value="roche" checked>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">Roche \u539F\u751F\u683C\u5F0F</div><div style="font-size:9px;color:var(--pua-text-dim)">\u53EF\u76F4\u63A5\u5BFC\u5165 Roche \u7684\u9884\u8BBE\u7CFB\u7EDF</div></div>'
+    body += '</label>'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer;transition:var(--pua-transition)" id="export-preset-plugin">'
+    body += '<input type="radio" name="export-preset-fmt" value="plugin">'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u63D2\u4EF6\u683C\u5F0F</div><div style="font-size:9px;color:var(--pua-text-dim)">\u5E73\u884C\u65F6\u7A7A\u63D2\u4EF6\u5185\u90E8\u683C\u5F0F\uFF0C\u5305\u542B\u5B8C\u6574\u914D\u7F6E</div></div>'
+    body += '</label>'
+    body += '</div>'
 
-    var data = {
-      version: 1,
-      type: 'roche_presets',
-      categories: [{
-        name: '\u5E73\u884C\u65F6\u7A7A\u5BFC\u51FA',
-        presets: exportPresets
-      }]
-    }
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (!modalBody) return
+    modalBody.innerHTML = body
 
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = 'parallel-universe-presets-' + Date.now() + '.json'
-    a.click()
-    URL.revokeObjectURL(url)
-    this._toast('\u9884\u8BBE\u5DF2\u5BFC\u51FA\uFF0C\u5171 ' + exportPresets.length + ' \u4E2A\u6761\u76EE')
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u5BFC\u51FA\u9884\u8BBE'
+
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+    var confirmBtn = document.createElement('button')
+    confirmBtn.className = 'pua-btn pua-btn-gold'
+    confirmBtn.textContent = '\u786E\u8BA4\u5BFC\u51FA'
+    confirmBtn.addEventListener('click', function() {
+      var radio = modal.querySelector('input[name="export-preset-fmt"]:checked')
+      var fmt = radio ? radio.value : 'roche'
+      var data, filename
+      if (fmt === 'roche') {
+        var exportPresets = []
+        for (var i = 0; i < self.presets.length; i++) {
+          var p = self.presets[i]
+          exportPresets.push({
+            title: p.title,
+            content: p.content,
+            outputRegex: p.outRegex || '',
+            isOutputRegexEnabled: p.outRegexOn || false,
+            inputRegex: p.inRegex || '',
+            isInputRegexEnabled: p.inRegexOn || false
+          })
+        }
+        data = {
+          version: 1,
+          type: 'roche_presets',
+          categories: [{ name: '\u5E73\u884C\u65F6\u7A7A\u5BFC\u51FA', presets: exportPresets }]
+        }
+        filename = 'parallel-universe-presets-' + Date.now() + '.json'
+      } else {
+        data = { version: 1, type: 'pua_plugin_presets', presets: self.presets }
+        filename = 'parallel-universe-presets-plugin-' + Date.now() + '.json'
+      }
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      var url = URL.createObjectURL(blob)
+      var a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      self._toast('\u9884\u8BBE\u5DF2\u5BFC\u51FA: ' + filename)
+      self._closeModal()
+    })
+    footer.appendChild(cancelBtn)
+    footer.appendChild(confirmBtn)
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    modal.classList.add('show')
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -3193,7 +3455,24 @@
       if (this.regexes[i].id === this.selRegex) { selRegex = this.regexes[i]; break }
     }
 
-    var h = '<div class="pua-panel-layout">'
+    // ── 正则预设选择器 ──
+    var rpData = this._regexPresetData || { presets: [], activePresetId: '' }
+    var rpPresets = rpData.presets || []
+    var rpActiveId = rpData.activePresetId || ''
+
+    var presetBar = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+    presetBar += '<select class="pua-settings-select" id="regex-preset-select" style="flex:1;min-width:120px">'
+    for (var rpi = 0; rpi < rpPresets.length; rpi++) {
+      presetBar += '<option value="' + rpPresets[rpi].id + '"' + (rpPresets[rpi].id === rpActiveId ? ' selected' : '') + '>' + self._escHtml(rpPresets[rpi].name) + '</option>'
+    }
+    presetBar += '</select>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="regex-preset-save">\u4FDD\u5B58\u9884\u8BBE</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="regex-preset-new">\u65B0\u5EFA\u9884\u8BBE</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm" id="regex-preset-rename">\u91CD\u547D\u540D</button>'
+    presetBar += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="regex-preset-delete">\u5220\u9664\u9884\u8BBE</button>'
+    presetBar += '</div>'
+
+    var h = presetBar + '<div class="pua-panel-layout">'
 
     // === Left: Item list ===
     var mobileHideList = (window.innerWidth < 768 && selRegex) ? ' pua-mobile-hide' : ''
@@ -3288,6 +3567,102 @@
     h += '</div></div>'
 
     contentEl.innerHTML = h
+
+    // ── 正则预设事件绑定 ──
+    var rpSelect = contentEl.querySelector('#regex-preset-select')
+    if (rpSelect) {
+      rpSelect.addEventListener('change', function() {
+        if (!self._regexPresetData) return
+        self._regexPresetData.activePresetId = this.value
+        var target = null
+        var ps = self._regexPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === this.value) { target = ps[k]; break }
+        }
+        if (target && target.regexes) {
+          self.regexes = target.regexes
+          self.selRegex = self.regexes.length > 0 ? self.regexes[0].id : ''
+          self._saveRegexes()
+        }
+        self._saveRegexPresets()
+        self._render()
+      })
+    }
+    var rpSaveBtn = contentEl.querySelector('#regex-preset-save')
+    if (rpSaveBtn) {
+      rpSaveBtn.addEventListener('click', function() {
+        if (!self._regexPresetData) return
+        var activeId = self._regexPresetData.activePresetId
+        var ps = self._regexPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === activeId) { ps[k].regexes = self.regexes.slice(); break }
+        }
+        self._saveRegexPresets()
+        self._toast('\u6B63\u5219\u9884\u8BBE\u5DF2\u4FDD\u5B58')
+      })
+    }
+    var rpNewBtn = contentEl.querySelector('#regex-preset-new')
+    if (rpNewBtn) {
+      rpNewBtn.addEventListener('click', function() {
+        var name = prompt('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0', '\u65B0\u6B63\u5219\u9884\u8BBE')
+        if (!name) return
+        if (!self._regexPresetData) {
+          self._regexPresetData = { presets: [], activePresetId: '' }
+        }
+        var newP = { id: 'rpreset-' + Date.now(), name: name, regexes: self.regexes.slice() }
+        self._regexPresetData.presets.push(newP)
+        self._regexPresetData.activePresetId = newP.id
+        self._saveRegexPresets()
+        self._render()
+      })
+    }
+    var rpRenameBtn = contentEl.querySelector('#regex-preset-rename')
+    if (rpRenameBtn) {
+      rpRenameBtn.addEventListener('click', function() {
+        if (!self._regexPresetData) return
+        var cur = self._regexPresetData.activePresetId
+        var p = null
+        var ps = self._regexPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === cur) { p = ps[k]; break }
+        }
+        if (!p) return
+        var name = prompt('\u91CD\u547D\u540D\u9884\u8BBE', p.name)
+        if (!name) return
+        p.name = name
+        self._saveRegexPresets()
+        self._render()
+      })
+    }
+    var rpDeleteBtn = contentEl.querySelector('#regex-preset-delete')
+    if (rpDeleteBtn) {
+      rpDeleteBtn.addEventListener('click', function() {
+        if (!self._regexPresetData) return
+        var ps = self._regexPresetData.presets || []
+        if (ps.length <= 1) { self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u9884\u8BBE'); return }
+        if (!confirm('\u786E\u5B9A\u5220\u9664\u5F53\u524D\u9884\u8BBE\uFF1F')) return
+        var cur = self._regexPresetData.activePresetId
+        var newPs = []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id !== cur) newPs.push(ps[k])
+        }
+        self._regexPresetData.presets = newPs
+        self._regexPresetData.activePresetId = newPs[0] ? newPs[0].id : ''
+        // 加载新激活预设的正则
+        var target = null
+        for (var k2 = 0; k2 < newPs.length; k2++) {
+          if (newPs[k2].id === self._regexPresetData.activePresetId) { target = newPs[k2]; break }
+        }
+        if (target && target.regexes) {
+          self.regexes = target.regexes
+          self.selRegex = self.regexes.length > 0 ? self.regexes[0].id : ''
+          self._saveRegexes()
+        }
+        self._saveRegexPresets()
+        self._render()
+      })
+    }
+
     this._bindRegexEvents()
 
     // 恢复列表滚动位置到选中条目
@@ -3652,7 +4027,17 @@
         var confirmBtn = document.getElementById('pua-regex-import-confirm')
         if (!previewEl || !resultEl) return
 
-        if (data && data.categories && Array.isArray(data.categories)) {
+        if (data && data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
+          // 插件格式
+          var html = '<div style="margin-bottom:6px;padding:6px;border:1px solid var(--pua-border);border-radius:4px">'
+          html += '<div style="font-weight:600;color:var(--pua-accent-text)">\u63D2\u4EF6\u683C\u5F0F\u5BFC\u5165</div>'
+          html += '<div style="font-size:9px;color:var(--pua-text-dim)">' + data.regexes.length + ' \u4E2A\u6761\u76EE</div>'
+          html += '</div>'
+          html += '<div style="font-size:11px;color:var(--pua-user);font-weight:600;margin-top:4px">\u5171 ' + data.regexes.length + ' \u4E2A\u6B63\u5219\u6761\u76EE\uFF0C\u70B9\u51FB\u786E\u8BA4\u5BFC\u5165</div>'
+          resultEl.innerHTML = html
+          previewEl.style.display = 'block'
+          if (confirmBtn) confirmBtn.style.display = ''
+        } else if (data && data.categories && Array.isArray(data.categories)) {
           var count = 0
           var html = ''
           for (var ci = 0; ci < data.categories.length; ci++) {
@@ -3669,7 +4054,7 @@
           previewEl.style.display = 'block'
           if (confirmBtn) confirmBtn.style.display = ''
         } else {
-          resultEl.textContent = '\u65E0\u6CD5\u8BC6\u522B\u7684\u683C\u5F0F\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A Roche \u5BFC\u51FA\u7684\u6B63\u5219 JSON'
+          resultEl.textContent = '\u65E0\u6CD5\u8BC6\u522B\u7684\u683C\u5F0F\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A\u6709\u6548\u7684\u6B63\u5219 JSON'
           previewEl.style.display = 'block'
         }
       } catch(err) {
@@ -3692,7 +4077,23 @@
     var data = this._parsedRegexData
     var count = 0
 
-    if (data.categories && Array.isArray(data.categories)) {
+    if (data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
+      // 插件格式：直接导入完整正则对象
+      for (var ri = 0; ri < data.regexes.length; ri++) {
+        var src0 = data.regexes[ri]
+        this.regexes.push({
+          id: 'r' + Date.now() + '_' + count,
+          name: src0.name || '\u672A\u547D\u540D',
+          regex: src0.regex || '',
+          html: src0.html || '',
+          type: src0.type || 'render',
+          on: src0.on !== undefined ? src0.on : true,
+          dMin: src0.dMin || 0,
+          dMax: src0.dMax || Infinity
+        })
+        count++
+      }
+    } else if (data.categories && Array.isArray(data.categories)) {
       for (var ci = 0; ci < data.categories.length; ci++) {
         var entries = data.categories[ci].entries || []
         for (var ei = 0; ei < entries.length; ei++) {
@@ -3726,41 +4127,86 @@
       this._toast('\u6CA1\u6709\u53EF\u5BFC\u51FA\u7684\u6B63\u5219')
       return
     }
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
 
-    var exportEntries = []
-    for (var i = 0; i < this.regexes.length; i++) {
-      var r = this.regexes[i]
-      exportEntries.push({
-        name: r.name,
-        regex: r.regex,
-        html: r.html,
-        id: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          var r = Math.random() * 16 | 0
-          var v = c === 'x' ? r : (r & 0x3 | 0x8)
-          return v.toString(16)
-        }),
-        timestamp: Date.now()
-      })
-    }
+    var body = '<div style="margin-bottom:12px;font-size:11px;color:var(--pua-text-sub)">\u8BF7\u9009\u62E9\u5BFC\u51FA\u683C\u5F0F\uFF1A</div>'
+    body += '<div style="display:flex;flex-direction:column;gap:8px">'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer;transition:var(--pua-transition)" id="export-regex-roche">'
+    body += '<input type="radio" name="export-regex-fmt" value="roche" checked>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">Roche \u539F\u751F\u683C\u5F0F</div><div style="font-size:9px;color:var(--pua-text-dim)">\u53EF\u76F4\u63A5\u5BFC\u5165 Roche \u7684\u6B63\u5219\u7CFB\u7EDF</div></div>'
+    body += '</label>'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer;transition:var(--pua-transition)" id="export-regex-plugin">'
+    body += '<input type="radio" name="export-regex-fmt" value="plugin">'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u63D2\u4EF6\u683C\u5F0F</div><div style="font-size:9px;color:var(--pua-text-dim)">\u5E73\u884C\u65F6\u7A7A\u63D2\u4EF6\u5185\u90E8\u683C\u5F0F\uFF0C\u5305\u542B\u5B8C\u6574\u914D\u7F6E</div></div>'
+    body += '</label>'
+    body += '</div>'
 
-    var data = {
-      version: 1,
-      type: 'roche_regex',
-      categories: [{
-        name: '\u5E73\u884C\u65F6\u7A7A\u5BFC\u51FA',
-        scope: 'local',
-        entries: exportEntries
-      }]
-    }
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (!modalBody) return
+    modalBody.innerHTML = body
 
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = 'parallel-universe-regexes-' + Date.now() + '.json'
-    a.click()
-    URL.revokeObjectURL(url)
-    this._toast('\u6B63\u5219\u5DF2\u5BFC\u51FA\uFF0C\u5171 ' + exportEntries.length + ' \u4E2A\u6761\u76EE')
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u5BFC\u51FA\u6B63\u5219'
+
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+    var confirmBtn = document.createElement('button')
+    confirmBtn.className = 'pua-btn pua-btn-gold'
+    confirmBtn.textContent = '\u786E\u8BA4\u5BFC\u51FA'
+    confirmBtn.addEventListener('click', function() {
+      var radio = modal.querySelector('input[name="export-regex-fmt"]:checked')
+      var fmt = radio ? radio.value : 'roche'
+      var data, filename
+      if (fmt === 'roche') {
+        var exportEntries = []
+        for (var i = 0; i < self.regexes.length; i++) {
+          var r = self.regexes[i]
+          exportEntries.push({
+            name: r.name,
+            regex: r.regex,
+            html: r.html,
+            id: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              var rv = Math.random() * 16 | 0
+              var v = c === 'x' ? rv : (rv & 0x3 | 0x8)
+              return v.toString(16)
+            }),
+            timestamp: Date.now()
+          })
+        }
+        data = {
+          version: 1,
+          type: 'roche_regex',
+          categories: [{ name: '\u5E73\u884C\u65F6\u7A7A\u5BFC\u51FA', scope: 'local', entries: exportEntries }]
+        }
+        filename = 'parallel-universe-regexes-' + Date.now() + '.json'
+      } else {
+        data = { version: 1, type: 'pua_plugin_regexes', regexes: self.regexes }
+        filename = 'parallel-universe-regexes-plugin-' + Date.now() + '.json'
+      }
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      var url = URL.createObjectURL(blob)
+      var a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      self._toast('\u6B63\u5219\u5DF2\u5BFC\u51FA: ' + filename)
+      self._closeModal()
+    })
+    footer.appendChild(cancelBtn)
+    footer.appendChild(confirmBtn)
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    modal.classList.add('show')
   }
 
   /* ════════════════════════════════════════════════════════════
