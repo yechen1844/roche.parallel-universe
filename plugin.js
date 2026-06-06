@@ -440,6 +440,7 @@
     this.asmData = {
       branch: null,
       char: null,
+      chars: [],
       userPersona: null,
       shortTerm: [],
       longTerm: null,
@@ -447,7 +448,6 @@
       worldEntries: []
     }
     this.asmOrder = []
-    this.asmMountedWorldbooks = []
     this.asmLoading = false
     // 移动端状态
     this._sidebarOpen = false
@@ -485,7 +485,6 @@
     this._loadRegexes()
     this._loadAsmConfig()
     this._loadAsmOrder()
-    this._loadAsmWb()
   }
 
   /* ── 捕获控制台日志 ── */
@@ -1381,7 +1380,10 @@
       longTermMemory: null,
       messages: [],
       userPersona: userPersona,
-      mountedSources: []
+      mountedSources: [],
+      memoryConvIds: convId ? [convId] : [],
+      mountedWorldbooks: { global: true, local: {} },
+      selectedCharIds: charId ? [charId] : []
     }
 
     // 获取记忆
@@ -1555,6 +1557,33 @@
       body += '</div></div>'
     }
 
+    // ===== 记忆绑定配置 =====
+    body += '<div style="margin-bottom:12px">'
+    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u8BB0\u5FC6\u7ED1\u5B9A</div>'
+    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u9009\u62E9\u8981\u5173\u8054\u7684\u4F1A\u8BDD\uFF0C\u83B7\u53D6\u5176\u6838\u5FC3\u8BB0\u5FC6\u548C\u4E8B\u5B9E\u8BB0\u5FC6</div>'
+    body += '<div id="branch-mem-list" style="max-height:120px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
+    body += '<button class="pua-btn pua-btn-sm" id="branch-mem-save" style="margin-top:4px">\u4FDD\u5B58\u8BB0\u5FC6\u7ED1\u5B9A</button>'
+    body += '</div>'
+
+    // ===== 世界书挂载配置 =====
+    body += '<div style="margin-bottom:12px">'
+    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u4E16\u754C\u4E66\u6302\u8F7D</div>'
+    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u5168\u5C40\u4E16\u754C\u4E66\u81EA\u52A8\u6302\u8F7D\uFF0C\u672C\u5730\u4E16\u754C\u4E66\u9700\u624B\u52A8\u9009\u62E9</div>'
+    body += '<div style="font-size:10px;color:var(--pua-text);margin-bottom:4px">'
+    body += '<input type="checkbox" id="branch-wb-global" checked> \u5168\u5C40\u4E16\u754C\u4E66\uFF08\u81EA\u52A8\u6302\u8F7D\uFF09'
+    body += '</div>'
+    body += '<div id="branch-wb-local" style="max-height:160px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
+    body += '<button class="pua-btn pua-btn-sm" id="branch-wb-save" style="margin-top:4px">\u4FDD\u5B58\u4E16\u754C\u4E66\u6302\u8F7D</button>'
+    body += '</div>'
+
+    // ===== 角色人设配置 =====
+    body += '<div style="margin-bottom:12px">'
+    body += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent);margin-bottom:4px">\u89D2\u8272\u4EBA\u8BBE</div>'
+    body += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:6px">\u9009\u62E9\u8981\u5305\u542B\u7684\u89D2\u8272\u4EBA\u8BBE\uFF08\u7FA4\u804A\u9700\u624B\u52A8\u9009\u62E9\uFF09</div>'
+    body += '<div id="branch-char-list" style="max-height:120px;overflow-y:auto">\u52A0\u8F7D\u4E2D...</div>'
+    body += '<button class="pua-btn pua-btn-sm" id="branch-char-save" style="margin-top:4px">\u4FDD\u5B58\u89D2\u8272\u4EBA\u8BBE</button>'
+    body += '</div>'
+
     var modalBody = modal.querySelector('.pua-modal-body')
     if (!modalBody) {
       console.warn('[PUA] modal body not found in _openBranch')
@@ -1603,6 +1632,219 @@
 
     var modalInner = modal.querySelector('.pua-modal')
     if (modalInner) modalInner.appendChild(footer)
+
+    // ===== 异步加载会话列表（记忆绑定） =====
+    if (this.roche.conversation && this.roche.conversation.list) {
+      this.roche.conversation.list().then(function(convs) {
+        var memList = document.getElementById('branch-mem-list')
+        if (!memList) return
+        var h = ''
+        for (var i = 0; i < (convs || []).length; i++) {
+          var cv = convs[i]
+          var cvId = cv.conversationId || cv.id
+          var cvName = cv.handle || cv.name || cv.title || '?'
+          var isGroup = cv.isGroup || cv.type === 'group'
+          var isBound = false
+          for (var bi = 0; bi < (branch.memoryConvIds || []).length; bi++) {
+            if (branch.memoryConvIds[bi] === cvId) { isBound = true; break }
+          }
+          if (branch.sourceConvId === cvId) isBound = true
+          h += '<div style="margin-bottom:2px"><label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
+          h += '<input type="checkbox" class="branch-mem-check" data-conv-id="' + cvId + '"' + (isBound ? ' checked' : '') + '>'
+          h += (isGroup ? '\uD83D\uDC65 ' : '\uD83D\uDC64 ') + self._escHtml(cvName)
+          h += '</label></div>'
+        }
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u4F1A\u8BDD</div>'
+        memList.innerHTML = h
+      }).catch(function() {
+        var memList = document.getElementById('branch-mem-list')
+        if (memList) memList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+      })
+    } else {
+      var memListEl = document.getElementById('branch-mem-list')
+      if (memListEl) memListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+    }
+
+    // ===== 异步加载世界书 =====
+    if (this.roche.worldbook && this.roche.worldbook.list) {
+      this.roche.worldbook.list().then(function(cats) {
+        var wbLocal = document.getElementById('branch-wb-local')
+        var wbGlobal = document.getElementById('branch-wb-global')
+        if (!wbLocal) return
+
+        // 设置全局checkbox
+        if (wbGlobal) {
+          wbGlobal.checked = branch.mountedWorldbooks ? (branch.mountedWorldbooks.global !== false) : true
+        }
+
+        // 本地世界书
+        var localCats = []
+        for (var i = 0; i < (cats || []).length; i++) {
+          if (cats[i].scope === 'local') localCats.push(cats[i])
+        }
+
+        var h = ''
+        for (var li = 0; li < localCats.length; li++) {
+          var cat = localCats[li]
+          var isMounted = branch.mountedWorldbooks && branch.mountedWorldbooks.local && branch.mountedWorldbooks.local[cat.id]
+          h += '<div style="margin-bottom:4px;padding:4px 6px;background:var(--pua-bg-input);border-radius:4px">'
+          h += '<label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
+          h += '<input type="checkbox" class="branch-wb-cat-check" data-cat-id="' + cat.id + '"' + (isMounted ? ' checked' : '') + '>'
+          h += '\uD83D\uDCD6 ' + self._escHtml(cat.name || cat.id)
+          h += '</label>'
+          h += '<div class="branch-wb-entries" data-cat-id="' + cat.id + '" style="margin-left:16px;display:' + (isMounted ? 'block' : 'none') + '"></div>'
+          h += '</div>'
+        }
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u672C\u5730\u4E16\u754C\u4E66</div>'
+        wbLocal.innerHTML = h
+
+        // 加载每个本地分类的词条
+        for (var ci = 0; ci < localCats.length; ci++) {
+          (function(cat) {
+            if (self.roche.worldbook && self.roche.worldbook.getEntries) {
+              self.roche.worldbook.getEntries({ categoryId: cat.id }).then(function(entries) {
+                var entriesDiv = document.querySelector('.branch-wb-entries[data-cat-id="' + cat.id + '"]')
+                if (!entriesDiv) return
+                var eh = ''
+                for (var ei = 0; ei < (entries || []).length; ei++) {
+                  var entry = entries[ei]
+                  var isEntryMounted = branch.mountedWorldbooks && branch.mountedWorldbooks.local && branch.mountedWorldbooks.local[cat.id]
+                  var entryChecked = isEntryMounted ? true : false
+                  if (isEntryMounted && Array.isArray(isEntryMounted)) {
+                    entryChecked = false
+                    for (var emi = 0; emi < isEntryMounted.length; emi++) {
+                      if (isEntryMounted[emi] === entry.id) { entryChecked = true; break }
+                    }
+                  }
+                  eh += '<div style="margin-bottom:1px"><label style="font-size:9px;color:var(--pua-text-sub);display:flex;align-items:center;gap:3px">'
+                  eh += '<input type="checkbox" class="branch-wb-entry-check" data-cat-id="' + cat.id + '" data-entry-id="' + entry.id + '"' + (entryChecked ? ' checked' : '') + '>'
+                  eh += self._escHtml(entry.name || entry.key || entry.id)
+                  eh += '</label></div>'
+                }
+                entriesDiv.innerHTML = eh || '<div style="font-size:9px;color:var(--pua-text-dim)">\u65E0\u8BCD\u6761</div>'
+              }).catch(function() {})
+            }
+          })(localCats[ci])
+        }
+
+        // 绑定分组checkbox展开/折叠词条
+        var catChecks = document.querySelectorAll('.branch-wb-cat-check')
+        for (var cci = 0; cci < catChecks.length; cci++) {
+          catChecks[cci].addEventListener('change', function() {
+            var catId = this.getAttribute('data-cat-id')
+            var entriesDiv = document.querySelector('.branch-wb-entries[data-cat-id="' + catId + '"]')
+            if (entriesDiv) entriesDiv.style.display = this.checked ? 'block' : 'none'
+            // 勾选分组时，勾选所有词条
+            if (this.checked) {
+              var entryChecks = document.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
+              for (var eci = 0; eci < entryChecks.length; eci++) {
+                entryChecks[eci].checked = true
+              }
+            }
+          })
+        }
+      }).catch(function() {
+        var wbLocal = document.getElementById('branch-wb-local')
+        if (wbLocal) wbLocal.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+      })
+    } else {
+      var wbLocalEl = document.getElementById('branch-wb-local')
+      if (wbLocalEl) wbLocalEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+    }
+
+    // ===== 异步加载角色列表 =====
+    if (this.roche.character && this.roche.character.list) {
+      this.roche.character.list().then(function(chars) {
+        var charList = document.getElementById('branch-char-list')
+        if (!charList) return
+        var h = ''
+        for (var i = 0; i < (chars || []).length; i++) {
+          var ch = chars[i]
+          var isSelected = false
+          for (var si = 0; si < (branch.selectedCharIds || []).length; si++) {
+            if (branch.selectedCharIds[si] === ch.id) { isSelected = true; break }
+          }
+          if (branch.charId === ch.id) isSelected = true
+          var displayName = ch.handle || ch.name || '?'
+          h += '<div style="margin-bottom:2px"><label style="font-size:10px;color:var(--pua-text);display:flex;align-items:center;gap:4px">'
+          h += '<input type="checkbox" class="branch-char-check" data-char-id="' + ch.id + '"' + (isSelected ? ' checked' : '') + '>'
+          h += self._escHtml(displayName)
+          h += '</label></div>'
+        }
+        if (!h) h = '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u89D2\u8272</div>'
+        charList.innerHTML = h
+      }).catch(function() {
+        var charList = document.getElementById('branch-char-list')
+        if (charList) charList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u52A0\u8F7D\u5931\u8D25</div>'
+      })
+    } else {
+      var charListEl = document.getElementById('branch-char-list')
+      if (charListEl) charListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim)">\u4E0D\u53EF\u7528</div>'
+    }
+
+    // ===== 保存按钮事件 =====
+    // 保存记忆绑定
+    var memSaveBtn = document.getElementById('branch-mem-save')
+    if (memSaveBtn) {
+      memSaveBtn.addEventListener('click', function() {
+        var checks = document.querySelectorAll('.branch-mem-check')
+        var ids = []
+        for (var i = 0; i < checks.length; i++) {
+          if (checks[i].checked) ids.push(checks[i].getAttribute('data-conv-id'))
+        }
+        branch.memoryConvIds = ids
+        self._saveBranches()
+        self._toast('\u8BB0\u5FC6\u7ED1\u5B9A\u5DF2\u4FDD\u5B58')
+      })
+    }
+
+    // 保存世界书挂载
+    var wbSaveBtn = document.getElementById('branch-wb-save')
+    if (wbSaveBtn) {
+      wbSaveBtn.addEventListener('click', function() {
+        var globalCheck = document.getElementById('branch-wb-global')
+        var local = {}
+        // 分组级别
+        var catChecks = document.querySelectorAll('.branch-wb-cat-check')
+        for (var i = 0; i < catChecks.length; i++) {
+          if (catChecks[i].checked) {
+            var catId = catChecks[i].getAttribute('data-cat-id')
+            // 检查是否有词条级别的勾选
+            var entryChecks = document.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
+            if (entryChecks.length > 0) {
+              var entryIds = []
+              for (var ei = 0; ei < entryChecks.length; ei++) {
+                if (entryChecks[ei].checked) entryIds.push(entryChecks[ei].getAttribute('data-entry-id'))
+              }
+              local[catId] = entryIds.length === entryChecks.length ? true : entryIds
+            } else {
+              local[catId] = true
+            }
+          }
+        }
+        branch.mountedWorldbooks = {
+          global: globalCheck ? globalCheck.checked : true,
+          local: local
+        }
+        self._saveBranches()
+        self._toast('\u4E16\u754C\u4E66\u6302\u8F7D\u5DF2\u4FDD\u5B58')
+      })
+    }
+
+    // 保存角色人设
+    var charSaveBtn = document.getElementById('branch-char-save')
+    if (charSaveBtn) {
+      charSaveBtn.addEventListener('click', function() {
+        var checks = document.querySelectorAll('.branch-char-check')
+        var ids = []
+        for (var i = 0; i < checks.length; i++) {
+          if (checks[i].checked) ids.push(checks[i].getAttribute('data-char-id'))
+        }
+        branch.selectedCharIds = ids
+        self._saveBranches()
+        self._toast('\u89D2\u8272\u4EBA\u8BBE\u5DF2\u4FDD\u5B58')
+      })
+    }
 
     modal.classList.add('show')
   }
@@ -2053,7 +2295,10 @@
           exportTime: p.exportTime,
           recordTime: p.recordTime,
           offlineSource: p.source
-        }
+        },
+        memoryConvIds: [],
+        mountedWorldbooks: { global: true, local: {} },
+        selectedCharIds: selectedCharId ? [selectedCharId] : []
       }
 
       this.branches.push(branch)
@@ -3215,6 +3460,14 @@
       }
     }
     order.push({ type: 'char', id: 'char' })
+    // 添加额外选中的角色
+    if (this.asmData.chars && this.asmData.chars.length > 0) {
+      for (var ci = 0; ci < this.asmData.chars.length; ci++) {
+        // 跳过主角色（已在 char 块中）
+        if (this.asmData.char && this.asmData.chars[ci].id === this.asmData.char.id) continue
+        order.push({ type: 'char', id: this.asmData.chars[ci].id })
+      }
+    }
     order.push({ type: 'user', id: 'user' })
     order.push({ type: 'world-pre', id: 'world-pre' })
     order.push({ type: 'memory-core', id: 'memory-core' })
@@ -3240,19 +3493,6 @@
     this.roche.storage.set('pua_asm_order', { order: this.asmOrder }).catch(function(e) {
       console.error('[PUA] save asm order failed', e)
     })
-  }
-
-  P._loadAsmWb = function() {
-    var self = this
-    if (!this.roche || !this.roche.storage) return
-    this.roche.storage.get('pua_asm_wb').then(function(data) {
-      if (data && data.ids) self.asmMountedWorldbooks = data.ids
-    }).catch(function() {})
-  }
-
-  P._saveAsmWb = function() {
-    if (!this.roche || !this.roche.storage) return
-    this.roche.storage.set('pua_asm_wb', { ids: this.asmMountedWorldbooks }).catch(function() {})
   }
 
   P._countWorldEntries = function(group) {
@@ -3308,18 +3548,31 @@
     }
 
     this.asmLoading = true
-    this.asmData = { branch: branch, char: null, userPersona: null, shortTerm: [], longTerm: null, worldbook: [], worldEntries: [] }
+    this.asmData = { branch: branch, char: null, chars: [], userPersona: null, shortTerm: [], longTerm: null, worldbook: [], worldEntries: [] }
     this._render()
 
     var promises = []
 
-    // 获取角色信息
+    // 获取角色信息（主角色）
     if (branch.charId && this.roche.character && this.roche.character.get) {
       promises.push(
         this.roche.character.get(branch.charId).then(function(ch) {
           self.asmData.char = ch || null
         }).catch(function() {})
       )
+    }
+
+    // 获取选中的角色人设（多个）
+    if (branch.selectedCharIds && branch.selectedCharIds.length > 0 && this.roche.character && this.roche.character.get) {
+      for (var sci = 0; sci < branch.selectedCharIds.length; sci++) {
+        (function(charId) {
+          promises.push(
+            self.roche.character.get(charId).then(function(ch) {
+              if (ch) self.asmData.chars.push(ch)
+            }).catch(function() {})
+          )
+        })(branch.selectedCharIds[sci])
+      }
     }
 
     // 获取用户人设
@@ -3331,27 +3584,48 @@
       )
     }
 
-    // 获取世界书（仅用户勾选的分类）
+    // 获取世界书（根据分支配置）
     if (this.roche.worldbook && this.roche.worldbook.list) {
       promises.push(
         this.roche.worldbook.list().then(function(cats) {
           self.asmData.worldbook = cats || []
           var entryPromises = []
-          var mountedIds = self.asmMountedWorldbooks || []
+          var wbConfig = branch.mountedWorldbooks || {}
+
           for (var ci = 0; ci < (cats || []).length; ci++) {
             (function(cat) {
-              // 只获取用户勾选的分类
-              var isMounted = false
-              for (var mi = 0; mi < mountedIds.length; mi++) {
-                if (mountedIds[mi] === cat.id) { isMounted = true; break }
+              var shouldLoad = false
+
+              // 全局世界书：自动加载
+              if (cat.scope === 'global' && wbConfig.global !== false) {
+                shouldLoad = true
               }
-              if (!isMounted) return
+
+              // 本地世界书：检查是否在配置中
+              if (cat.scope === 'local' && wbConfig.local && wbConfig.local[cat.id]) {
+                shouldLoad = true
+              }
+
+              if (!shouldLoad) return
 
               if (self.roche.worldbook && self.roche.worldbook.getEntries) {
                 entryPromises.push(
                   self.roche.worldbook.getEntries({ categoryId: cat.id }).then(function(entries) {
                     if (entries && entries.length > 0) {
+                      // 如果配置是数组（精确到词条），只加载勾选的词条
+                      var localConfig = wbConfig.local ? wbConfig.local[cat.id] : null
+                      var isExactEntries = Array.isArray(localConfig)
+
                       for (var ei = 0; ei < entries.length; ei++) {
+                        // 如果是精确词条选择，检查是否在列表中
+                        if (isExactEntries) {
+                          var found = false
+                          for (var fi = 0; fi < localConfig.length; fi++) {
+                            if (localConfig[fi] === entries[ei].id) { found = true; break }
+                          }
+                          if (!found) continue
+                        }
+
                         var pos = entries[ei].position || entries[ei].insertionOrder || entries[ei].depth || 0
                         var group = 'world-pre'
                         if (pos >= 2 && pos < 5) group = 'world-mid'
@@ -3370,10 +3644,10 @@
       )
     }
 
-    // 获取记忆数据（线上分支从API获取，线下分支用已有数据）
+    // 获取记忆数据
+    // 1. 主会话的记忆
     if (branch.source === 'online' && branch.sourceConvId) {
       var convId = branch.sourceConvId
-
       if (this.roche.memory && this.roche.memory.getShortTerm) {
         promises.push(
           this.roche.memory.getShortTerm({ conversationId: convId, limit: 100 }).then(function(msgs) {
@@ -3381,7 +3655,6 @@
           }).catch(function() {})
         )
       }
-
       if (this.roche.memory && this.roche.memory.getLongTerm) {
         promises.push(
           this.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
@@ -3393,6 +3666,38 @@
       // 离线分支：直接使用分支中的数据
       this.asmData.shortTerm = branch.messages || []
       this.asmData.longTerm = branch.longTermMemory || null
+    }
+
+    // 2. 绑定的其他会话的记忆
+    if (branch.memoryConvIds && branch.memoryConvIds.length > 0 && this.roche.memory && this.roche.memory.getLongTerm) {
+      for (var mci = 0; mci < branch.memoryConvIds.length; mci++) {
+        (function(memConvId) {
+          // 跳过主会话（已获取）
+          if (memConvId === branch.sourceConvId) return
+          promises.push(
+            self.roche.memory.getLongTerm({ conversationId: memConvId, limit: 100 }).then(function(data) {
+              if (!data) return
+              // 合并到长期记忆
+              if (!self.asmData.longTerm) {
+                self.asmData.longTerm = { core: null, facts: [], vectors: [] }
+              }
+              if (!self.asmData.longTerm.facts) self.asmData.longTerm.facts = []
+              // 合并核心记忆
+              if (data.core) {
+                if (!self.asmData.longTerm.core) {
+                  self.asmData.longTerm.core = data.core
+                }
+              }
+              // 合并事实记忆
+              if (data.facts && data.facts.length > 0) {
+                for (var fi = 0; fi < data.facts.length; fi++) {
+                  self.asmData.longTerm.facts.push(data.facts[fi])
+                }
+              }
+            }).catch(function() {})
+          )
+        })(branch.memoryConvIds[mci])
+      }
     }
 
     Promise.all(promises).then(function() {
@@ -3466,27 +3771,6 @@
     h += '<span style="font-size:9px;color:var(--pua-text-dim)">\u53D6\u6700\u8FD1N\u6761</span></div>'
     h += '</div>'
 
-    // Config section: World book mounting
-    h += '<div class="asm-config-section">'
-    h += '<div class="asm-config-title">\u4E16\u754C\u4E66\u6302\u8F7D</div>'
-    var wbCats = this.asmData.worldbook || []
-    if (wbCats.length === 0) {
-      h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u70B9\u51FB\u201C\u5237\u65B0\u6570\u636E\u201D\u52A0\u8F7D\u4E16\u754C\u4E66\u5206\u7C7B</div>'
-    } else {
-      for (var wi = 0; wi < wbCats.length; wi++) {
-        var wbCat = wbCats[wi]
-        var isMounted = false
-        for (var wmi = 0; wmi < this.asmMountedWorldbooks.length; wmi++) {
-          if (this.asmMountedWorldbooks[wmi] === wbCat.id) { isMounted = true; break }
-        }
-        h += '<div class="asm-config-row">'
-        h += '<input type="checkbox" class="asm-wb-check" data-id="' + wbCat.id + '"' + (isMounted ? ' checked' : '') + '>'
-        h += '<span style="font-size:10px;color:var(--pua-text)">' + this._escHtml(wbCat.name || wbCat.id) + '</span>'
-        h += '</div>'
-      }
-    }
-    h += '</div>'
-
     // Config section: Legend
     h += '<div class="asm-config-section">'
     h += '<div class="asm-config-title">\u56FE\u4F8B</div>'
@@ -3513,6 +3797,10 @@
     var factCount = this.asmData.longTerm && this.asmData.longTerm.facts ? this.asmData.longTerm.facts.length : 0
     var weCount = this.asmData.worldEntries ? this.asmData.worldEntries.length : 0
     h += '<div class="asm-config-row"><span class="asm-config-label">\u89D2\u8272</span><span style="font-size:11px;color:var(--pua-text)">' + self._escHtml(charName) + '</span></div>'
+    var extraCharCount = this.asmData.chars ? this.asmData.chars.length : 0
+    if (extraCharCount > 0) {
+      h += '<div class="asm-config-row"><span class="asm-config-label">\u989D\u5916\u89D2\u8272</span><span style="font-size:11px;color:var(--pua-text)">' + extraCharCount + ' \u4E2A</span></div>'
+    }
     h += '<div class="asm-config-row"><span class="asm-config-label">\u804A\u5929\u6D88\u606F</span><span style="font-size:11px;color:var(--pua-text)">' + msgCount + ' \u6761</span></div>'
     h += '<div class="asm-config-row"><span class="asm-config-label">\u6838\u5FC3\u8BB0\u5FC6</span><span style="font-size:11px;color:var(--pua-text)">' + coreMem + '</span></div>'
     h += '<div class="asm-config-row"><span class="asm-config-label">\u4E8B\u5B9E\u8BB0\u5FC6</span><span style="font-size:11px;color:var(--pua-text)">' + factCount + ' \u6761</span></div>'
@@ -3537,7 +3825,7 @@
         if (self.asmBranchId) {
           self._fetchAsmData()
         } else {
-          self.asmData = { branch: null, char: null, userPersona: null, shortTerm: [], longTerm: null, worldbook: [], worldEntries: [] }
+          self.asmData = { branch: null, char: null, chars: [], userPersona: null, shortTerm: [], longTerm: null, worldbook: [], worldEntries: [] }
           self._render()
         }
       })
@@ -3546,34 +3834,6 @@
     // Bind config input events
     var depthInput = document.getElementById('asm-depth')
     if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
-
-    // Bind world book checkbox events
-    var wbChecks = document.querySelectorAll('.asm-wb-check')
-    for (var wci = 0; wci < wbChecks.length; wci++) {
-      (function(cb) {
-        cb.addEventListener('change', function() {
-          var id = this.getAttribute('data-id')
-          var mounted = self.asmMountedWorldbooks
-          if (this.checked) {
-            var found = false
-            for (var fi = 0; fi < mounted.length; fi++) {
-              if (mounted[fi] === id) { found = true; break }
-            }
-            if (!found) mounted.push(id)
-          } else {
-            var newMounted = []
-            for (var ri = 0; ri < mounted.length; ri++) {
-              if (mounted[ri] !== id) newMounted.push(mounted[ri])
-            }
-            self.asmMountedWorldbooks = newMounted
-          }
-          self._saveAsmWb()
-          // 重新获取世界书词条
-          self.asmData.worldEntries = []
-          self._fetchAsmData()
-        })
-      })(wbChecks[wci])
-    }
 
     // Bind drag events for all blocks
     this._bindAsmDragEvents()
@@ -3609,7 +3869,16 @@
           break
         case 'char':
           typeClass = 'asm-type-char'
-          var charDisplay = this.asmData.char ? (this.asmData.char.handle || this.asmData.char.name) : '\u672A\u52A0\u8F7D'
+          var charObj = null
+          if (item.id === 'char') {
+            charObj = this.asmData.char
+          } else {
+            // 从 chars 数组中查找
+            for (var csi = 0; csi < (this.asmData.chars || []).length; csi++) {
+              if (this.asmData.chars[csi].id === item.id) { charObj = this.asmData.chars[csi]; break }
+            }
+          }
+          var charDisplay = charObj ? (charObj.handle || charObj.name) : '\u672A\u52A0\u8F7D'
           title = '\u89D2\u8272\u5361 \xB7 ' + this._escHtml(charDisplay)
           body = '\u70B9\u51FB\u67E5\u770B \xB7 \u53EF\u62D6\u62FD'
           break
@@ -3772,9 +4041,17 @@
         h += '<button class="pua-btn pua-btn-gold asm-edit-save" data-id="' + preset.id + '">\u4FDD\u5B58</button></div>'
         break
       case 'char':
-        var charText = this.asmData.char ? (this.asmData.char.persona || this.asmData.char.bio || '') : ''
+        var charObj3 = null
+        if (id === 'char') {
+          charObj3 = this.asmData.char
+        } else {
+          for (var dci = 0; dci < (this.asmData.chars || []).length; dci++) {
+            if (this.asmData.chars[dci].id === id) { charObj3 = this.asmData.chars[dci]; break }
+          }
+        }
+        var charText3 = charObj3 ? (charObj3.persona || charObj3.bio || '') : ''
         h += '<div class="pua-field"><div class="pua-field-label">\u89D2\u8272\u8BBE\u5B9A</div>'
-        h += '<textarea class="pua-detail-textarea" readonly>' + this._escHtml(charText) + '</textarea></div>'
+        h += '<textarea class="pua-detail-textarea" readonly>' + this._escHtml(charText3) + '</textarea></div>'
         break
       case 'user':
         var userText = this.asmData.userPersona ? (this.asmData.userPersona.persona || this.asmData.userPersona.bio || '') : ''
@@ -3920,9 +4197,17 @@
           }
           break
         case 'char':
-          if (this.asmData.char) {
-            var charText = this.asmData.char.persona || this.asmData.char.bio || ''
-            if (charText) messages.push({ role: 'system', content: '[\u89D2\u8272\u8BBE\u5B9A]\n' + charText })
+          var charObj2 = null
+          if (item.id === 'char') {
+            charObj2 = this.asmData.char
+          } else {
+            for (var bci = 0; bci < (this.asmData.chars || []).length; bci++) {
+              if (this.asmData.chars[bci].id === item.id) { charObj2 = this.asmData.chars[bci]; break }
+            }
+          }
+          if (charObj2) {
+            var charText2 = charObj2.persona || charObj2.bio || ''
+            if (charText2) messages.push({ role: 'system', content: '[\u89D2\u8272\u8BBE\u5B9A \xB7 ' + (charObj2.handle || charObj2.name) + ']\n' + charText2 })
           }
           break
         case 'user':
