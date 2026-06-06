@@ -5305,20 +5305,33 @@
     contentEl.scrollTop = savedScrollTop
 
     // 分支切换事件
-    var branchSelect = document.getElementById('mem-branch-select')
+    var branchSelect = contentEl.querySelector('#mem-branch-select')
     if (branchSelect) {
       branchSelect.addEventListener('change', function() {
         self._currentMemBranchId = this.value
-        self._render()
+        // 选择分支后，自动从Roche加载该分支绑定的记忆
+        if (this.value) {
+          var selBranch = null
+          for (var sbi = 0; sbi < branches.length; sbi++) {
+            if (branches[sbi].id === this.value) { selBranch = branches[sbi]; break }
+          }
+          if (selBranch && selBranch.memoryConvIds && selBranch.memoryConvIds.length > 0) {
+            self._loadMemFromBranches(selBranch.memoryConvIds, selBranch.id)
+          } else {
+            self._render()
+          }
+        } else {
+          self._render()
+        }
       })
     }
 
     // 保存核心记忆
-    var coreSaveBtn = document.getElementById('mem-core-save')
+    var coreSaveBtn = contentEl.querySelector('#mem-core-save')
     if (coreSaveBtn) {
       coreSaveBtn.addEventListener('click', function() {
-        var relEl = document.getElementById('mem-core-rel')
-        var evtEl = document.getElementById('mem-core-evt')
+        var relEl = contentEl.querySelector('#mem-core-rel')
+        var evtEl = contentEl.querySelector('#mem-core-evt')
         if (!memData.core) memData.core = { relationship: '', events: '' }
         memData.core.relationship = relEl ? relEl.value : ''
         memData.core.events = evtEl ? evtEl.value : ''
@@ -5328,7 +5341,7 @@
     }
 
     // 添加事实记忆
-    var addFactBtn = document.getElementById('mem-fact-add')
+    var addFactBtn = contentEl.querySelector('#mem-fact-add')
     if (addFactBtn) {
       addFactBtn.addEventListener('click', function() {
         self._showAddFactModal(memData, currentBranchId)
@@ -5336,7 +5349,7 @@
     }
 
     // 生成向量
-    var embedBtn = document.getElementById('mem-fact-embed')
+    var embedBtn = contentEl.querySelector('#mem-fact-embed')
     if (embedBtn) {
       embedBtn.addEventListener('click', function() {
         self._generateEmbeddings(memData, currentBranchId)
@@ -5344,7 +5357,7 @@
     }
 
     // 总结记忆
-    var summarizeBtn = document.getElementById('mem-fact-summarize')
+    var summarizeBtn = contentEl.querySelector('#mem-fact-summarize')
     if (summarizeBtn) {
       summarizeBtn.addEventListener('click', function() {
         self._summarizeFacts(memData, currentBranchId)
@@ -5352,7 +5365,7 @@
     }
 
     // 清空事实记忆
-    var clearFactBtn = document.getElementById('mem-fact-clear')
+    var clearFactBtn = contentEl.querySelector('#mem-fact-clear')
     if (clearFactBtn) {
       clearFactBtn.addEventListener('click', function() {
         if (!confirm('\u786E\u5B9A\u6E05\u7A7A\u5168\u90E8\u4E8B\u5B9E\u8BB0\u5FC6\uFF1F')) return
@@ -5554,15 +5567,24 @@
 
   P._loadMemFromBranches = function(convIds, branchId) {
     var self = this
-    if (!convIds || convIds.length === 0) return
-    if (!this.roche.memory || !this.roche.memory.getLongTerm) return
+    if (!convIds || convIds.length === 0) {
+      this._toast('\u65E0\u7ED1\u5B9A\u7684\u8BB0\u5FC6\u4F1A\u8BDD')
+      return
+    }
+    if (!this.roche || !this.roche.memory || !this.roche.memory.getLongTerm) {
+      this._toast('Roche \u8BB0\u5FC6 API \u4E0D\u53EF\u7528')
+      return
+    }
 
+    this._toast('\u6B63\u5728\u52A0\u8F7D\u8BB0\u5FC6...')
     var memData = this._loadMemData(branchId)
+    var loaded = 0
+    var total = convIds.length
 
     for (var i = 0; i < convIds.length; i++) {
       (function(convId) {
         self.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
-          if (!data) return
+          if (!data) { loaded++; if (loaded >= total) { self._saveMemData(memData, branchId); self._toast('\u8BB0\u5FC6\u52A0\u8F7D\u5B8C\u6210'); self._render() } return }
 
           // 合并核心记忆 → relationship
           if (data.core) {
@@ -5592,20 +5614,32 @@
                 memData.facts.push({
                   id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
                   text: factText,
-                  summary: '',       // 留空，待副AI总结
-                  keywords: '',      // 留空，待副AI总结
+                  summary: '',
+                  keywords: '',
                   embedding: null,
                   timestamp: new Date().toLocaleString('zh-CN'),
                   conversationId: convId,
                   source: 'roche',
-                  needsSummary: true  // 标记需要总结
+                  needsSummary: true
                 })
               }
             }
           }
 
+          loaded++
           self._saveMemData(memData, branchId)
-        }).catch(function() {})
+          if (loaded >= total) {
+            self._toast('\u8BB0\u5FC6\u52A0\u8F7D\u5B8C\u6210 (' + memData.facts.length + ' \u6761\u4E8B\u5B9E\u8BB0\u5FC6)')
+            self._render()
+          }
+        }).catch(function(e) {
+          loaded++
+          if (loaded >= total) {
+            self._saveMemData(memData, branchId)
+            self._toast('\u8BB0\u5FC6\u52A0\u8F7D\u90E8\u5206\u5931\u8D25')
+            self._render()
+          }
+        })
       })(convIds[i])
     }
   }
