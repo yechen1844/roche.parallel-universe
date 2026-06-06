@@ -536,6 +536,43 @@
     '  0%, 100% { transform:scale(1); box-shadow:0 0 40px var(--pua-accent-glow); }',
     '  50% { transform:scale(1.08); box-shadow:0 0 60px var(--pua-accent-glow); }',
     '}',
+
+    '/* ── 助手页面 ── */',
+    '.pua-assistant-layout { display:flex; flex-direction:column; height:100%; }',
+    '.pua-assistant-header { padding:8px 14px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }',
+    '.pua-assistant-api-select { background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:4px; padding:4px 8px; color:var(--pua-text); font-size:10px; font-family:inherit; outline:none; }',
+    '.pua-assistant-api-select:focus { border-color:var(--pua-accent); }',
+    '.pua-assistant-chat { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }',
+    '.pua-assistant-chat::-webkit-scrollbar { width:4px; }',
+    '.pua-assistant-chat::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }',
+    '.pua-assistant-msg { max-width:85%; padding:10px 14px; border-radius:12px; font-size:11px; line-height:1.6; word-break:break-word; }',
+    '.pua-assistant-msg-user { align-self:flex-end; background:var(--pua-accent-glow); border:1px solid var(--pua-border-active); color:var(--pua-accent-text); border-bottom-right-radius:4px; }',
+    '.pua-assistant-msg-assistant { align-self:flex-start; background:var(--pua-bg-card); border:1px solid var(--pua-border); color:var(--pua-text); border-bottom-left-radius:4px; }',
+    '.pua-assistant-msg-role { font-size:9px; font-weight:600; margin-bottom:4px; opacity:0.6; }',
+    '.pua-assistant-action-card { margin-top:8px; padding:8px 10px; border-radius:8px; background:rgba(78,201,160,0.08); border:1px solid rgba(78,201,160,0.2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }',
+    '.pua-assistant-action-label { font-size:10px; color:var(--pua-success); font-weight:600; }',
+    '.pua-assistant-undo-btn { font-size:9px; padding:2px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-assistant-undo-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
+    '.pua-assistant-undo-btn.done { opacity:0.4; cursor:default; text-decoration:line-through; }',
+    '.pua-assistant-input-area { padding:10px 14px; border-top:1px solid var(--pua-border); }',
+    '.pua-assistant-attach-row { display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; }',
+    '.pua-assistant-attach-btn { font-size:9px; padding:3px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-assistant-attach-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
+    '.pua-assistant-attach-dropdown { position:relative; display:inline-block; }',
+    '.pua-assistant-attach-list { position:absolute; bottom:100%; left:0; margin-bottom:4px; min-width:220px; max-height:200px; overflow-y:auto; background:var(--pua-bg-solid); border:1px solid var(--pua-border); border-radius:8px; box-shadow:var(--pua-shadow); z-index:100; padding:6px; display:none; }',
+    '.pua-assistant-attach-list.open { display:block; }',
+    '.pua-assistant-attach-item { display:flex; align-items:center; gap:6px; padding:5px 6px; border-radius:4px; cursor:pointer; font-size:10px; color:var(--pua-text-sub); transition:var(--pua-transition); }',
+    '.pua-assistant-attach-item:hover { background:var(--pua-bg-card-hover); color:var(--pua-text); }',
+    '.pua-assistant-input-row { display:flex; gap:8px; }',
+    '.pua-assistant-input { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:8px; padding:8px 12px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; resize:none; min-height:36px; max-height:120px; }',
+    '.pua-assistant-input:focus { border-color:var(--pua-accent); }',
+    '.pua-assistant-send { padding:8px 16px; border-radius:8px; border:none; background:linear-gradient(135deg,var(--pua-accent-dim),var(--pua-accent)); color:#121216; font-size:11px; font-weight:600; cursor:pointer; transition:var(--pua-transition); }',
+    '.pua-assistant-send:hover { opacity:0.9; }',
+    '.pua-assistant-send:disabled { opacity:0.4; cursor:default; }',
+    '.pua-assistant-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--pua-text-dim); }',
+    '.pua-assistant-empty-icon { font-size:32px; margin-bottom:10px; opacity:0.3; }',
+    '.pua-assistant-empty-text { font-size:11px; }',
+    '.pua-assistant-typing { font-size:10px; color:var(--pua-accent); opacity:0.7; padding:4px 0; }',
   ].join('\n')
 
   /* ════════════════════════════════════════════════════════════
@@ -595,6 +632,9 @@
     }
     this.asmOrder = []
     this.asmLoading = false
+    // 助手数据
+    this._assistantData = null
+    this._assistantSending = false
     // 移动端状态
     this._sidebarOpen = false
     this._mobileDetailOpen = false
@@ -640,6 +680,7 @@
     this._loadAsmConfig()
     this._loadAsmOrder()
     this._loadSettings()
+    this._loadAssistantData()
     this._currentMemBranchId = ''
 
     // 异步加载分支，完成后渲染
@@ -1050,6 +1091,7 @@
       { id: 'memory', icon: '\u263D', label: '\u8BB0\u5FC6\u7CFB\u7EDF' },
       { id: 'chat', icon: '\uD83D\uDCAC', label: '\u5BF9\u8BDD', badge: 0 },
       { id: 'theme', icon: '\uD83C\uDFA8', label: '\u7F8E\u5316', badge: 0 },
+      { id: 'assistant', icon: '\u2728', label: '\u52A9\u624B', badge: 0 },
       { id: 'settings', icon: '\u2691', label: '\u8BBE\u7F6E' },
     ]
 
@@ -1141,6 +1183,7 @@
       case 'memory': this._renderMemory(titleEl, actionsEl, contentEl); break
       case 'chat': this._renderChat(titleEl, actionsEl, contentEl); break
       case 'theme': this._renderTheme(titleEl, actionsEl, contentEl); break
+      case 'assistant': this._renderAssistant(titleEl, actionsEl, contentEl); break
       case 'settings': this._renderSettings(titleEl, actionsEl, contentEl); break
     }
   }
@@ -4337,6 +4380,230 @@
     })
   }
 
+  /* ── 绑定导出 ── */
+  P._showBundleExportModal = function() {
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
+
+    var body = '<div style="font-size:11px;color:var(--pua-text-sub);margin-bottom:12px">\u9009\u62E9\u8981\u5BFC\u51FA\u7684\u5185\u5BB9\uFF0C\u5C06\u6253\u5305\u4E3A\u4E00\u4E2A JSON \u6587\u4EF6</div>'
+    body += '<div style="display:flex;flex-direction:column;gap:10px">'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
+    body += '<input type="checkbox" id="bundle-export-presets" checked>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u9884\u8BBE\u6761\u76EE</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.presets.length + ' \u9879</div></div></label>'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
+    body += '<input type="checkbox" id="bundle-export-regexes" checked>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u6B63\u5219\u89C4\u5219</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.regexes.length + ' \u9879</div></div></label>'
+    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
+    body += '<input type="checkbox" id="bundle-export-asmorder" checked>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u7EC4\u88C5\u987A\u5E8F</div><div style="font-size:9px;color:var(--pua-text-dim)">' + (this.asmOrder ? this.asmOrder.length : 0) + ' \u9879</div></div></label>'
+    body += '</div>'
+
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (modalBody) modalBody.innerHTML = body
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u7ED1\u5B9A\u5BFC\u51FA'
+
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+    var confirmBtn = document.createElement('button')
+    confirmBtn.className = 'pua-btn pua-btn-gold'
+    confirmBtn.textContent = '\u5BFC\u51FA'
+    confirmBtn.addEventListener('click', function() { self._doBundleExport() })
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+    footer.appendChild(cancelBtn)
+    footer.appendChild(confirmBtn)
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+    modal.classList.add('show')
+  }
+
+  P._doBundleExport = function() {
+    var modal = this._modalOverlay
+    if (!modal) return
+    var expPresets = modal.querySelector('#bundle-export-presets')
+    var expRegexes = modal.querySelector('#bundle-export-regexes')
+    var expAsmOrder = modal.querySelector('#bundle-export-asmorder')
+
+    var bundle = {
+      version: 1,
+      type: 'pua_asm_bundle',
+      presets: (expPresets && expPresets.checked) ? this.presets.slice() : [],
+      regexes: (expRegexes && expRegexes.checked) ? this.regexes.slice() : [],
+      asmOrder: (expAsmOrder && expAsmOrder.checked) ? (this.asmOrder || []).slice() : [],
+      exportDate: new Date().toISOString()
+    }
+
+    var now = new Date()
+    var y = now.getFullYear()
+    var m = ('0' + (now.getMonth() + 1)).slice(-2)
+    var d = ('0' + now.getDate()).slice(-2)
+    var filename = 'pua-bundle-' + y + m + d + '.json'
+
+    var blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+    var url = URL.createObjectURL(blob)
+    var a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+
+    this._closeModal()
+    this._toast('\u7ED1\u5B9A\u5BFC\u51FA\u5B8C\u6210')
+  }
+
+  /* ── 绑定导入 ── */
+  P._showBundleImportModal = function() {
+    var self = this
+    var modal = this._modalOverlay
+    if (!modal) return
+
+    var body = '<div style="font-size:11px;color:var(--pua-text-sub);margin-bottom:12px">\u9009\u62E9\u5BFC\u5165\u7684\u7ED1\u5B9A\u6587\u4EF6</div>'
+    body += '<input type="file" id="bundle-import-file" accept=".json" style="width:100%;font-size:11px;color:var(--pua-text);margin-bottom:10px">'
+    body += '<div id="bundle-import-preview" style="display:none"></div>'
+
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (modalBody) modalBody.innerHTML = body
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = '\u7ED1\u5B9A\u5BFC\u5165'
+
+    var footer = modal.querySelector('.pua-modal-footer')
+    if (footer) footer.remove()
+    footer = document.createElement('div')
+    footer.className = 'pua-modal-footer'
+    var confirmBtn = document.createElement('button')
+    confirmBtn.className = 'pua-btn pua-btn-gold'
+    confirmBtn.id = 'bundle-import-confirm'
+    confirmBtn.textContent = '\u5BFC\u5165'
+    confirmBtn.style.display = 'none'
+    confirmBtn.addEventListener('click', function() { self._doBundleImport() })
+    var cancelBtn = document.createElement('button')
+    cancelBtn.className = 'pua-btn'
+    cancelBtn.textContent = '\u53D6\u6D88'
+    cancelBtn.addEventListener('click', function() { self._closeModal() })
+    footer.appendChild(cancelBtn)
+    footer.appendChild(confirmBtn)
+    var modalInner = modal.querySelector('.pua-modal')
+    if (modalInner) modalInner.appendChild(footer)
+
+    var fileInput = modal.querySelector('#bundle-import-file')
+    if (fileInput) {
+      fileInput.addEventListener('change', function() {
+        var file = this.files && this.files[0]
+        if (!file) return
+        var reader = new FileReader()
+        reader.onload = function(e) {
+          try {
+            var data = JSON.parse(e.target.result)
+            if (data.type !== 'pua_asm_bundle') {
+              self._toast('\u975E\u6CD5\u7684\u7ED1\u5B9A\u6587\u4EF6\u683C\u5F0F')
+              return
+            }
+            self._parsedBundleData = data
+            var preview = modal.querySelector('#bundle-import-preview')
+            if (preview) {
+              var ph = '<div style="padding:10px;border:1px solid var(--pua-border);border-radius:8px;background:var(--pua-bg-card)">'
+              ph += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent-text);margin-bottom:8px">\u6587\u4EF6\u9884\u89C8</div>'
+              ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:4px">\u9884\u8BBE: ' + (data.presets ? data.presets.length : 0) + ' \u9879</div>'
+              ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:4px">\u6B63\u5219: ' + (data.regexes ? data.regexes.length : 0) + ' \u9879</div>'
+              ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:10px">\u7EC4\u88C5\u987A\u5E8F: ' + (data.asmOrder && data.asmOrder.length > 0 ? data.asmOrder.length + ' \u9879' : '\u65E0') + '</div>'
+              ph += '<div style="display:flex;flex-direction:column;gap:8px">'
+              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-presets" checked> \u5BFC\u5165\u9884\u8BBE (' + (data.presets ? data.presets.length : 0) + ')</label>'
+              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-regexes" checked> \u5BFC\u5165\u6B63\u5219 (' + (data.regexes ? data.regexes.length : 0) + ')</label>'
+              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-asmorder" checked> \u5BFC\u5165\u7EC4\u88C5\u987A\u5E8F</label>'
+              ph += '</div></div>'
+              preview.innerHTML = ph
+              preview.style.display = 'block'
+            }
+            var confirmBtn2 = modal.querySelector('#bundle-import-confirm')
+            if (confirmBtn2) confirmBtn2.style.display = ''
+          } catch(err) {
+            self._toast('\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A\u6709\u6548\u7684 JSON')
+          }
+        }
+        reader.readAsText(file, 'UTF-8')
+      })
+    }
+
+    modal.classList.add('show')
+  }
+
+  P._doBundleImport = function() {
+    var modal = this._modalOverlay
+    if (!modal) return
+    var data = this._parsedBundleData
+    if (!data) { this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6570\u636E'); return }
+
+    var impPresets = modal.querySelector('#bundle-import-presets')
+    var impRegexes = modal.querySelector('#bundle-import-regexes')
+    var impAsmOrder = modal.querySelector('#bundle-import-asmorder')
+
+    var presetCount = 0, regexCount = 0, asmOrderImported = false
+    var count = 0
+
+    if (impPresets && impPresets.checked && data.presets && data.presets.length) {
+      for (var pi = 0; pi < data.presets.length; pi++) {
+        var src = data.presets[pi]
+        this.presets.push({
+          id: 'p' + Date.now() + '_' + count,
+          title: src.title || '\u672A\u547D\u540D',
+          role: src.role || 'system',
+          on: src.on !== undefined ? src.on : true,
+          content: src.content || '',
+          outRegex: src.outRegex || '',
+          outRegexOn: src.outRegexOn || false,
+          inRegex: src.inRegex || '',
+          inRegexOn: src.inRegexOn || false,
+          dMin: src.dMin || 0,
+          dMax: src.dMax || Infinity
+        })
+        count++
+        presetCount++
+      }
+      this._savePresets()
+    }
+
+    if (impRegexes && impRegexes.checked && data.regexes && data.regexes.length) {
+      for (var ri = 0; ri < data.regexes.length; ri++) {
+        var src2 = data.regexes[ri]
+        this.regexes.push({
+          id: 'r' + Date.now() + '_' + count,
+          name: src2.name || '\u672A\u547D\u540D',
+          regex: src2.regex || '',
+          html: src2.html || '',
+          type: src2.type || 'render',
+          on: src2.on !== undefined ? src2.on : true,
+          dMin: src2.dMin || 0,
+          dMax: src2.dMax || Infinity
+        })
+        count++
+        regexCount++
+      }
+      this._saveRegexes()
+    }
+
+    if (impAsmOrder && impAsmOrder.checked && data.asmOrder && data.asmOrder.length) {
+      this.asmOrder = data.asmOrder.slice()
+      this._saveAsmOrder()
+      asmOrderImported = true
+    }
+
+    this._parsedBundleData = null
+    this._closeModal()
+
+    var summary = ''
+    if (presetCount > 0) summary += '\u9884\u8BBE ' + presetCount + ' \u9879'
+    if (regexCount > 0) summary += (summary ? ', ' : '') + '\u6B63\u5219 ' + regexCount + ' \u9879'
+    if (asmOrderImported) summary += (summary ? ', ' : '') + '\u7EC4\u88C5\u987A\u5E8F'
+    this._toast('\u7ED1\u5B9A\u5BFC\u5165\u5B8C\u6210: ' + (summary || '\u65E0\u5185\u5BB9'))
+    this._render()
+  }
+
   P._countWorldEntries = function(group) {
     var entries = this.asmData.worldEntries || []
     var count = 0
@@ -4614,9 +4881,13 @@
     var btnRefresh = this._mkBtn('\u5237\u65B0\u6570\u636E', 'pua-btn', function() { self._fetchAsmData() })
     var btnPreview = this._mkBtn('\u9884\u89C8\u4E0A\u4E0B\u6587', 'pua-btn pua-btn-gold', function() { self._previewAssembly() })
     var btnSave = this._mkBtn('\u4FDD\u5B58', 'pua-btn', function() { self._saveAsmConfig(); self._toast('\u7EC4\u88C5\u914D\u7F6E\u5DF2\u4FDD\u5B58') })
+    var btnBundleExport = this._mkBtn('\uD83D\uDCE6 \u7ED1\u5B9A\u5BFC\u51FA', 'pua-btn', function() { self._showBundleExportModal() })
+    var btnBundleImport = this._mkBtn('\uD83D\uDCE5 \u7ED1\u5B9A\u5BFC\u5165', 'pua-btn', function() { self._showBundleImportModal() })
     actionsEl.appendChild(btnRefresh)
     actionsEl.appendChild(btnPreview)
     actionsEl.appendChild(btnSave)
+    actionsEl.appendChild(btnBundleExport)
+    actionsEl.appendChild(btnBundleImport)
 
     // Main content
     var h = '<div class="asm-layout">'
@@ -5420,6 +5691,541 @@
     this.toastTimer = setTimeout(function() {
       toast.classList.remove('show')
     }, 2500)
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     预设与美化助手
+     ════════════════════════════════════════════════════════════ */
+
+  P._loadAssistantData = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.get('pua_assistant').then(function(data) {
+      if (data) {
+        self._assistantData = data
+      } else {
+        self._assistantData = { apiChoice: 'sub', history: [], undoStack: [] }
+      }
+    }).catch(function() {
+      self._assistantData = { apiChoice: 'sub', history: [], undoStack: [] }
+    })
+  }
+
+  P._saveAssistantData = function() {
+    if (!this.roche || !this.roche.storage) return
+    if (!this._assistantData) this._assistantData = { apiChoice: 'sub', history: [], undoStack: [] }
+    this.roche.storage.set('pua_assistant', this._assistantData).catch(function(e) {
+      console.error('[PUA] save assistant data failed', e)
+    })
+  }
+
+  P._getAssistantSystemPrompt = function() {
+    return '\u4F60\u662F\u201C\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986\u201D\u7684\u9884\u8BBE\u4E0E\u7F8E\u5316\u52A9\u624B\u3002\u4F60\u53EF\u4EE5\u5E2E\u52A9\u7528\u6237\uFF1A\n1. \u521B\u5EFA\u65B0\u7684\u9884\u8BBE\u6761\u76EE\uFF08system prompt\uFF09\n2. \u521B\u5EFA\u65B0\u7684\u6B63\u5219\u89C4\u5219\uFF08render/filter/replace\uFF09\n3. \u7F16\u8F91\u73B0\u6709\u7684\u9884\u8BBE\u548C\u6B63\u5219\n4. \u63D0\u4F9B\u7F8E\u5316\u5EFA\u8BAE\n\n\u5F53\u4F60\u9700\u8981\u6DFB\u52A0\u6216\u4FEE\u6539\u9884\u8BBE/\u6B63\u5219\u65F6\uFF0C\u8BF7\u7528\u4EE5\u4E0BJSON\u683C\u5F0F\u8F93\u51FA\uFF1A\n\u3010ADD_PRESET\u3011{"title":"...","content":"...","role":"system","outRegex":"","outRegexOn":false,"inRegex":"","inRegexOn":false}\u3010/ADD_PRESET\u3011\n\u3010ADD_REGEX\u3011{"name":"...","regex":"...","html":"...","type":"render"}\u3010/ADD_REGEX\u3011\n\u3010EDIT_PRESET\u3011{"id":"...","title":"...","content":"..."}\u3010/EDIT_PRESET\u3011\n\u3010EDIT_REGEX\u3011{"id":"...","name":"...","regex":"...","html":"..."}\u3010/EDIT_REGEX\u3011\n\n\u6BCF\u6B21\u53EA\u6267\u884C\u4E00\u4E2A\u64CD\u4F5C\u3002\u7528\u81EA\u7136\u8BED\u8A00\u89E3\u91CA\u4F60\u5728\u505A\u4EC0\u4E48\u3002\n\u7EDD\u4E0D\u5220\u9664\u4EFB\u4F55\u6761\u76EE\uFF0C\u53EA\u6DFB\u52A0\u6216\u4FEE\u6539\u3002'
+  }
+
+  P._renderAssistant = function(titleEl, actionsEl, contentEl) {
+    var self = this
+    titleEl.textContent = '\u9884\u8BBE\u4E0E\u7F8E\u5316\u52A9\u624B'
+    actionsEl.innerHTML = ''
+
+    if (!this._assistantData) {
+      this._assistantData = { apiChoice: 'sub', history: [], undoStack: [] }
+    }
+    var data = this._assistantData
+
+    var h = '<div class="pua-assistant-layout">'
+
+    // Header with API selector
+    h += '<div class="pua-assistant-header">'
+    h += '<span style="font-size:10px;color:var(--pua-text-sub)">API:</span>'
+    h += '<select class="pua-assistant-api-select" id="ast-api-select">'
+    h += '<option value="sub"' + (data.apiChoice === 'sub' ? ' selected' : '') + '>\u526F API</option>'
+    h += '<option value="vec"' + (data.apiChoice === 'vec' ? ' selected' : '') + '>\u5411\u91CF API</option>'
+    h += '</select>'
+    h += '<button class="pua-btn pua-btn-sm" id="ast-clear-history" style="margin-left:auto">\u6E05\u7A7A\u5BF9\u8BDD</button>'
+    h += '</div>'
+
+    // Chat area
+    h += '<div class="pua-assistant-chat" id="ast-chat">'
+
+    if (!data.history || data.history.length === 0) {
+      h += '<div class="pua-assistant-empty">'
+      h += '<div class="pua-assistant-empty-icon">\u2728</div>'
+      h += '<div class="pua-assistant-empty-text">\u5411\u52A9\u624B\u8BE2\u95EE\uFF0C\u5982\u201C\u5E2E\u6211\u6DFB\u52A0\u4E00\u4E2A\u89D2\u8272\u626E\u6F14\u9884\u8BBE\u201D</div>'
+      h += '</div>'
+    } else {
+      for (var mi = 0; mi < data.history.length; mi++) {
+        var msg = data.history[mi]
+        if (msg.role === 'user') {
+          h += '<div class="pua-assistant-msg pua-assistant-msg-user">'
+          h += '<div class="pua-assistant-msg-role">\uD83D\uDC64 \u4F60</div>'
+          h += '<div>' + self._escHtml(msg.content) + '</div>'
+          h += '</div>'
+        } else if (msg.role === 'assistant') {
+          h += '<div class="pua-assistant-msg pua-assistant-msg-assistant">'
+          h += '<div class="pua-assistant-msg-role">\u2728 \u52A9\u624B</div>'
+          // Render content with action cards
+          h += self._renderAssistantContent(msg)
+          h += '</div>'
+        }
+      }
+    }
+
+    h += '</div>'
+
+    // Input area
+    h += '<div class="pua-assistant-input-area">'
+    h += '<div class="pua-assistant-attach-row">'
+    // Attach presets dropdown
+    h += '<div class="pua-assistant-attach-dropdown" id="ast-attach-preset-dropdown">'
+    h += '<button class="pua-assistant-attach-btn" id="ast-attach-preset-btn">\uD83D\uDCCE \u9009\u62E9\u9884\u8BBE</button>'
+    h += '<div class="pua-assistant-attach-list" id="ast-attach-preset-list">'
+    for (var pi = 0; pi < this.presets.length; pi++) {
+      h += '<div class="pua-assistant-attach-item" data-type="preset" data-id="' + this._escHtml(this.presets[pi].id) + '">' + this._escHtml(this.presets[pi].title) + '</div>'
+    }
+    h += '</div></div>'
+    // Attach regexes dropdown
+    h += '<div class="pua-assistant-attach-dropdown" id="ast-attach-regex-dropdown">'
+    h += '<button class="pua-assistant-attach-btn" id="ast-attach-regex-btn">\uD83D\uDCCE \u9009\u62E9\u6B63\u5219</button>'
+    h += '<div class="pua-assistant-attach-list" id="ast-attach-regex-list">'
+    for (var ri = 0; ri < this.regexes.length; ri++) {
+      h += '<div class="pua-assistant-attach-item" data-type="regex" data-id="' + this._escHtml(this.regexes[ri].id) + '">' + this._escHtml(this.regexes[ri].name) + '</div>'
+    }
+    h += '</div></div>'
+    h += '</div>'
+    h += '<div class="pua-assistant-input-row">'
+    h += '<textarea class="pua-assistant-input" id="ast-input" placeholder="\u8F93\u5165\u6D88\u606F..." rows="1"></textarea>'
+    h += '<button class="pua-assistant-send" id="ast-send">\u53D1\u9001</button>'
+    h += '</div>'
+    h += '</div>'
+
+    h += '</div>'
+
+    contentEl.innerHTML = h
+
+    // Scroll to bottom
+    var chatEl = contentEl.querySelector('#ast-chat')
+    if (chatEl) chatEl.scrollTop = chatEl.scrollHeight
+
+    // Bind API selector
+    var apiSelect = contentEl.querySelector('#ast-api-select')
+    if (apiSelect) {
+      apiSelect.addEventListener('change', function() {
+        self._assistantData.apiChoice = this.value
+        self._saveAssistantData()
+      })
+    }
+
+    // Bind clear history
+    var clearBtn = contentEl.querySelector('#ast-clear-history')
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function() {
+        self._assistantData.history = []
+        self._assistantData.undoStack = []
+        self._saveAssistantData()
+        self._render()
+      })
+    }
+
+    // Bind attach preset dropdown
+    var attachPresetBtn = contentEl.querySelector('#ast-attach-preset-btn')
+    var attachPresetList = contentEl.querySelector('#ast-attach-preset-list')
+    if (attachPresetBtn && attachPresetList) {
+      attachPresetBtn.addEventListener('click', function(e) {
+        e.stopPropagation()
+        attachPresetList.classList.toggle('open')
+        // Close other dropdown
+        var otherList = contentEl.querySelector('#ast-attach-regex-list')
+        if (otherList) otherList.classList.remove('open')
+      })
+      var presetItems = attachPresetList.querySelectorAll('.pua-assistant-attach-item')
+      for (var ppi = 0; ppi < presetItems.length; ppi++) {
+        (function(item) {
+          item.addEventListener('click', function() {
+            var id = this.getAttribute('data-id')
+            var preset = null
+            for (var fi = 0; fi < self.presets.length; fi++) {
+              if (self.presets[fi].id === id) { preset = self.presets[fi]; break }
+            }
+            if (preset) {
+              var input = contentEl.querySelector('#ast-input')
+              if (input) {
+                var ctx = '\n\u4EE5\u4E0B\u662F\u5F53\u524D\u7684\u9884\u8BBE\u6761\u76EE\uFF1A\n[id: ' + preset.id + '] title: ' + preset.title + ' content: ' + (preset.content || '').substring(0, 500) + '\n'
+                input.value += ctx
+              }
+            }
+            attachPresetList.classList.remove('open')
+          })
+        })(presetItems[ppi])
+      }
+    }
+
+    // Bind attach regex dropdown
+    var attachRegexBtn = contentEl.querySelector('#ast-attach-regex-btn')
+    var attachRegexList = contentEl.querySelector('#ast-attach-regex-list')
+    if (attachRegexBtn && attachRegexList) {
+      attachRegexBtn.addEventListener('click', function(e) {
+        e.stopPropagation()
+        attachRegexList.classList.toggle('open')
+        var otherList = contentEl.querySelector('#ast-attach-preset-list')
+        if (otherList) otherList.classList.remove('open')
+      })
+      var regexItems = attachRegexList.querySelectorAll('.pua-assistant-attach-item')
+      for (var rri = 0; rri < regexItems.length; rri++) {
+        (function(item) {
+          item.addEventListener('click', function() {
+            var id = this.getAttribute('data-id')
+            var regex = null
+            for (var fi2 = 0; fi2 < self.regexes.length; fi2++) {
+              if (self.regexes[fi2].id === id) { regex = self.regexes[fi2]; break }
+            }
+            if (regex) {
+              var input = contentEl.querySelector('#ast-input')
+              if (input) {
+                var ctx2 = '\n\u4EE5\u4E0B\u662F\u5F53\u524D\u7684\u6B63\u5219\u89C4\u5219\uFF1A\n[id: ' + regex.id + '] name: ' + regex.name + ' regex: ' + regex.regex + ' html: ' + (regex.html || '').substring(0, 300) + '\n'
+                input.value += ctx2
+              }
+            }
+            attachRegexList.classList.remove('open')
+          })
+        })(regexItems[rri])
+      }
+    }
+
+    // Close dropdowns on outside click
+    contentEl.addEventListener('click', function(e) {
+      if (!e.target.closest || !e.target.closest('.pua-assistant-attach-dropdown')) {
+        var pl = contentEl.querySelector('#ast-attach-preset-list')
+        var rl = contentEl.querySelector('#ast-attach-regex-list')
+        if (pl) pl.classList.remove('open')
+        if (rl) rl.classList.remove('open')
+      }
+    })
+
+    // Bind send
+    var sendBtn = contentEl.querySelector('#ast-send')
+    var inputEl = contentEl.querySelector('#ast-input')
+    if (sendBtn && inputEl) {
+      sendBtn.addEventListener('click', function() { self._sendAssistantMessage(contentEl) })
+      inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          self._sendAssistantMessage(contentEl)
+        }
+      })
+    }
+
+    // Bind undo buttons
+    var undoBtns = contentEl.querySelectorAll('.pua-assistant-undo-btn:not(.done)')
+    for (var ui = 0; ui < undoBtns.length; ui++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var actionId = this.getAttribute('data-action-id')
+          if (actionId) self._undoAssistantAction(actionId)
+        })
+      })(undoBtns[ui])
+    }
+  }
+
+  P._renderAssistantContent = function(msg) {
+    var self = this
+    var content = msg.content || ''
+    var actions = msg.actions || []
+
+    // Remove action tags from display content
+    var displayContent = content
+    displayContent = displayContent.replace(/\u3010ADD_PRESET\u3011[\s\S]*?\u3010\/ADD_PRESET\u3011/g, '')
+    displayContent = displayContent.replace(/\u3010ADD_REGEX\u3011[\s\S]*?\u3010\/ADD_REGEX\u3011/g, '')
+    displayContent = displayContent.replace(/\u3010EDIT_PRESET\u3011[\s\S]*?\u3010\/EDIT_PRESET\u3011/g, '')
+    displayContent = displayContent.replace(/\u3010EDIT_REGEX\u3011[\s\S]*?\u3010\/EDIT_REGEX\u3011/g, '')
+    displayContent = displayContent.trim()
+
+    var h = '<div>' + self._escHtml(displayContent) + '</div>'
+
+    // Render action cards
+    for (var ai = 0; ai < actions.length; ai++) {
+      var action = actions[ai]
+      var label = ''
+      if (action.type === 'addPreset') label = '\u2705 \u5DF2\u6DFB\u52A0\u9884\u8BBE: ' + self._escHtml(action.data.title || '')
+      else if (action.type === 'addRegex') label = '\u2705 \u5DF2\u6DFB\u52A0\u6B63\u5219: ' + self._escHtml(action.data.name || '')
+      else if (action.type === 'editPreset') label = '\u2705 \u5DF2\u4FEE\u6539\u9884\u8BBE: ' + self._escHtml(action.data.title || '')
+      else if (action.type === 'editRegex') label = '\u2705 \u5DF2\u4FEE\u6539\u6B63\u5219: ' + self._escHtml(action.data.name || '')
+
+      // Check if undone
+      var undone = false
+      if (self._assistantData && self._assistantData.undoStack) {
+        for (var usi = 0; usi < self._assistantData.undoStack.length; usi++) {
+          if (self._assistantData.undoStack[usi].actionId === action.id && self._assistantData.undoStack[usi].undone) {
+            undone = true
+            break
+          }
+        }
+      }
+
+      h += '<div class="pua-assistant-action-card">'
+      h += '<span class="pua-assistant-action-label">' + label + '</span>'
+      h += '<button class="pua-assistant-undo-btn' + (undone ? ' done' : '') + '" data-action-id="' + self._escHtml(action.id) + '">' + (undone ? '\u5DF2\u64A4\u9500' : '\u21A9\uFE0F \u64A4\u9500') + '</button>'
+      h += '</div>'
+    }
+
+    return h
+  }
+
+  P._sendAssistantMessage = function(contentEl) {
+    var self = this
+    if (this._assistantSending) return
+
+    var input = contentEl.querySelector('#ast-input')
+    if (!input) return
+    var text = input.value.trim()
+    if (!text) return
+
+    if (!this._assistantData) this._assistantData = { apiChoice: 'sub', history: [], undoStack: [] }
+
+    // Get API config
+    var settings = this._loadSettings()
+    var preset = this._getActivePreset()
+    if (!preset) { this._toast('\u8BF7\u5148\u914D\u7F6E API'); return }
+
+    var endpoint, apiKey, model
+    if (this._assistantData.apiChoice === 'vec') {
+      endpoint = preset.vecEndpoint
+      apiKey = preset.vecApiKey
+      model = preset.vecModel
+    } else {
+      endpoint = preset.subEndpoint
+      apiKey = preset.subApiKey
+      model = preset.subModel
+    }
+
+    if (!endpoint || !apiKey || !model) {
+      this._toast('\u8BF7\u5148\u914D\u7F6E' + (this._assistantData.apiChoice === 'vec' ? '\u5411\u91CF' : '\u526F') + ' API')
+      return
+    }
+
+    // Add user message
+    var userMsg = {
+      id: 'msg_' + Date.now(),
+      role: 'user',
+      content: text,
+      actions: [],
+      timestamp: new Date().toISOString()
+    }
+    this._assistantData.history.push(userMsg)
+    input.value = ''
+    this._saveAssistantData()
+
+    // Show typing indicator
+    this._assistantSending = true
+    var chatEl = contentEl.querySelector('#ast-chat')
+    if (chatEl) {
+      var typingEl = document.createElement('div')
+      typingEl.className = 'pua-assistant-typing'
+      typingEl.id = 'ast-typing'
+      typingEl.textContent = '\u52A9\u624B\u6B63\u5728\u601D\u8003...'
+      chatEl.appendChild(typingEl)
+      chatEl.scrollTop = chatEl.scrollHeight
+    }
+
+    // Build messages array
+    var messages = [{ role: 'system', content: this._getAssistantSystemPrompt() }]
+    var history = this._assistantData.history
+    var startIdx = Math.max(0, history.length - 20) // Last 20 messages
+    for (var hi = startIdx; hi < history.length; hi++) {
+      messages.push({ role: history[hi].role, content: history[hi].content })
+    }
+
+    var url = endpoint.replace(/\/+$/, '') + '/chat/completions'
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    }).then(function(r) { return r.json() }).then(function(data) {
+      // Remove typing indicator
+      var typingEl2 = contentEl.querySelector('#ast-typing')
+      if (typingEl2) typingEl2.remove()
+
+      if (!data.choices || !data.choices[0]) {
+        self._assistantSending = false
+        self._toast('API \u8FD4\u56DE\u5F02\u5E38')
+        return
+      }
+
+      var content = (data.choices[0].message || {}).content || ''
+
+      // Parse action tags
+      var actions = []
+      var addPresetMatch = content.match(/\u3010ADD_PRESET\u3011([\s\S]*?)\u3010\/ADD_PRESET\u3011/)
+      if (addPresetMatch) {
+        try {
+          var pd = JSON.parse(addPresetMatch[1].trim())
+          var actionId = 'action_' + Date.now()
+          var newPreset = {
+            id: 'p' + Date.now(),
+            title: pd.title || '\u672A\u547D\u540D',
+            role: pd.role || 'system',
+            on: true,
+            content: pd.content || '',
+            outRegex: pd.outRegex || '',
+            outRegexOn: pd.outRegexOn || false,
+            inRegex: pd.inRegex || '',
+            inRegexOn: pd.inRegexOn || false,
+            dMin: 0,
+            dMax: Infinity
+          }
+          self.presets.push(newPreset)
+          self._savePresets()
+          actions.push({ type: 'addPreset', data: { id: newPreset.id, title: newPreset.title }, id: actionId })
+          self._assistantData.undoStack.push({ actionId: actionId, undone: false, type: 'addPreset', itemId: newPreset.id })
+        } catch(e) {}
+      }
+
+      var addRegexMatch = content.match(/\u3010ADD_REGEX\u3011([\s\S]*?)\u3010\/ADD_REGEX\u3011/)
+      if (addRegexMatch) {
+        try {
+          var rd = JSON.parse(addRegexMatch[1].trim())
+          var actionId2 = 'action_' + Date.now() + '_r'
+          var newRegex = {
+            id: 'r' + Date.now(),
+            name: rd.name || '\u672A\u547D\u540D',
+            regex: rd.regex || '',
+            html: rd.html || '',
+            type: rd.type || 'render',
+            on: true,
+            dMin: 0,
+            dMax: Infinity
+          }
+          self.regexes.push(newRegex)
+          self._saveRegexes()
+          actions.push({ type: 'addRegex', data: { id: newRegex.id, name: newRegex.name }, id: actionId2 })
+          self._assistantData.undoStack.push({ actionId: actionId2, undone: false, type: 'addRegex', itemId: newRegex.id })
+        } catch(e2) {}
+      }
+
+      var editPresetMatch = content.match(/\u3010EDIT_PRESET\u3011([\s\S]*?)\u3010\/EDIT_PRESET\u3011/)
+      if (editPresetMatch) {
+        try {
+          var epd = JSON.parse(editPresetMatch[1].trim())
+          var actionId3 = 'action_' + Date.now() + '_ep'
+          // Find and edit preset
+          for (var epi = 0; epi < self.presets.length; epi++) {
+            if (self.presets[epi].id === epd.id) {
+              var beforeEdit = { title: self.presets[epi].title, content: self.presets[epi].content }
+              if (epd.title) self.presets[epi].title = epd.title
+              if (epd.content) self.presets[epi].content = epd.content
+              self._savePresets()
+              actions.push({ type: 'editPreset', data: { id: epd.id, title: self.presets[epi].title }, id: actionId3 })
+              self._assistantData.undoStack.push({ actionId: actionId3, undone: false, type: 'editPreset', itemId: epd.id, before: beforeEdit })
+              break
+            }
+          }
+        } catch(e3) {}
+      }
+
+      var editRegexMatch = content.match(/\u3010EDIT_REGEX\u3011([\s\S]*?)\u3010\/EDIT_REGEX\u3011/)
+      if (editRegexMatch) {
+        try {
+          var erd = JSON.parse(editRegexMatch[1].trim())
+          var actionId4 = 'action_' + Date.now() + '_er'
+          for (var eri = 0; eri < self.regexes.length; eri++) {
+            if (self.regexes[eri].id === erd.id) {
+              var beforeEdit2 = { name: self.regexes[eri].name, regex: self.regexes[eri].regex, html: self.regexes[eri].html }
+              if (erd.name) self.regexes[eri].name = erd.name
+              if (erd.regex) self.regexes[eri].regex = erd.regex
+              if (erd.html) self.regexes[eri].html = erd.html
+              self._saveRegexes()
+              actions.push({ type: 'editRegex', data: { id: erd.id, name: self.regexes[eri].name }, id: actionId4 })
+              self._assistantData.undoStack.push({ actionId: actionId4, undone: false, type: 'editRegex', itemId: erd.id, before: beforeEdit2 })
+              break
+            }
+          }
+        } catch(e4) {}
+      }
+
+      // Add assistant message
+      var assistantMsg = {
+        id: 'msg_' + Date.now(),
+        role: 'assistant',
+        content: content,
+        actions: actions,
+        timestamp: new Date().toISOString()
+      }
+      self._assistantData.history.push(assistantMsg)
+      self._saveAssistantData()
+
+      self._assistantSending = false
+      self._render()
+    }).catch(function(err) {
+      var typingEl3 = contentEl.querySelector('#ast-typing')
+      if (typingEl3) typingEl3.remove()
+      self._assistantSending = false
+      self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
+    })
+  }
+
+  P._undoAssistantAction = function(actionId) {
+    if (!this._assistantData || !this._assistantData.undoStack) return
+
+    for (var i = 0; i < this._assistantData.undoStack.length; i++) {
+      var entry = this._assistantData.undoStack[i]
+      if (entry.actionId === actionId && !entry.undone) {
+        if (entry.type === 'addPreset') {
+          // Remove the added preset
+          for (var pi = 0; pi < this.presets.length; pi++) {
+            if (this.presets[pi].id === entry.itemId) {
+              this.presets.splice(pi, 1)
+              this._savePresets()
+              break
+            }
+          }
+        } else if (entry.type === 'addRegex') {
+          // Remove the added regex
+          for (var ri = 0; ri < this.regexes.length; ri++) {
+            if (this.regexes[ri].id === entry.itemId) {
+              this.regexes.splice(ri, 1)
+              this._saveRegexes()
+              break
+            }
+          }
+        } else if (entry.type === 'editPreset') {
+          // Restore original values
+          for (var pi2 = 0; pi2 < this.presets.length; pi2++) {
+            if (this.presets[pi2].id === entry.itemId) {
+              if (entry.before) {
+                if (entry.before.title) this.presets[pi2].title = entry.before.title
+                if (entry.before.content) this.presets[pi2].content = entry.before.content
+              }
+              this._savePresets()
+              break
+            }
+          }
+        } else if (entry.type === 'editRegex') {
+          // Restore original values
+          for (var ri2 = 0; ri2 < this.regexes.length; ri2++) {
+            if (this.regexes[ri2].id === entry.itemId) {
+              if (entry.before) {
+                if (entry.before.name) this.regexes[ri2].name = entry.before.name
+                if (entry.before.regex) this.regexes[ri2].regex = entry.before.regex
+                if (entry.before.html) this.regexes[ri2].html = entry.before.html
+              }
+              this._saveRegexes()
+              break
+            }
+          }
+        }
+
+        entry.undone = true
+        this._saveAssistantData()
+        this._toast('\u5DF2\u64A4\u9500')
+        this._render()
+        return
+      }
+    }
   }
 
   /* ════════════════════════════════════════════════════════════
