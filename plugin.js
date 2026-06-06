@@ -297,6 +297,52 @@
     '  justify-content:center; position:absolute; top:-5px; right:-5px; }',
 
     '/* ── 移动端响应式 ── */',
+    '/* ── 上下文组装 ── */',
+    '.asm-layout { display:flex; gap:16px; height:100%; }',
+    '.asm-visual { flex:1; overflow-y:auto; padding-right:8px; }',
+    '.asm-config { width:280px; min-width:280px; display:flex; flex-direction:column; gap:12px; }',
+    '.asm-flow-title { font-size:11px; color:var(--pua-text-dim); margin-bottom:10px; }',
+    '.asm-block { display:flex; align-items:stretch; margin-bottom:4px; }',
+    '.asm-conn { width:20px; display:flex; flex-direction:column; align-items:center; position:relative; }',
+    '.asm-dot { width:8px; height:8px; border-radius:50%; margin-top:12px; flex-shrink:0; }',
+    '.asm-line { width:2px; flex:1; min-height:8px; }',
+    '.asm-card { flex:1; background:var(--pua-bg-card); border-radius:8px; padding:10px 14px; border-left:3px solid var(--pua-border); cursor:default; transition:opacity 0.15s; }',
+    '.asm-card:hover { opacity:0.9; }',
+    '.asm-card.draggable { cursor:grab; }',
+    '.asm-card.draggable:active { cursor:grabbing; }',
+    '.asm-card-head { display:flex; align-items:center; gap:6px; margin-bottom:4px; }',
+    '.asm-card-title { font-size:12px; font-weight:600; color:var(--pua-text); }',
+    '.asm-card-role { font-size:9px; padding:1px 5px; border-radius:3px; font-weight:600; }',
+    '.asm-card-role-system { background:rgba(91,141,239,0.12); color:#5b8def; }',
+    '.asm-card-role-user { background:rgba(78,201,160,0.12); color:#4ec9a0; }',
+    '.asm-card-role-assistant { background:rgba(239,106,138,0.12); color:#ef6a8a; }',
+    '.asm-card-meta { font-size:10px; color:var(--pua-text-dim); }',
+    '.asm-card-body { font-size:10px; color:var(--pua-text-sub); line-height:1.4; }',
+    '.asm-type-preset .asm-dot, .asm-type-preset .asm-line { background:#5b8def; }',
+    '.asm-type-preset .asm-card { border-left-color:#5b8def; }',
+    '.asm-type-char .asm-dot, .asm-type-char .asm-line { background:#a76aef; }',
+    '.asm-type-char .asm-card { border-left-color:#a76aef; }',
+    '.asm-type-user .asm-dot, .asm-type-user .asm-line { background:#4ec9a0; }',
+    '.asm-type-user .asm-card { border-left-color:#4ec9a0; }',
+    '.asm-type-world .asm-dot, .asm-type-world .asm-line { background:#e0a040; }',
+    '.asm-type-world .asm-card { border-left-color:#e0a040; }',
+    '.asm-type-memory .asm-dot, .asm-type-memory .asm-line { background:#ef6a8a; }',
+    '.asm-type-memory .asm-card { border-left-color:#ef6a8a; }',
+    '.asm-type-chat .asm-dot, .asm-type-chat .asm-line { background:#6a7a9a; }',
+    '.asm-type-chat .asm-card { border-left-color:#6a7a9a; }',
+    '.asm-config-section { background:var(--pua-bg-card); border-radius:8px; padding:12px; }',
+    '.asm-config-title { font-size:11px; font-weight:600; color:var(--pua-text); margin-bottom:8px; }',
+    '.asm-config-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }',
+    '.asm-config-label { font-size:10px; color:var(--pua-text-sub); min-width:70px; }',
+    '.asm-config-input { width:60px; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:4px; padding:4px 8px; color:var(--pua-text); font-size:11px; text-align:center; outline:none; }',
+    '.asm-config-input:focus { border-color:var(--pua-accent); }',
+    '.asm-legend { display:flex; flex-wrap:wrap; gap:6px; }',
+    '.asm-legend-item { display:flex; align-items:center; gap:3px; font-size:9px; color:var(--pua-text-dim); }',
+    '.asm-legend-dot { width:6px; height:6px; border-radius:50%; }',
+    '.asm-block.drag-over .asm-card { border-top:2px solid var(--pua-accent); }',
+    '.asm-empty { text-align:center; padding:40px 20px; color:var(--pua-text-dim); font-size:12px; }',
+    '.asm-loading { text-align:center; padding:40px 20px; color:var(--pua-text-dim); font-size:12px; }',
+
     '@media (max-width:767px) {',
     '.pua-sidebar { position:fixed; top:0; bottom:0; left:0; width:220px; z-index:500;',
     '  background:var(--pua-bg-solid); border-right:1px solid var(--pua-border);',
@@ -338,6 +384,9 @@
     '.pua-char-group-header { padding:10px 0; }',
     '.pua-char-avatar { width:36px; height:36px; font-size:16px; }',
     '.pua-char-group-name { font-size:14px; }',
+    '.asm-layout { flex-direction:column; }',
+    '.asm-config { width:100%; min-width:100%; }',
+    '.asm-visual { min-height:300px; }',
     '}',
     '@media (min-width:768px) {',
     '.pua-sidebar-open-btn { display:none; }',
@@ -383,6 +432,20 @@
     // 正则管理数据
     this.regexes = []
     this.selRegex = ''
+    // 上下文组装数据
+    this.asmConfig = {
+      contextDepth: 40,
+      keepRawTurns: 3,
+      keepStatusTurns: 30
+    }
+    this.asmData = {
+      char: null,
+      userPersona: null,
+      shortTerm: [],
+      longTerm: null,
+      worldbook: []
+    }
+    this.asmLoading = false
     // 移动端状态
     this._sidebarOpen = false
     this._mobileDetailOpen = false
@@ -417,6 +480,7 @@
     this._loadBranches()
     this._loadPresets()
     this._loadRegexes()
+    this._loadAsmConfig()
   }
 
   /* ── 捕获控制台日志 ── */
@@ -703,7 +767,7 @@
       { id: 'branches', icon: '\u2606', label: '\u5206\u652F\u5B58\u6863', badge: this.branches.length },
       { id: 'presets', icon: '\u270E', label: '\u9884\u8BBE\u7F16\u8F91\u5668' },
       { id: 'regex', icon: '\u2733', label: '\u6B63\u5219\u7BA1\u7406', badge: this.regexes.length },
-      { id: 'assembly', icon: '\u2699', label: '\u4E0A\u4E0B\u6587\u7EC4\u88C5' },
+      { id: 'assembly', icon: '\u2699', label: '\u4E0A\u4E0B\u6587\u7EC4\u88C5', badge: this.asmData.shortTerm ? this.asmData.shortTerm.length : 0 },
       { id: 'memory', icon: '\u263D', label: '\u8BB0\u5FC6\u7CFB\u7EDF' },
       { id: 'settings', icon: '\u2691', label: '\u8BBE\u7F6E' },
     ]
@@ -788,7 +852,7 @@
       case 'branches': this._renderBranches(titleEl, actionsEl, contentEl); break
       case 'presets': this._renderPresets(titleEl, actionsEl, contentEl); break
       case 'regex': this._renderRegexes(titleEl, actionsEl, contentEl); break
-      case 'assembly': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2699', '\u4E0A\u4E0B\u6587\u7EC4\u88C5', '\u53EF\u89C6\u5316\u62D6\u63FD\u7EC4\u88C5\u3001\u6DF1\u5EA6\u8FC7\u6EE4\u3001\u89D2\u8272\u5361/\u4E16\u754C\u4E66/\u8BB0\u5FC6\u6CE8\u5165'); break
+      case 'assembly': this._renderAssembly(titleEl, actionsEl, contentEl); break
       case 'memory': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u263D', '\u8BB0\u5FC6\u7CFB\u7EDF', '\u526FAPI\u603B\u7ED3\u3001\u6838\u5FC3\u8BB0\u5FC6\u8986\u5199\u3001\u4E8B\u5B9E\u8BB0\u5FC6\u538B\u7F29\u3001\u5411\u91CF\u8BB0\u5FC6\u9884\u7559'); break
       case 'settings': this._renderPlaceholder(titleEl, actionsEl, contentEl, '\u2691', '\u8BBE\u7F6E', '\u526FAPI\u914D\u7F6E\u3001\u4E3B\u9898\u7F8E\u5316\u3001\u5BFC\u5165\u5BFC\u51FA\u3001\u517C\u5BB9\u6027'); break
     }
@@ -3064,6 +3128,491 @@
     a.click()
     URL.revokeObjectURL(url)
     this._toast('\u6B63\u5219\u5DF2\u5BFC\u51FA\uFF0C\u5171 ' + exportEntries.length + ' \u4E2A\u6761\u76EE')
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     上下文组装页面
+     ════════════════════════════════════════════════════════════ */
+
+  /* ── 组装配置存储 ── */
+  P._loadAsmConfig = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.get('pua_asm_config').then(function(data) {
+      if (data) {
+        if (data.contextDepth !== undefined) self.asmConfig.contextDepth = data.contextDepth
+        if (data.keepRawTurns !== undefined) self.asmConfig.keepRawTurns = data.keepRawTurns
+        if (data.keepStatusTurns !== undefined) self.asmConfig.keepStatusTurns = data.keepStatusTurns
+      }
+    }).catch(function() {})
+  }
+
+  P._saveAsmConfig = function() {
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.set('pua_asm_config', this.asmConfig).catch(function(e) {
+      console.error('[PUA] save asm config failed', e)
+    })
+  }
+
+  /* ── 数据拉取 ── */
+  P._fetchAsmData = function() {
+    var self = this
+    this.asmLoading = true
+    this._render()
+
+    // Step 1: Fetch character list, user persona, worldbook in parallel
+    var charPromise = Promise.resolve()
+    var userPromise = Promise.resolve()
+    var worldPromise = Promise.resolve()
+
+    if (this.roche.character && this.roche.character.list) {
+      charPromise = this.roche.character.list().then(function(chars) {
+        if (chars && chars.length > 0) self.asmData.char = chars[0]
+      }).catch(function() {})
+    }
+
+    if (this.roche.persona && this.roche.persona.getActiveUserPersona) {
+      userPromise = this.roche.persona.getActiveUserPersona().then(function(p) {
+        self.asmData.userPersona = p || null
+      }).catch(function() {})
+    }
+
+    if (this.roche.worldbook && this.roche.worldbook.list) {
+      worldPromise = this.roche.worldbook.list().then(function(cats) {
+        self.asmData.worldbook = cats || []
+      }).catch(function() {})
+    }
+
+    // Wait for char data first, then fetch memory
+    Promise.all([charPromise, userPromise, worldPromise]).then(function() {
+      var convId = self.asmData.char && self.asmData.char.conversationId
+      if (!convId) {
+        self.asmLoading = false
+        self._render()
+        return
+      }
+
+      // Step 2: Fetch memory data
+      var memPromises = []
+
+      if (self.roche.memory && self.roche.memory.getShortTerm) {
+        memPromises.push(
+          self.roche.memory.getShortTerm({ conversationId: convId, limit: 100 }).then(function(msgs) {
+            self.asmData.shortTerm = msgs || []
+          }).catch(function() {})
+        )
+      }
+
+      if (self.roche.memory && self.roche.memory.getLongTerm) {
+        memPromises.push(
+          self.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
+            self.asmData.longTerm = data || null
+          }).catch(function() {})
+        )
+      }
+
+      if (memPromises.length === 0) {
+        self.asmLoading = false
+        self._render()
+        return
+      }
+
+      Promise.all(memPromises).then(function() {
+        self.asmLoading = false
+        self._render()
+      }).catch(function() {
+        self.asmLoading = false
+        self._render()
+      })
+    }).catch(function() {
+      self.asmLoading = false
+      self._render()
+    })
+  }
+
+  /* ── 辅助：创建按钮 ── */
+  P._mkBtn = function(text, cls, onclick) {
+    var btn = document.createElement('button')
+    btn.className = cls || 'pua-btn'
+    btn.textContent = text
+    if (onclick) btn.addEventListener('click', onclick)
+    return btn
+  }
+
+  /* ── 渲染上下文组装页面 ── */
+  P._renderAssembly = function(titleEl, actionsEl, contentEl) {
+    var self = this
+    titleEl.textContent = '\u4E0A\u4E0B\u6587\u7EC4\u88C5'
+
+    // Top bar buttons
+    actionsEl.innerHTML = ''
+    var btnRefresh = this._mkBtn('\u5237\u65B0\u6570\u636E', 'pua-btn', function() { self._fetchAsmData() })
+    var btnPreview = this._mkBtn('\u9884\u89C8\u4E0A\u4E0B\u6587', 'pua-btn pua-btn-gold', function() { self._previewAssembly() })
+    var btnSave = this._mkBtn('\u4FDD\u5B58', 'pua-btn', function() { self._saveAsmConfig(); self._toast('\u7EC4\u88C5\u914D\u7F6E\u5DF2\u4FDD\u5B58') })
+    actionsEl.appendChild(btnRefresh)
+    actionsEl.appendChild(btnPreview)
+    actionsEl.appendChild(btnSave)
+
+    // Main content
+    var h = '<div class="asm-layout">'
+
+    // === Left: Visual flow ===
+    h += '<div class="asm-visual">'
+    h += '<div class="asm-flow-title">\u25BC \u4E0A\u4E0B\u6587\u6D41\u5411\uFF08\u4ECE\u4E0A\u5230\u4E0B = \u6CE8\u5165\u987A\u5E8F\uFF09</div>'
+
+    if (this.asmLoading) {
+      h += '<div class="asm-loading">\u52A0\u8F7D\u4E2D...</div>'
+    } else {
+      h += this._renderAsmBlocks()
+    }
+
+    h += '</div>'
+
+    // === Right: Config panel ===
+    h += '<div class="asm-config">'
+
+    // Config section 1: Depth
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u4E3BAPI \xB7 \u6DF1\u5EA6</div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u4E0A\u4E0B\u6587\u6DF1\u5EA6</span>'
+    h += '<input class="asm-config-input" id="asm-depth" type="number" value="' + this.asmConfig.contextDepth + '" min="1" max="200"></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u6B63\u6587\u4FDD\u7559</span>'
+    h += '<input class="asm-config-input" id="asm-raw-turns" type="number" value="' + this.asmConfig.keepRawTurns + '" min="0" max="50"></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u72B6\u6001\u680F\u4FDD\u7559</span>'
+    h += '<input class="asm-config-input" id="asm-status-turns" type="number" value="' + this.asmConfig.keepStatusTurns + '" min="0" max="100"></div>'
+    h += '</div>'
+
+    // Config section 2: Legend
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u56FE\u4F8B</div>'
+    h += '<div class="asm-legend">'
+    var legends = [
+      { color: '#5b8def', label: '\u9884\u8BBE' },
+      { color: '#a76aef', label: '\u89D2\u8272\u5361' },
+      { color: '#4ec9a0', label: '\u7528\u6237\u4EBA\u8BBE' },
+      { color: '#e0a040', label: '\u4E16\u754C\u4E66' },
+      { color: '#ef6a8a', label: '\u8BB0\u5FC6' },
+      { color: '#6a7a9a', label: '\u804A\u5929\u8BB0\u5F55' }
+    ]
+    for (var li = 0; li < legends.length; li++) {
+      h += '<div class="asm-legend-item"><span class="asm-legend-dot" style="background:' + legends[li].color + '"></span>' + legends[li].label + '</div>'
+    }
+    h += '</div></div>'
+
+    // Config section 3: Data status
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u6570\u636E\u72B6\u6001</div>'
+    var charName = this.asmData.char ? (this.asmData.char.handle || this.asmData.char.name || '-') : '\u672A\u52A0\u8F7D'
+    var msgCount = this.asmData.shortTerm ? this.asmData.shortTerm.length : 0
+    var coreMem = this.asmData.longTerm && this.asmData.longTerm.core ? '\u2713' : '-'
+    var factCount = this.asmData.longTerm && this.asmData.longTerm.facts ? this.asmData.longTerm.facts.length : 0
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u89D2\u8272</span><span style="font-size:11px;color:var(--pua-text)">' + self._escHtml(charName) + '</span></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u804A\u5929\u6D88\u606F</span><span style="font-size:11px;color:var(--pua-text)">' + msgCount + ' \u6761</span></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u6838\u5FC3\u8BB0\u5FC6</span><span style="font-size:11px;color:var(--pua-text)">' + coreMem + '</span></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u4E8B\u5B9E\u8BB0\u5FC6</span><span style="font-size:11px;color:var(--pua-text)">' + factCount + ' \u6761</span></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u9884\u8BBE\u6761\u76EE</span><span style="font-size:11px;color:var(--pua-text)">' + this.presets.length + ' \u9879</span></div>'
+    h += '<div class="asm-config-row"><span class="asm-config-label">\u6B63\u5219\u6761\u76EE</span><span style="font-size:11px;color:var(--pua-text)">' + this.regexes.length + ' \u9879</span></div>'
+    h += '</div>'
+
+    h += '</div>' // end asm-config
+    h += '</div>' // end asm-layout
+
+    contentEl.innerHTML = h
+
+    // Bind config input events
+    var depthInput = document.getElementById('asm-depth')
+    var rawInput = document.getElementById('asm-raw-turns')
+    var statusInput = document.getElementById('asm-status-turns')
+    if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
+    if (rawInput) rawInput.addEventListener('change', function() { self.asmConfig.keepRawTurns = parseInt(this.value) || 3 })
+    if (statusInput) statusInput.addEventListener('change', function() { self.asmConfig.keepStatusTurns = parseInt(this.value) || 30 })
+
+    // Bind drag events for preset blocks
+    this._bindAsmDragEvents()
+  }
+
+  /* ── 渲染流向块列表 ── */
+  P._renderAsmBlocks = function() {
+    var h = ''
+    var self = this
+
+    // 1. Preset blocks (enabled only, sorted by user)
+    for (var i = 0; i < this.presets.length; i++) {
+      var p = this.presets[i]
+      if (!p.on) continue
+      var roleLabel = p.role ? '[' + p.role.toUpperCase() + '] ' : ''
+      h += '<div class="asm-block asm-type-preset" data-type="preset" data-id="' + p.id + '">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card draggable" draggable="true">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">' + roleLabel + self._escHtml(p.title) + '</span>'
+      h += '<span class="asm-card-role asm-card-role-' + p.role + '">' + p.role + '</span></div>'
+      h += '<div class="asm-card-body">\u5E38\u9A7B\u5185\u5BB9 \xB7 \u53EF\u81EA\u7531\u62D6\u62FD</div>'
+      h += '</div></div>'
+    }
+
+    // 2. Character card
+    if (this.asmData.char) {
+      var charDisplay = this.asmData.char.handle || this.asmData.char.name
+      h += '<div class="asm-block asm-type-char">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u89D2\u8272\u5361 \xB7 ' + self._escHtml(charDisplay) + '</span></div>'
+      h += '<div class="asm-card-body">\u6574\u4F53\u5757 \xB7 \u4E0D\u53EF\u62C6\u5206</div>'
+      h += '</div></div>'
+    }
+
+    // 3. User persona
+    if (this.asmData.userPersona) {
+      var userDisplay = this.asmData.userPersona.name || 'User'
+      h += '<div class="asm-block asm-type-user">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">User\u4EBA\u8BBE \xB7 ' + self._escHtml(userDisplay) + '</span></div>'
+      h += '<div class="asm-card-body">\u6574\u4F53\u5757 \xB7 \u4E0D\u53EF\u62C6\u5206</div>'
+      h += '</div></div>'
+    }
+
+    // 4. World book (if available)
+    if (this.asmData.worldbook && this.asmData.worldbook.length > 0) {
+      h += '<div class="asm-block asm-type-world">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u4E16\u754C\u4E66 \xB7 \u524D\u7F6E\u7EC4</span></div>'
+      h += '<div class="asm-card-body">\u6309\u6CE8\u5165\u4F4D\u7F6E+\u6DF1\u5EA6\u5206\u7EC4</div>'
+      h += '</div></div>'
+    }
+
+    // 5. Memory - core
+    if (this.asmData.longTerm && this.asmData.longTerm.core) {
+      h += '<div class="asm-block asm-type-memory">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u6838\u5FC3\u8BB0\u5FC6</span></div>'
+      h += '<div class="asm-card-body">\u552F\u4E00\u4E00\u6761 \xB7 \u59CB\u7EC8\u6CE8\u5165</div>'
+      h += '</div></div>'
+    }
+
+    // 6. Memory - facts
+    if (this.asmData.longTerm && this.asmData.longTerm.facts && this.asmData.longTerm.facts.length > 0) {
+      h += '<div class="asm-block asm-type-memory">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u4E8B\u5B9E\u8BB0\u5FC6</span><span class="asm-card-meta">' + this.asmData.longTerm.facts.length + ' \u6761</span></div>'
+      h += '<div class="asm-card-body">\u8FD1\u671F\u6CE8\u5165 \xB7 \u5DF2\u538B\u7F29\u7684\u4E0D\u518D\u53D1\u9001</div>'
+      h += '</div></div>'
+    }
+
+    // 7. Chat records
+    var chatCount = this.asmData.shortTerm ? this.asmData.shortTerm.length : 0
+    if (chatCount > 0) {
+      h += '<div class="asm-block asm-type-chat">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u804A\u5929\u8BB0\u5F55</span><span class="asm-card-meta">' + chatCount + ' \u6761</span></div>'
+      h += '<div class="asm-card-body">\u53D7\u6DF1\u5EA6\u8FC7\u6EE4 \xB7 user/assistant\u4EA4\u66FF</div>'
+      h += '</div></div>'
+    }
+
+    // 8. World book - post
+    if (this.asmData.worldbook && this.asmData.worldbook.length > 0) {
+      h += '<div class="asm-block asm-type-world">'
+      h += '<div class="asm-conn"><div class="asm-dot"></div><div class="asm-line"></div></div>'
+      h += '<div class="asm-card">'
+      h += '<div class="asm-card-head"><span class="asm-card-title">\u4E16\u754C\u4E66 \xB7 \u540E\u7F6E\u7EC4</span></div>'
+      h += '<div class="asm-card-body">\u540E\u7F6E\u6CE8\u5165</div>'
+      h += '</div></div>'
+    }
+
+    if (!h) {
+      h = '<div class="asm-empty">\u70B9\u51FB\u201C\u5237\u65B0\u6570\u636E\u201D\u52A0\u8F7D\u89D2\u8272\u3001\u8BB0\u5FC6\u3001\u4E16\u754C\u4E66\u7B49\u6570\u636E</div>'
+    }
+
+    return h
+  }
+
+  /* ── 绑定预设块拖拽排序 ── */
+  P._bindAsmDragEvents = function() {
+    var self = this
+    var blocks = document.querySelectorAll('.asm-block.asm-type-preset')
+    for (var i = 0; i < blocks.length; i++) {
+      (function(block) {
+        var card = block.querySelector('.asm-card')
+        if (!card) return
+
+        card.addEventListener('dragstart', function(e) {
+          block.classList.add('dragging')
+          e.dataTransfer.setData('text/plain', block.getAttribute('data-id'))
+        })
+        card.addEventListener('dragend', function() {
+          block.classList.remove('dragging')
+        })
+        block.addEventListener('dragover', function(e) {
+          e.preventDefault()
+          block.classList.add('drag-over')
+        })
+        block.addEventListener('dragleave', function() {
+          block.classList.remove('drag-over')
+        })
+        block.addEventListener('drop', function(e) {
+          e.preventDefault()
+          block.classList.remove('drag-over')
+          var fromId = e.dataTransfer.getData('text/plain')
+          var toId = block.getAttribute('data-id')
+          if (fromId && toId && fromId !== toId) {
+            self._reorderPreset(fromId, toId)
+          }
+        })
+      })(blocks[i])
+    }
+  }
+
+  /* ── 预览最终组装的 messages ── */
+  P._previewAssembly = function() {
+    var messages = this._buildMessages()
+    var h = '<div style="font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow-y:auto;">'
+
+    for (var i = 0; i < messages.length; i++) {
+      var m = messages[i]
+      var roleColor = m.role === 'system' ? '#5b8def' : m.role === 'user' ? '#4ec9a0' : '#ef6a8a'
+      h += '<div style="margin-bottom:8px;padding:6px 8px;background:var(--pua-bg-card);border-radius:4px;border-left:3px solid ' + roleColor + '">'
+      h += '<span style="color:' + roleColor + ';font-weight:600">[' + m.role.toUpperCase() + ']</span> '
+      var content = m.content || ''
+      if (content.length > 300) content = content.substring(0, 300) + '...'
+      h += this._escHtml(content)
+      h += '</div>'
+    }
+
+    h += '</div>'
+    h += '<div style="margin-top:8px;font-size:10px;color:var(--pua-text-dim)">\u5171 ' + messages.length + ' \u6761\u6D88\u606F</div>'
+
+    this._openModal('\u4E0A\u4E0B\u6587\u9884\u89C8', h)
+  }
+
+  /* ── 打开模态框（通用） ── */
+  P._openModal = function(title, bodyHtml) {
+    var modal = this._modalOverlay
+    if (!modal) return
+    var modalTitle = modal.querySelector('.pua-modal-title')
+    if (modalTitle) modalTitle.textContent = title
+    var modalBody = modal.querySelector('.pua-modal-body')
+    if (modalBody) modalBody.innerHTML = bodyHtml
+    // Remove any existing footer
+    var oldFooter = modal.querySelector('.pua-modal-footer')
+    if (oldFooter) oldFooter.remove()
+    modal.classList.add('show')
+  }
+
+  /* ── 构建最终的 messages 数组 ── */
+  P._buildMessages = function() {
+    var messages = []
+    var self = this
+
+    // 1. Preset entries (enabled, in order)
+    for (var i = 0; i < this.presets.length; i++) {
+      var p = this.presets[i]
+      if (!p.on) continue
+      messages.push({
+        role: p.role || 'system',
+        content: p.content || ''
+      })
+    }
+
+    // 2. Character card
+    if (this.asmData.char) {
+      var charText = this.asmData.char.persona || this.asmData.char.bio || ''
+      if (charText) {
+        messages.push({ role: 'system', content: '[\u89D2\u8272\u8BBE\u5B9A]\n' + charText })
+      }
+    }
+
+    // 3. User persona
+    if (this.asmData.userPersona) {
+      var userText = this.asmData.userPersona.persona || this.asmData.userPersona.bio || ''
+      if (userText) {
+        messages.push({ role: 'system', content: '[\u7528\u6237\u4EBA\u8BBE]\n' + userText })
+      }
+    }
+
+    // 4. Core memory
+    if (this.asmData.longTerm && this.asmData.longTerm.core) {
+      var coreText = this.asmData.longTerm.core.summary || this.asmData.longTerm.core.text || ''
+      if (coreText) {
+        messages.push({ role: 'system', content: '[\u6838\u5FC3\u8BB0\u5FC6]\n' + coreText })
+      }
+    }
+
+    // 5. Facts
+    if (this.asmData.longTerm && this.asmData.longTerm.facts && this.asmData.longTerm.facts.length > 0) {
+      var factTexts = []
+      for (var fi = 0; fi < this.asmData.longTerm.facts.length; fi++) {
+        var f = this.asmData.longTerm.facts[fi]
+        factTexts.push(f.summaryText || f.action || f.text || '')
+      }
+      var factStr = ''
+      for (var fj = 0; fj < factTexts.length; fj++) {
+        if (factTexts[fj]) {
+          if (factStr) factStr += '\n'
+          factStr += factTexts[fj]
+        }
+      }
+      if (factStr) {
+        messages.push({ role: 'system', content: '[\u4E8B\u5B9E\u8BB0\u5FC6]\n' + factStr })
+      }
+    }
+
+    // 6. Chat records (filtered by depth)
+    if (this.asmData.shortTerm && this.asmData.shortTerm.length > 0) {
+      var msgs = this.asmData.shortTerm
+      var depth = this.asmConfig.contextDepth || 40
+      var start = Math.max(0, msgs.length - depth)
+      for (var mi = start; mi < msgs.length; mi++) {
+        var msg = msgs[mi]
+        var role = 'user'
+        if (msg.type === 'assistant' || msg.type === 'model') role = 'assistant'
+        else if (msg.type === 'system') role = 'system'
+        var text = msg.text || ''
+        if (text) {
+          messages.push({ role: role, content: text })
+        }
+      }
+    }
+
+    // 7. Apply prompt regexes
+    for (var ri = 0; ri < this.regexes.length; ri++) {
+      var rx = this.regexes[ri]
+      if (!rx.on || rx.type !== 'prompt' || !rx.regex) continue
+      try {
+        var re = new RegExp(rx.regex, 'g')
+        for (var mi2 = 0; mi2 < messages.length; mi2++) {
+          messages[mi2].content = messages[mi2].content.replace(re, rx.html || '')
+        }
+      } catch(e) {}
+    }
+
+    // 8. Apply preset outRegex/inRegex
+    for (var pi = 0; pi < this.presets.length; pi++) {
+      var pr = this.presets[pi]
+      if (pr.outRegex && pr.outRegexOn) {
+        try {
+          var ore = new RegExp(pr.outRegex, 'g')
+          for (var mi3 = 0; mi3 < messages.length; mi3++) {
+            messages[mi3].content = messages[mi3].content.replace(ore, '')
+          }
+        } catch(e) {}
+      }
+      if (pr.inRegex && pr.inRegexOn) {
+        try {
+          var ire = new RegExp(pr.inRegex, 'g')
+          for (var mi4 = 0; mi4 < messages.length; mi4++) {
+            if (messages[mi4].role === 'assistant') {
+              messages[mi4].content = messages[mi4].content.replace(ire, '')
+            }
+          }
+        } catch(e) {}
+      }
+    }
+
+    return messages
   }
 
   /* ════════════════════════════════════════════════════════════
