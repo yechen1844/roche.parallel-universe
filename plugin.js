@@ -447,6 +447,7 @@
       worldEntries: []
     }
     this.asmOrder = []
+    this.asmMountedWorldbooks = []
     this.asmLoading = false
     // 移动端状态
     this._sidebarOpen = false
@@ -484,6 +485,7 @@
     this._loadRegexes()
     this._loadAsmConfig()
     this._loadAsmOrder()
+    this._loadAsmWb()
   }
 
   /* ── 捕获控制台日志 ── */
@@ -1378,7 +1380,8 @@
       contextDepth: depth,
       longTermMemory: null,
       messages: [],
-      userPersona: userPersona
+      userPersona: userPersona,
+      mountedSources: []
     }
 
     // 获取记忆
@@ -1415,6 +1418,17 @@
           }
           return data
         }).catch(function(e) { console.warn('[PUA] getLongTerm failed', e) })
+      )
+    }
+
+    // 尝试获取会话的挂载信息
+    if (self.roche.conversation && self.roche.conversation.get && convId) {
+      promises.push(
+        self.roche.conversation.get(convId).then(function(conv) {
+          if (conv && conv.mountedMemorySources) {
+            branch.mountedSources = conv.mountedMemorySources
+          }
+        }).catch(function() {})
       )
     }
 
@@ -2385,7 +2399,21 @@
     var item = this.presets.splice(fi, 1)[0]
     this.presets.splice(ti, 0, item)
     this._savePresets()
+
+    // 保存滚动位置
+    var self = this
+    var listBody = document.getElementById('pua-preset-list')
+    var savedScroll = listBody ? listBody.scrollTop : 0
+
     this._render()
+
+    // 下一帧恢复滚动位置
+    setTimeout(function() {
+      var newListBody = document.getElementById('pua-preset-list')
+      if (newListBody && savedScroll > 0) {
+        newListBody.scrollTop = savedScroll
+      }
+    }, 0)
   }
 
   /* ── 新增预设 ── */
@@ -2955,7 +2983,21 @@
     var item = this.regexes.splice(fi, 1)[0]
     this.regexes.splice(ti, 0, item)
     this._saveRegexes()
+
+    // 保存滚动位置
+    var self = this
+    var listBody = document.getElementById('pua-regex-list')
+    var savedScroll = listBody ? listBody.scrollTop : 0
+
     this._render()
+
+    // 下一帧恢复滚动位置
+    setTimeout(function() {
+      var newListBody = document.getElementById('pua-regex-list')
+      if (newListBody && savedScroll > 0) {
+        newListBody.scrollTop = savedScroll
+      }
+    }, 0)
   }
 
   /* ── 导入Roche正则对话框 ── */
@@ -3200,6 +3242,19 @@
     })
   }
 
+  P._loadAsmWb = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.get('pua_asm_wb').then(function(data) {
+      if (data && data.ids) self.asmMountedWorldbooks = data.ids
+    }).catch(function() {})
+  }
+
+  P._saveAsmWb = function() {
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.set('pua_asm_wb', { ids: this.asmMountedWorldbooks }).catch(function() {})
+  }
+
   P._countWorldEntries = function(group) {
     var entries = this.asmData.worldEntries || []
     var count = 0
@@ -3221,7 +3276,21 @@
     order.splice(ti, 0, item)
     this.asmOrder = order
     this._saveAsmOrder()
+
+    // 保存滚动位置
+    var self = this
+    var visualEl = document.querySelector('.asm-visual')
+    var savedScroll = visualEl ? visualEl.scrollTop : 0
+
     this._render()
+
+    // 下一帧恢复滚动位置
+    setTimeout(function() {
+      var newVisualEl = document.querySelector('.asm-visual')
+      if (newVisualEl && savedScroll > 0) {
+        newVisualEl.scrollTop = savedScroll
+      }
+    }, 0)
   }
 
   /* ── 数据拉取 ── */
@@ -3262,14 +3331,22 @@
       )
     }
 
-    // 获取世界书
+    // 获取世界书（仅用户勾选的分类）
     if (this.roche.worldbook && this.roche.worldbook.list) {
       promises.push(
         this.roche.worldbook.list().then(function(cats) {
           self.asmData.worldbook = cats || []
           var entryPromises = []
+          var mountedIds = self.asmMountedWorldbooks || []
           for (var ci = 0; ci < (cats || []).length; ci++) {
             (function(cat) {
+              // 只获取用户勾选的分类
+              var isMounted = false
+              for (var mi = 0; mi < mountedIds.length; mi++) {
+                if (mountedIds[mi] === cat.id) { isMounted = true; break }
+              }
+              if (!isMounted) return
+
               if (self.roche.worldbook && self.roche.worldbook.getEntries) {
                 entryPromises.push(
                   self.roche.worldbook.getEntries({ categoryId: cat.id }).then(function(entries) {
@@ -3389,6 +3466,27 @@
     h += '<span style="font-size:9px;color:var(--pua-text-dim)">\u53D6\u6700\u8FD1N\u6761</span></div>'
     h += '</div>'
 
+    // Config section: World book mounting
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u4E16\u754C\u4E66\u6302\u8F7D</div>'
+    var wbCats = this.asmData.worldbook || []
+    if (wbCats.length === 0) {
+      h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u70B9\u51FB\u201C\u5237\u65B0\u6570\u636E\u201D\u52A0\u8F7D\u4E16\u754C\u4E66\u5206\u7C7B</div>'
+    } else {
+      for (var wi = 0; wi < wbCats.length; wi++) {
+        var wbCat = wbCats[wi]
+        var isMounted = false
+        for (var wmi = 0; wmi < this.asmMountedWorldbooks.length; wmi++) {
+          if (this.asmMountedWorldbooks[wmi] === wbCat.id) { isMounted = true; break }
+        }
+        h += '<div class="asm-config-row">'
+        h += '<input type="checkbox" class="asm-wb-check" data-id="' + wbCat.id + '"' + (isMounted ? ' checked' : '') + '>'
+        h += '<span style="font-size:10px;color:var(--pua-text)">' + this._escHtml(wbCat.name || wbCat.id) + '</span>'
+        h += '</div>'
+      }
+    }
+    h += '</div>'
+
     // Config section: Legend
     h += '<div class="asm-config-section">'
     h += '<div class="asm-config-title">\u56FE\u4F8B</div>'
@@ -3421,6 +3519,9 @@
     h += '<div class="asm-config-row"><span class="asm-config-label">\u4E16\u754C\u4E66\u8BCD\u6761</span><span style="font-size:11px;color:var(--pua-text)">' + weCount + ' \u4E2A</span></div>'
     h += '<div class="asm-config-row"><span class="asm-config-label">\u9884\u8BBE\u6761\u76EE</span><span style="font-size:11px;color:var(--pua-text)">' + this.presets.length + ' \u9879</span></div>'
     h += '<div class="asm-config-row"><span class="asm-config-label">\u6B63\u5219\u6761\u76EE</span><span style="font-size:11px;color:var(--pua-text)">' + this.regexes.length + ' \u9879</span></div>'
+    if (this.asmData.branch && this.asmData.branch.mountedSources && this.asmData.branch.mountedSources.length > 0) {
+      h += '<div class="asm-config-row"><span class="asm-config-label">\u4E92\u901A\u8BB0\u5FC6</span><span style="font-size:10px;color:var(--pua-text-dim)">' + this.asmData.branch.mountedSources.length + ' \u4E2A\u4F1A\u8BDD</span></div>'
+    }
     h += '</div>'
 
     h += '</div>' // end asm-config
@@ -3445,6 +3546,34 @@
     // Bind config input events
     var depthInput = document.getElementById('asm-depth')
     if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
+
+    // Bind world book checkbox events
+    var wbChecks = document.querySelectorAll('.asm-wb-check')
+    for (var wci = 0; wci < wbChecks.length; wci++) {
+      (function(cb) {
+        cb.addEventListener('change', function() {
+          var id = this.getAttribute('data-id')
+          var mounted = self.asmMountedWorldbooks
+          if (this.checked) {
+            var found = false
+            for (var fi = 0; fi < mounted.length; fi++) {
+              if (mounted[fi] === id) { found = true; break }
+            }
+            if (!found) mounted.push(id)
+          } else {
+            var newMounted = []
+            for (var ri = 0; ri < mounted.length; ri++) {
+              if (mounted[ri] !== id) newMounted.push(mounted[ri])
+            }
+            self.asmMountedWorldbooks = newMounted
+          }
+          self._saveAsmWb()
+          // 重新获取世界书词条
+          self.asmData.worldEntries = []
+          self._fetchAsmData()
+        })
+      })(wbChecks[wci])
+    }
 
     // Bind drag events for all blocks
     this._bindAsmDragEvents()
