@@ -205,13 +205,13 @@
     '.pua-char-group-count { font-size:10px; color:var(--pua-text-dim); margin-left:auto; }',
 
     '/* ── 创建分支对话框 ── */',
-    '.pua-modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5);',
-    '  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);',
+    '.pua-modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.7);',
+    '  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);',
     '  z-index:100; display:none; align-items:center;',
     '  justify-content:center; }',
     '.pua-modal-overlay.show { display:flex; animation:pua-modalIn 0.2s ease; }',
     '@keyframes pua-modalIn { from { opacity:0; } to { opacity:1; } }',
-    '.pua-modal { width:500px; max-height:80vh; background:var(--pua-bg-solid); border:1px solid var(--pua-border);',
+    '.pua-modal { width:500px; max-height:80vh; background:rgba(20,20,35,0.95); border:1px solid var(--pua-border);',
     '  border-radius:var(--pua-radius); overflow:hidden; display:flex; flex-direction:column;',
     '  transform:scale(0.95) translateY(10px); transition:var(--pua-transition); }',
     '.pua-modal-overlay.show .pua-modal { transform:scale(1) translateY(0); }',
@@ -604,8 +604,23 @@
     '.pua-regex-preview-output { padding:6px; border-radius:4px; background:rgba(0,0,0,0.2); min-height:30px; font-size:11px; }',
     // Element selection mode
     '.pua-elem-select-active .pua-regex-preview-output *:hover { outline:2px solid #4a9eff !important; outline-offset:1px; cursor:crosshair; }',
-    '.pua-elem-info { margin-top:6px; padding:6px; border-radius:4px; background:rgba(74,158,255,0.08); border:1px solid rgba(74,158,255,0.2); font-size:9px; color:var(--pua-text-sub); max-height:120px; overflow-y:auto; }',
+    '.pua-elem-select-active#regex-preview-result *:hover { outline:2px solid #4a9eff !important; outline-offset:1px; cursor:crosshair; }',
+    '.pua-elem-info { margin-top:6px; padding:6px; border-radius:4px; background:rgba(74,158,255,0.08); border:1px solid rgba(74,158,255,0.2); font-size:9px; color:var(--pua-text-sub); max-height:300px; overflow-y:auto; }',
     '.pua-elem-info-label { font-weight:600; color:#4a9eff; margin-bottom:2px; }',
+    // Element editor
+    '.pua-elem-editor { }',
+    '.pua-elem-editor-title { font-weight:600; color:var(--pua-accent); font-size:10px; margin-bottom:4px; }',
+    '.pua-elem-editor-tag { font-size:9px; color:var(--pua-text-dim); margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--pua-border); }',
+    '.pua-elem-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; }',
+    '.pua-elem-editor-row { display:flex; align-items:center; gap:4px; margin-bottom:2px; }',
+    '.pua-elem-editor-row label { font-size:9px; color:var(--pua-text-dim); min-width:40px; flex-shrink:0; }',
+    '.pua-elem-editor-input { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:3px; padding:2px 4px; color:var(--pua-text); font-size:9px; font-family:inherit; outline:none; min-width:0; }',
+    '.pua-elem-editor-input:focus { border-color:var(--pua-accent); }',
+    '.pua-elem-editor-unit { font-size:8px; color:var(--pua-text-dim); flex-shrink:0; }',
+    '.pua-elem-color-picker { width:20px; height:20px; border:1px solid var(--pua-border); border-radius:3px; cursor:pointer; padding:0; background:none; flex-shrink:0; }',
+    '.pua-elem-color-picker::-webkit-color-swatch-wrapper { padding:1px; }',
+    '.pua-elem-color-picker::-webkit-color-swatch { border:none; border-radius:2px; }',
+    '.pua-elem-editor-actions { display:flex; gap:4px; margin-top:6px; padding-top:4px; border-top:1px solid var(--pua-border); }',
     // Prompt modal
     '.pua-prompt-modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:10000; display:flex; align-items:center; justify-content:center; }',
     '.pua-prompt-modal { width:90%; max-width:600px; max-height:80vh; background:var(--pua-bg-solid); border:1px solid var(--pua-border); border-radius:12px; box-shadow:var(--pua-shadow); display:flex; flex-direction:column; overflow:hidden; }',
@@ -3662,7 +3677,7 @@
         h += '<div class="pua-field" style="margin-top:10px">'
         h += '<div class="pua-field-label">\u6E32\u67D3\u9884\u89C8</div>'
         h += '<div style="display:flex;gap:6px;margin-bottom:6px">'
-        h += '<input class="pua-field-input" id="regex-preview-input" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." style="flex:1">'
+        h += '<input class="pua-field-input" id="regex-preview-input" value="\u6D4B\u8BD5\u6587\u672C" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." style="flex:1">'
         h += '<button class="pua-btn pua-btn-sm" id="regex-preview-btn">\u9884\u89C8</button>'
         h += '<button class="pua-btn pua-btn-sm" id="regex-template-preview-btn">\u6A21\u677F\u9884\u89C8</button>'
         h += '</div>'
@@ -4000,6 +4015,161 @@
           resultEl.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message || String(e)) + '</span>'
         }
       })
+    }
+
+    // Regex management page: element selection mode for preview result
+    var regexResultEl = document.getElementById('regex-preview-result')
+    if (regexResultEl) {
+      var regexElemSelectActive = false
+      var regexSelectedEl = null
+      var regexOriginalStyles = null
+      var regexElemInfoDiv = null
+      // Add element select toggle button after the preview result
+      var regexElemSelectBtn = document.createElement('button')
+      regexElemSelectBtn.className = 'pua-code-block-btn'
+      regexElemSelectBtn.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+      regexElemSelectBtn.style.marginTop = '4px'
+      regexResultEl.parentNode.insertBefore(regexElemSelectBtn, regexResultEl.nextSibling)
+      // Add elem info div
+      regexElemInfoDiv = document.createElement('div')
+      regexElemInfoDiv.className = 'pua-elem-info'
+      regexElemInfoDiv.style.display = 'none'
+      regexResultEl.parentNode.insertBefore(regexElemInfoDiv, regexElemSelectBtn.nextSibling)
+
+      regexElemSelectBtn.addEventListener('click', function() {
+        regexElemSelectActive = !regexElemSelectActive
+        if (regexElemSelectActive) {
+          regexResultEl.classList.add('pua-elem-select-active')
+          this.textContent = '\uD83D\uDD0D \u53D6\u6D88\u9009\u4E2D'
+          this.style.borderColor = '#4a9eff'
+          this.style.color = '#4a9eff'
+          regexResultEl.addEventListener('click', onRegexElemClick)
+        } else {
+          regexResultEl.classList.remove('pua-elem-select-active')
+          this.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+          this.style.borderColor = ''
+          this.style.color = ''
+          regexResultEl.removeEventListener('click', onRegexElemClick)
+          regexElemInfoDiv.style.display = 'none'
+        }
+      })
+
+      function onRegexElemClick(e2) {
+        if (!regexElemSelectActive) return
+        e2.stopPropagation()
+        e2.preventDefault()
+        var el = e2.target
+        if (el === regexResultEl) return
+        regexSelectedEl = el
+        var computed = window.getComputedStyle(el)
+        regexOriginalStyles = {
+          width: el.style.width, height: el.style.height, fontSize: el.style.fontSize,
+          color: el.style.color, backgroundColor: el.style.backgroundColor,
+          padding: el.style.padding, margin: el.style.margin, borderRadius: el.style.borderRadius,
+          textContent: el.textContent
+        }
+        // Build property editor
+        var editorHtml = '<div class="pua-elem-editor">'
+        editorHtml += '<div class="pua-elem-editor-title">\u5143\u7D20\u7F16\u8F91\u5668</div>'
+        editorHtml += '<div class="pua-elem-editor-tag">\u6807\u7B7E: &lt;' + el.tagName.toLowerCase() + '&gt;  \u7C7B\u540D: ' + (el.className || '\u65E0') + '</div>'
+        editorHtml += '<div class="pua-elem-editor-grid">'
+        editorHtml += _regPropField('\u5BBD\u5EA6', 'width', _regPxVal(computed.width), 'px')
+        editorHtml += _regPropField('\u9AD8\u5EA6', 'height', _regPxVal(computed.height), 'px')
+        editorHtml += _regPropField('\u5B57\u53F7', 'fontSize', _regPxVal(computed.fontSize), 'px')
+        editorHtml += _regPropFieldColor('\u989C\u8272', 'color', computed.color)
+        editorHtml += _regPropFieldColor('\u80CC\u666F', 'backgroundColor', computed.backgroundColor)
+        editorHtml += _regPropField('\u5185\u8FB9\u8DDD', 'padding', _regPxVal(computed.padding), 'px')
+        editorHtml += _regPropField('\u5916\u8FB9\u8DDD', 'margin', _regPxVal(computed.margin), 'px')
+        editorHtml += _regPropField('\u5706\u89D2', 'borderRadius', _regPxVal(computed.borderRadius), 'px')
+        editorHtml += '</div>'
+        editorHtml += '<div class="pua-elem-editor-row"><label>\u6587\u672C\u5185\u5BB9</label><input class="pua-elem-editor-input" data-prop="textContent" value="' + self._escHtml(el.textContent) + '"></div>'
+        editorHtml += '<div class="pua-elem-editor-actions">'
+        editorHtml += '<button class="pua-code-block-btn pua-elem-apply-btn">\u5E94\u7528\u4FEE\u6539</button>'
+        editorHtml += '<button class="pua-code-block-btn pua-elem-reset-btn">\u91CD\u7F6E</button>'
+        editorHtml += '</div></div>'
+        regexElemInfoDiv.innerHTML = editorHtml
+        regexElemInfoDiv.style.display = 'block'
+
+        // Bind color picker sync
+        var colorInputs = regexElemInfoDiv.querySelectorAll('.pua-elem-color-group')
+        for (var ci = 0; ci < colorInputs.length; ci++) {
+          (function(group) {
+            var textIn = group.querySelector('.pua-elem-editor-input')
+            var colorIn = group.querySelector('.pua-elem-color-picker')
+            if (textIn && colorIn) {
+              colorIn.addEventListener('input', function() { textIn.value = this.value })
+              textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
+            }
+          })(colorInputs[ci])
+        }
+
+        // Apply button - also update the HTML textarea
+        var applyBtn = regexElemInfoDiv.querySelector('.pua-elem-apply-btn')
+        if (applyBtn) {
+          applyBtn.addEventListener('click', function() {
+            if (!regexSelectedEl) return
+            var inputs = regexElemInfoDiv.querySelectorAll('.pua-elem-editor-input')
+            for (var ii = 0; ii < inputs.length; ii++) {
+              var prop = inputs[ii].getAttribute('data-prop')
+              var val = inputs[ii].value
+              if (prop === 'textContent') {
+                regexSelectedEl.textContent = val
+              } else if (val) {
+                regexSelectedEl.style[prop] = val
+              }
+            }
+            // Update the HTML textarea with the modified element's outerHTML
+            var htmlTextarea = document.querySelector('.pua-regex-html')
+            if (htmlTextarea && regexSelectedEl) {
+              // Find the selected element's position in the preview and update template
+              var currentResult = regexResultEl.innerHTML
+              // Remove the match count header
+              var headerDiv = regexResultEl.querySelector('div[style]')
+              if (headerDiv) currentResult = currentResult.replace(headerDiv.outerHTML, '')
+              htmlTextarea.value = currentResult.trim()
+            }
+            self._toast('\u4FEE\u6539\u5DF2\u5E94\u7528\u5230\u6A21\u677F')
+          })
+        }
+
+        // Reset button
+        var resetBtn = regexElemInfoDiv.querySelector('.pua-elem-reset-btn')
+        if (resetBtn) {
+          resetBtn.addEventListener('click', function() {
+            if (!regexSelectedEl || !regexOriginalStyles) return
+            var props = ['width','height','fontSize','color','backgroundColor','padding','margin','borderRadius']
+            for (var pi = 0; pi < props.length; pi++) {
+              regexSelectedEl.style[props[pi]] = regexOriginalStyles[props[pi]] || ''
+            }
+            if (regexOriginalStyles.textContent !== undefined) regexSelectedEl.textContent = regexOriginalStyles.textContent
+            self._toast('\u5DF2\u91CD\u7F6E')
+          })
+        }
+      }
+
+      function _regPxVal(val) {
+        if (!val || val === 'auto' || val === 'none') return ''
+        var m = val.match(/^([\d.]+)px/)
+        return m ? m[1] : val
+      }
+
+      function _regPropField(label, prop, val, unit) {
+        return '<div class="pua-elem-editor-row"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
+      }
+
+      function _regPropFieldColor(label, prop, val) {
+        var hexVal = val
+        try {
+          var tmp = document.createElement('div'); tmp.style.color = val; document.body.appendChild(tmp)
+          hexVal = getComputedStyle(tmp).color; document.body.removeChild(tmp)
+        } catch(e) {}
+        var colorHex = '#000000'
+        var m = hexVal.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+        if (m) {
+          colorHex = '#' + ((1 << 24) + (parseInt(m[1]) << 16) + (parseInt(m[2]) << 8) + parseInt(m[3])).toString(16).slice(1)
+        }
+        return '<div class="pua-elem-editor-row pua-elem-color-group"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><input type="color" class="pua-elem-color-picker" value="' + colorHex + '"></div>'
+      }
     }
 
     // Template preview button
@@ -6103,100 +6273,185 @@
       })(previewBtns[pvi])
     }
 
-    // Bind regex preview buttons
-    var regexPreviewBtns = contentEl.querySelectorAll('.pua-regex-preview-btn')
-    for (var rpbi = 0; rpbi < regexPreviewBtns.length; rpbi++) {
-      (function(btn) {
-        btn.addEventListener('click', function() {
-          var actionCard = this.closest('.pua-assistant-action-card')
-          var existingPreview = actionCard.querySelector('.pua-regex-preview')
-          if (existingPreview) { existingPreview.remove(); return }
-          var regexStr = this.getAttribute('data-regex') || ''
-          var htmlTpl = this.getAttribute('data-html') || ''
-          var previewDiv = document.createElement('div')
-          previewDiv.className = 'pua-regex-preview'
-          previewDiv.innerHTML = '<input class="pua-regex-preview-input" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." /><div class="pua-regex-preview-output"></div><div style="display:flex;gap:4px;margin-top:4px"><button class="pua-code-block-btn pua-elem-select-toggle">\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20</button></div><div class="pua-elem-info" style="display:none"></div>'
-          actionCard.appendChild(previewDiv)
-          var testInput = previewDiv.querySelector('.pua-regex-preview-input')
-          var outputDiv = previewDiv.querySelector('.pua-regex-preview-output')
-          var elemSelectToggle = previewDiv.querySelector('.pua-elem-select-toggle')
-          var elemInfoDiv = previewDiv.querySelector('.pua-elem-info')
-          var elemSelectActive = false
+    // Bind auto-rendered regex previews (assistant action cards)
+    var regexPreviewDivs = contentEl.querySelectorAll('.pua-regex-preview-auto')
+    for (var rpbi = 0; rpbi < regexPreviewDivs.length; rpbi++) {
+      (function(previewDiv) {
+        var regexStr = previewDiv.getAttribute('data-regex') || ''
+        var htmlTpl = previewDiv.getAttribute('data-html') || ''
+        var testInput = previewDiv.querySelector('.pua-regex-preview-input')
+        var outputDiv = previewDiv.querySelector('.pua-regex-preview-output')
+        var elemSelectToggle = previewDiv.querySelector('.pua-elem-select-toggle')
+        var elemInfoDiv = previewDiv.querySelector('.pua-elem-info')
+        var elemSelectActive = false
+        var selectedEl = null
+        var originalStyles = null
 
-          function renderPreview() {
-            var testText = testInput.value || '\u6D4B\u8BD5\u6587\u672C'
-            try {
-              var re = new RegExp(regexStr, 'g')
-              var match = re.exec(testText)
-              if (match) {
-                var htmlResult = htmlTpl.replace(/\$&/g, match[0])
-                for (var gi = 1; gi < match.length; gi++) {
-                  htmlResult = htmlResult.replace(new RegExp('\\$' + gi, 'g'), match[gi] || '')
-                }
-                outputDiv.innerHTML = htmlResult
-              } else {
-                outputDiv.innerHTML = '<span style="opacity:0.5">\u65E0\u5339\u914D</span>'
+        function renderPreview() {
+          var testText = testInput.value || '\u6D4B\u8BD5\u6587\u672C'
+          try {
+            var re = new RegExp(regexStr, 'g')
+            var match = re.exec(testText)
+            if (match) {
+              var htmlResult = htmlTpl.replace(/\$&/g, match[0])
+              for (var gi = 1; gi < match.length; gi++) {
+                htmlResult = htmlResult.replace(new RegExp('\\$' + gi, 'g'), match[gi] || '')
               }
-            } catch(e) {
-              outputDiv.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message) + '</span>'
-            }
-          }
-          testInput.addEventListener('input', renderPreview)
-          renderPreview()
-
-          // Element selection mode
-          elemSelectToggle.addEventListener('click', function() {
-            elemSelectActive = !elemSelectActive
-            if (elemSelectActive) {
-              previewDiv.classList.add('pua-elem-select-active')
-              this.textContent = '\uD83D\uDD0D \u53D6\u6D88\u9009\u4E2D'
-              this.style.borderColor = '#4a9eff'
-              this.style.color = '#4a9eff'
-              outputDiv.addEventListener('click', onElemClick)
+              outputDiv.innerHTML = htmlResult
             } else {
-              previewDiv.classList.remove('pua-elem-select-active')
-              this.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
-              this.style.borderColor = ''
-              this.style.color = ''
-              outputDiv.removeEventListener('click', onElemClick)
-              elemInfoDiv.style.display = 'none'
+              outputDiv.innerHTML = '<span style="opacity:0.5">\u65E0\u5339\u914D</span>'
             }
-          })
+          } catch(e) {
+            outputDiv.innerHTML = '<span style="color:#ff6b6b">\u6B63\u5219\u9519\u8BEF: ' + self._escHtml(e.message) + '</span>'
+          }
+        }
+        testInput.addEventListener('input', renderPreview)
+        renderPreview()
 
-          function onElemClick(e2) {
-            if (!elemSelectActive) return
-            e2.stopPropagation()
-            e2.preventDefault()
-            var el = e2.target
-            if (el === outputDiv) return
-            var computed = window.getComputedStyle(el)
-            var info = '<div class="pua-elem-info-label">\u5143\u7D20\u4FE1\u606F</div>'
-            info += '\u6807\u7B7E: ' + el.tagName.toLowerCase() + '<br>'
-            info += '\u7C7B\u540D: ' + (el.className || '\u65E0') + '<br>'
-            info += '\u5BBD: ' + computed.width + ' \u9AD8: ' + computed.height + '<br>'
-            info += '\u5B57\u53F7: ' + computed.fontSize + ' \u989C\u8272: ' + computed.color + '<br>'
-            info += '\u80CC\u666F: ' + computed.backgroundColor + '<br>'
-            info += '\u5185\u8FB9\u8DDD: ' + computed.padding + '<br>'
-            info += '\u5916\u8FB9\u8DDD: ' + computed.margin + '<br>'
-            elemInfoDiv.innerHTML = info
-            elemInfoDiv.style.display = 'block'
-            // Add send to assistant button
-            if (!elemInfoDiv.querySelector('.pua-elem-send-btn')) {
-              var sendElemBtn = document.createElement('button')
-              sendElemBtn.className = 'pua-code-block-btn pua-elem-send-btn'
-              sendElemBtn.textContent = '\u53D1\u9001\u7ED9\u52A9\u624B'
-              sendElemBtn.style.marginTop = '4px'
-              sendElemBtn.addEventListener('click', function() {
-                var msgText = '\u8BF7\u4FEE\u6B63\u4EE5\u4E0B\u5143\u7D20\uFF1A\u6807\u7B7E=' + el.tagName.toLowerCase() + ', \u7C7B\u540D=' + (el.className || '\u65E0') + ', \u5BBD=' + computed.width + ', \u9AD8=' + computed.height + ', \u5B57\u53F7=' + computed.fontSize + ', \u989C\u8272=' + computed.color + ', \u80CC\u666F=' + computed.backgroundColor
-                var input = contentEl.querySelector('#ast-input')
-                if (input) input.value = msgText
-                self._toast('\u5DF2\u586B\u5165\u8F93\u5165\u6846')
-              })
-              elemInfoDiv.appendChild(sendElemBtn)
-            }
+        // Element selection mode
+        elemSelectToggle.addEventListener('click', function() {
+          elemSelectActive = !elemSelectActive
+          if (elemSelectActive) {
+            previewDiv.classList.add('pua-elem-select-active')
+            this.textContent = '\uD83D\uDD0D \u53D6\u6D88\u9009\u4E2D'
+            this.style.borderColor = '#4a9eff'
+            this.style.color = '#4a9eff'
+            outputDiv.addEventListener('click', onElemClick)
+          } else {
+            previewDiv.classList.remove('pua-elem-select-active')
+            this.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+            this.style.borderColor = ''
+            this.style.color = ''
+            outputDiv.removeEventListener('click', onElemClick)
+            elemInfoDiv.style.display = 'none'
           }
         })
-      })(regexPreviewBtns[rpbi])
+
+        function onElemClick(e2) {
+          if (!elemSelectActive) return
+          e2.stopPropagation()
+          e2.preventDefault()
+          var el = e2.target
+          if (el === outputDiv) return
+          selectedEl = el
+          var computed = window.getComputedStyle(el)
+          // Store original styles for reset
+          originalStyles = {
+            width: el.style.width, height: el.style.height, fontSize: el.style.fontSize,
+            color: el.style.color, backgroundColor: el.style.backgroundColor,
+            padding: el.style.padding, margin: el.style.margin, borderRadius: el.style.borderRadius,
+            textContent: el.textContent
+          }
+          // Build property editor
+          var editorHtml = '<div class="pua-elem-editor">'
+          editorHtml += '<div class="pua-elem-editor-title">\u5143\u7D20\u7F16\u8F91\u5668</div>'
+          editorHtml += '<div class="pua-elem-editor-tag">\u6807\u7B7E: &lt;' + el.tagName.toLowerCase() + '&gt;  \u7C7B\u540D: ' + (el.className || '\u65E0') + '</div>'
+          editorHtml += '<div class="pua-elem-editor-grid">'
+          editorHtml += _propField('\u5BBD\u5EA6', 'width', _pxVal(computed.width), 'px')
+          editorHtml += _propField('\u9AD8\u5EA6', 'height', _pxVal(computed.height), 'px')
+          editorHtml += _propField('\u5B57\u53F7', 'fontSize', _pxVal(computed.fontSize), 'px')
+          editorHtml += _propFieldColor('\u989C\u8272', 'color', computed.color)
+          editorHtml += _propFieldColor('\u80CC\u666F', 'backgroundColor', computed.backgroundColor)
+          editorHtml += _propField('\u5185\u8FB9\u8DDD', 'padding', _pxVal(computed.padding), 'px')
+          editorHtml += _propField('\u5916\u8FB9\u8DDD', 'margin', _pxVal(computed.margin), 'px')
+          editorHtml += _propField('\u5706\u89D2', 'borderRadius', _pxVal(computed.borderRadius), 'px')
+          editorHtml += '</div>'
+          editorHtml += '<div class="pua-elem-editor-row"><label>\u6587\u672C\u5185\u5BB9</label><input class="pua-elem-editor-input" data-prop="textContent" value="' + self._escHtml(el.textContent) + '"></div>'
+          editorHtml += '<div class="pua-elem-editor-actions">'
+          editorHtml += '<button class="pua-code-block-btn pua-elem-apply-btn">\u5E94\u7528\u4FEE\u6539</button>'
+          editorHtml += '<button class="pua-code-block-btn pua-elem-send-btn">\u53D1\u9001\u7ED9\u52A9\u624B</button>'
+          editorHtml += '<button class="pua-code-block-btn pua-elem-reset-btn">\u91CD\u7F6E</button>'
+          editorHtml += '</div></div>'
+          elemInfoDiv.innerHTML = editorHtml
+          elemInfoDiv.style.display = 'block'
+
+          // Bind color picker sync
+          var colorInputs = elemInfoDiv.querySelectorAll('.pua-elem-color-group')
+          for (var ci = 0; ci < colorInputs.length; ci++) {
+            (function(group) {
+              var textIn = group.querySelector('.pua-elem-editor-input')
+              var colorIn = group.querySelector('.pua-elem-color-picker')
+              if (textIn && colorIn) {
+                colorIn.addEventListener('input', function() { textIn.value = this.value })
+                textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
+              }
+            })(colorInputs[ci])
+          }
+
+          // Apply button
+          var applyBtn = elemInfoDiv.querySelector('.pua-elem-apply-btn')
+          if (applyBtn) {
+            applyBtn.addEventListener('click', function() {
+              if (!selectedEl) return
+              var inputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-input')
+              for (var ii = 0; ii < inputs.length; ii++) {
+                var prop = inputs[ii].getAttribute('data-prop')
+                var val = inputs[ii].value
+                if (prop === 'textContent') {
+                  selectedEl.textContent = val
+                } else if (val) {
+                  selectedEl.style[prop] = val
+                }
+              }
+              self._toast('\u4FEE\u6539\u5DF2\u5E94\u7528\u5230\u9884\u89C8\uFF0C\u5982\u9700\u4FDD\u5B58\u8BF7\u7F16\u8F91\u6B63\u5219')
+            })
+          }
+
+          // Send to assistant button
+          var sendBtn = elemInfoDiv.querySelector('.pua-elem-send-btn')
+          if (sendBtn) {
+            sendBtn.addEventListener('click', function() {
+              var inputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-input')
+              var props = {}
+              for (var ii = 0; ii < inputs.length; ii++) {
+                props[inputs[ii].getAttribute('data-prop')] = inputs[ii].value
+              }
+              var msgText = '\u8BF7\u4FEE\u6B63\u4EE5\u4E0B\u5143\u7D20\uFF1A\u6807\u7B7E=' + selectedEl.tagName.toLowerCase() + ', \u7C7B\u540D=' + (selectedEl.className || '\u65E0') + ', \u5BBD=' + (props.width || '') + ', \u9AD8=' + (props.height || '') + ', \u5B57\u53F7=' + (props.fontSize || '') + ', \u989C\u8272=' + (props.color || '') + ', \u80CC\u666F=' + (props.backgroundColor || '')
+              var input = contentEl.querySelector('#ast-input')
+              if (input) input.value = msgText
+              self._toast('\u5DF2\u586B\u5165\u8F93\u5165\u6846')
+            })
+          }
+
+          // Reset button
+          var resetBtn = elemInfoDiv.querySelector('.pua-elem-reset-btn')
+          if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+              if (!selectedEl || !originalStyles) return
+              var props = ['width','height','fontSize','color','backgroundColor','padding','margin','borderRadius']
+              for (var pi = 0; pi < props.length; pi++) {
+                selectedEl.style[props[pi]] = originalStyles[props[pi]] || ''
+              }
+              if (originalStyles.textContent !== undefined) selectedEl.textContent = originalStyles.textContent
+              self._toast('\u5DF2\u91CD\u7F6E')
+            })
+          }
+        }
+
+        function _pxVal(val) {
+          if (!val || val === 'auto' || val === 'none') return ''
+          var m = val.match(/^([\d.]+)px/)
+          return m ? m[1] : val
+        }
+
+        function _propField(label, prop, val, unit) {
+          return '<div class="pua-elem-editor-row"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><span class="pua-elem-editor-unit">' + unit + '</span></div>'
+        }
+
+        function _propFieldColor(label, prop, val) {
+          var hexVal = val
+          try {
+            var tmp = document.createElement('div'); tmp.style.color = val; document.body.appendChild(tmp)
+            hexVal = getComputedStyle(tmp).color; document.body.removeChild(tmp)
+          } catch(e) {}
+          var colorHex = '#000000'
+          var m = hexVal.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+          if (m) {
+            colorHex = '#' + ((1 << 24) + (parseInt(m[1]) << 16) + (parseInt(m[2]) << 8) + parseInt(m[3])).toString(16).slice(1)
+          }
+          return '<div class="pua-elem-editor-row pua-elem-color-group"><label>' + label + '</label><input class="pua-elem-editor-input" data-prop="' + prop + '" value="' + self._escHtml(val) + '"><input type="color" class="pua-elem-color-picker" value="' + colorHex + '"></div>'
+        }
+      })(regexPreviewDivs[rpbi])
     }
   }
 
@@ -6240,7 +6495,12 @@
       h += '<span class="pua-assistant-action-label">' + label + '</span>'
       // Add regex preview button for addRegex and editRegex actions
       if ((action.type === 'addRegex' || action.type === 'editRegex') && action.data.regex && action.data.html) {
-        h += '<button class="pua-code-block-btn pua-regex-preview-btn" data-regex="' + self._escHtml(action.data.regex) + '" data-html="' + self._escHtml(action.data.html) + '">\uD83D\uDC41\uFE0F \u9884\u89C8\u6E32\u67D3</button>'
+        h += '<div class="pua-regex-preview pua-regex-preview-auto" data-regex="' + self._escHtml(action.data.regex) + '" data-html="' + self._escHtml(action.data.html) + '">'
+        h += '<input class="pua-regex-preview-input" value="\u6D4B\u8BD5\u6587\u672C" placeholder="\u8F93\u5165\u6D4B\u8BD5\u6587\u672C..." />'
+        h += '<div class="pua-regex-preview-output"></div>'
+        h += '<div style="display:flex;gap:4px;margin-top:4px"><button class="pua-code-block-btn pua-elem-select-toggle">\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20</button></div>'
+        h += '<div class="pua-elem-info" style="display:none"></div>'
+        h += '</div>'
       }
       h += '<button class="pua-assistant-undo-btn' + (undone ? ' done' : '') + '" data-action-id="' + self._escHtml(action.id) + '">' + (undone ? '\u5DF2\u64A4\u9500' : '\u21A9\uFE0F \u64A4\u9500') + '</button>'
       h += '</div>'
