@@ -1,7 +1,8 @@
 /**
- * 平行时空档案馆 v0.7.0
+ * 平行时空档案馆 v0.8.0
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
+ * v0.8.0: 预设系统/刷新模型列表/测试调用/BM25本地实现/向量召回/副API召回/分支记忆联动
  * v0.7.0: 美化分支存档配置 + 设置页面 + 记忆系统页面 + 自定义Checkbox
  * v0.1.9: 预设编辑器正式完成 — 增删排序/详情编辑/正则深度/持久化存储/导入导出/ES5修复
  * v0.1.7: 新增线下记录TXT导入功能 + 分支卡片显示来源标签
@@ -1986,6 +1987,9 @@
         branch.memoryConvIds = ids
         self._saveBranches()
         self._toast('\u8BB0\u5FC6\u7ED1\u5B9A\u5DF2\u4FDD\u5B58')
+
+        // 加载绑定的记忆到我们的记忆系统
+        self._loadMemFromBranches(ids)
       })
     }
 
@@ -4635,37 +4639,73 @@
     actionsEl.innerHTML = ''
 
     var savedScrollTop = contentEl.scrollTop
-
-    // 加载设置
     var settings = this._loadSettings()
+    var presets = settings.presets || []
+    var activeId = settings.activePresetId || ''
+    var activePreset = null
+    for (var pi = 0; pi < presets.length; pi++) {
+      if (presets[pi].id === activeId) { activePreset = presets[pi]; break }
+    }
+    if (!activePreset && presets.length > 0) {
+      activePreset = presets[0]
+      activeId = presets[0].id
+    }
 
     var h = ''
+
+    // API 预设选择
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 API \u9884\u8BBE</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u5F53\u524D\u9884\u8BBE</span>'
+    h += '<select class="pua-settings-select" id="set-preset-select">'
+    for (var si = 0; si < presets.length; si++) {
+      h += '<option value="' + presets[si].id + '"' + (presets[si].id === activeId ? ' selected' : '') + '>' + self._escHtml(presets[si].name) + '</option>'
+    }
+    h += '</select></div>'
+    h += '<div style="display:flex;gap:6px;margin-top:4px">'
+    h += '<button class="pua-btn pua-btn-sm" id="set-preset-add">+ \u65B0\u5EFA\u9884\u8BBE</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-preset-rename">\u91CD\u547D\u540D</button>'
+    h += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="set-preset-delete">\u5220\u9664</button>'
+    h += '</div>'
+    h += '</div>'
 
     // 副 API 配置
     h += '<div class="pua-settings-group">'
     h += '<div class="pua-settings-title">\u2726 \u526F API \u914D\u7F6E</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
-    h += '<input class="pua-settings-input" id="set-sub-endpoint" placeholder="https://api.example.com/v1" value="' + this._escHtml(settings.subEndpoint || '') + '"></div>'
+    h += '<input class="pua-settings-input" id="set-sub-endpoint" placeholder="https://api.example.com/v1" value="' + self._escHtml(activePreset ? activePreset.subEndpoint : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
-    h += '<input class="pua-settings-input" id="set-sub-key" type="password" placeholder="sk-..." value="' + this._escHtml(settings.subApiKey || '') + '"></div>'
+    h += '<input class="pua-settings-input" id="set-sub-key" type="password" placeholder="sk-..." value="' + self._escHtml(activePreset ? activePreset.subApiKey : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6A21\u578B</span>'
-    h += '<input class="pua-settings-input" id="set-sub-model" placeholder="gpt-4o-mini" value="' + this._escHtml(settings.subModel || '') + '"></div>'
-    h += '<div class="pua-settings-hint">\u7528\u4E8E\u8BB0\u5FC6\u603B\u7ED3\u3001\u6838\u5FC3\u8BB0\u5FC6\u538B\u7F29\u3001\u53EC\u56DE\u8BB0\u5FC6\u7B49\u64CD\u4F5C</div>'
+    h += '<select class="pua-settings-select" id="set-sub-model-select"><option value="">\u8BF7\u5148\u5237\u65B0</option></select>'
+    h += '<input class="pua-settings-input" id="set-sub-model" placeholder="\u6216\u624B\u52A8\u8F93\u5165\u6A21\u578B\u540D" value="' + self._escHtml(activePreset ? activePreset.subModel : '') + '" style="margin-top:4px">'
+    h += '</div>'
+    h += '<div style="display:flex;gap:6px;margin-top:4px">'
+    h += '<button class="pua-btn pua-btn-sm" id="set-sub-refresh">\u5237\u65B0\u6A21\u578B</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-sub-test">\u6D4B\u8BD5\u8C03\u7528</button>'
+    h += '</div>'
+    h += '<div id="set-sub-status" style="font-size:9px;color:var(--pua-text-dim);margin-top:4px"></div>'
     h += '</div>'
 
     // 向量 API 配置
     h += '<div class="pua-settings-group">'
     h += '<div class="pua-settings-title">\u2726 \u5411\u91CF API \u914D\u7F6E</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
-    h += '<input class="pua-settings-input" id="set-vec-endpoint" placeholder="https://api.example.com/v1" value="' + this._escHtml(settings.vecEndpoint || '') + '"></div>'
+    h += '<input class="pua-settings-input" id="set-vec-endpoint" placeholder="https://api.example.com/v1" value="' + self._escHtml(activePreset ? activePreset.vecEndpoint : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
-    h += '<input class="pua-settings-input" id="set-vec-key" type="password" placeholder="sk-..." value="' + this._escHtml(settings.vecApiKey || '') + '"></div>'
+    h += '<input class="pua-settings-input" id="set-vec-key" type="password" placeholder="sk-..." value="' + self._escHtml(activePreset ? activePreset.vecApiKey : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6A21\u578B</span>'
-    h += '<input class="pua-settings-input" id="set-vec-model" placeholder="text-embedding-3-small" value="' + this._escHtml(settings.vecModel || '') + '"></div>'
-    h += '<div class="pua-settings-hint">\u7528\u4E8E\u751F\u6210\u8BB0\u5FC6\u5411\u91CF\uFF0C\u652F\u6301\u6DF7\u5408\u68C0\u7D22\u53EC\u56DE</div>'
+    h += '<select class="pua-settings-select" id="set-vec-model-select"><option value="">\u8BF7\u5148\u5237\u65B0</option></select>'
+    h += '<input class="pua-settings-input" id="set-vec-model" placeholder="\u6216\u624B\u52A8\u8F93\u5165\u6A21\u578B\u540D" value="' + self._escHtml(activePreset ? activePreset.vecModel : '') + '" style="margin-top:4px">'
+    h += '</div>'
+    h += '<div style="display:flex;gap:6px;margin-top:4px">'
+    h += '<button class="pua-btn pua-btn-sm" id="set-vec-refresh">\u5237\u65B0\u6A21\u578B</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-vec-test">\u6D4B\u8BD5\u8C03\u7528</button>'
+    h += '</div>'
+    h += '<div id="set-vec-status" style="font-size:9px;color:var(--pua-text-dim);margin-top:4px"></div>'
     h += '</div>'
 
-    // 记忆参数
+    // 记忆参数（全局）
     h += '<div class="pua-settings-group">'
     h += '<div class="pua-settings-title">\u2726 \u8BB0\u5FC6\u53C2\u6570</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6BCF\u8F6E\u53D1\u9001\u4E8B\u5B9E\u8BB0\u5FC6</span>'
@@ -4685,7 +4725,6 @@
     h += '<option value="vector"' + (settings.recallMode === 'vector' ? ' selected' : '') + '>\u5411\u91CF\u68C0\u7D22\uFF08\u4FBF\u5B9C\uFF09</option>'
     h += '<option value="subapi"' + (settings.recallMode === 'subapi' ? ' selected' : '') + '>\u526F API \u53EC\u56DE\uFF08\u7CBE\u51C6\u4F46\u66F4\u8D35\uFF09</option>'
     h += '</select></div>'
-    h += '<div class="pua-settings-hint">\u5411\u91CF\u68C0\u7D22\u4F7F\u7528 BM25+\u5411\u91CF\u6DF7\u5408\uFF0C\u6210\u672C\u4F4E\uFF1B\u526F API \u53EC\u56DE\u7531 AI \u5224\u65AD\u76F8\u5173\u6027\uFF0C\u66F4\u7CBE\u51C6\u4F46\u6D88\u8017\u989D\u5EA6</div>'
     h += '</div>'
 
     // 保存按钮
@@ -4696,24 +4735,239 @@
     contentEl.innerHTML = h
     contentEl.scrollTop = savedScrollTop
 
-    // 保存事件
+    // ===== 事件绑定 =====
+
+    // 预设切换
+    var presetSelect = document.getElementById('set-preset-select')
+    if (presetSelect) {
+      presetSelect.addEventListener('change', function() {
+        settings.activePresetId = this.value
+        self._saveSettings(settings)
+        self._render()
+      })
+    }
+
+    // 新建预设
+    var presetAddBtn = document.getElementById('set-preset-add')
+    if (presetAddBtn) {
+      presetAddBtn.addEventListener('click', function() {
+        var name = prompt('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0', '\u65B0\u9884\u8BBE')
+        if (!name) return
+        var newPreset = {
+          id: 'preset-' + Date.now(),
+          name: name,
+          subEndpoint: '', subApiKey: '', subModel: '',
+          vecEndpoint: '', vecApiKey: '', vecModel: ''
+        }
+        settings.presets.push(newPreset)
+        settings.activePresetId = newPreset.id
+        self._saveSettings(settings)
+        self._render()
+      })
+    }
+
+    // 重命名预设
+    var presetRenameBtn = document.getElementById('set-preset-rename')
+    if (presetRenameBtn) {
+      presetRenameBtn.addEventListener('click', function() {
+        var cur = settings.activePresetId
+        var p = null
+        for (var ri = 0; ri < settings.presets.length; ri++) {
+          if (settings.presets[ri].id === cur) { p = settings.presets[ri]; break }
+        }
+        if (!p) return
+        var name = prompt('\u91CD\u547D\u540D\u9884\u8BBE', p.name)
+        if (!name) return
+        p.name = name
+        self._saveSettings(settings)
+        self._render()
+      })
+    }
+
+    // 删除预设
+    var presetDeleteBtn = document.getElementById('set-preset-delete')
+    if (presetDeleteBtn) {
+      presetDeleteBtn.addEventListener('click', function() {
+        if (settings.presets.length <= 1) { self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u9884\u8BBE'); return }
+        if (!confirm('\u786E\u5B9A\u5220\u9664\u5F53\u524D\u9884\u8BBE\uFF1F')) return
+        var cur = settings.activePresetId
+        var newPresets = []
+        for (var di = 0; di < settings.presets.length; di++) {
+          if (settings.presets[di].id !== cur) newPresets.push(settings.presets[di])
+        }
+        settings.presets = newPresets
+        settings.activePresetId = settings.presets[0] ? settings.presets[0].id : ''
+        self._saveSettings(settings)
+        self._render()
+      })
+    }
+
+    // 刷新副API模型
+    var subRefreshBtn = document.getElementById('set-sub-refresh')
+    if (subRefreshBtn) {
+      subRefreshBtn.addEventListener('click', function() {
+        var endpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
+        var apiKey = (document.getElementById('set-sub-key') || {}).value || ''
+        if (!endpoint || !apiKey) { self._toast('\u8BF7\u5148\u586B\u5199\u63A5\u53E3\u5730\u5740\u548C API Key'); return }
+        var statusEl = document.getElementById('set-sub-status')
+        if (statusEl) statusEl.textContent = '\u5237\u65B0\u4E2D...'
+        var url = endpoint.replace(/\/+$/, '') + '/models'
+        fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey } }).then(function(r) { return r.json() }).then(function(data) {
+          var models = data.data || data.models || []
+          var select = document.getElementById('set-sub-model-select')
+          if (!select) return
+          select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
+          for (var mi = 0; mi < models.length; mi++) {
+            var m = models[mi]
+            var mId = m.id || m.model || ''
+            if (!mId) continue
+            if (mId.indexOf('embed') !== -1 || mId.indexOf('davinci') !== -1) continue
+            var opt = document.createElement('option')
+            opt.value = mId
+            opt.textContent = mId
+            select.appendChild(opt)
+          }
+          if (statusEl) statusEl.textContent = '\u627E\u5230 ' + models.length + ' \u4E2A\u6A21\u578B'
+          select.addEventListener('change', function() {
+            var modelInput = document.getElementById('set-sub-model')
+            if (modelInput) modelInput.value = this.value
+          })
+        }).catch(function(e) {
+          if (statusEl) statusEl.textContent = '\u5237\u65B0\u5931\u8D25: ' + (e.message || e)
+        })
+      })
+    }
+
+    // 测试副API调用
+    var subTestBtn = document.getElementById('set-sub-test')
+    if (subTestBtn) {
+      subTestBtn.addEventListener('click', function() {
+        var endpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
+        var apiKey = (document.getElementById('set-sub-key') || {}).value || ''
+        var model = (document.getElementById('set-sub-model') || {}).value || ''
+        if (!endpoint || !apiKey || !model) { self._toast('\u8BF7\u5148\u586B\u5199\u5B8C\u6574\u914D\u7F6E'); return }
+        var statusEl = document.getElementById('set-sub-status')
+        if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u4E2D...'
+        var url = endpoint.replace(/\/+$/, '') + '/chat/completions'
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Hi' }], max_tokens: 5 })
+        }).then(function(r) { return r.json() }).then(function(data) {
+          if (data.choices && data.choices[0]) {
+            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u6210\u529F\uFF01\u56DE\u590D: ' + (data.choices[0].message || {}).content
+            self._toast('\u526F API \u6D4B\u8BD5\u6210\u529F')
+          } else {
+            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (data.error || JSON.stringify(data)).substring(0, 100)
+          }
+        }).catch(function(e) {
+          if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (e.message || e)
+        })
+      })
+    }
+
+    // 刷新向量API模型
+    var vecRefreshBtn = document.getElementById('set-vec-refresh')
+    if (vecRefreshBtn) {
+      vecRefreshBtn.addEventListener('click', function() {
+        var endpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
+        var apiKey = (document.getElementById('set-vec-key') || {}).value || ''
+        if (!endpoint || !apiKey) { self._toast('\u8BF7\u5148\u586B\u5199\u63A5\u53E3\u5730\u5740\u548C API Key'); return }
+        var statusEl = document.getElementById('set-vec-status')
+        if (statusEl) statusEl.textContent = '\u5237\u65B0\u4E2D...'
+        var url = endpoint.replace(/\/+$/, '') + '/models'
+        fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey } }).then(function(r) { return r.json() }).then(function(data) {
+          var models = data.data || data.models || []
+          var select = document.getElementById('set-vec-model-select')
+          if (!select) return
+          select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
+          for (var mi = 0; mi < models.length; mi++) {
+            var m = models[mi]
+            var mId = m.id || m.model || ''
+            if (!mId) continue
+            if (mId.indexOf('embed') === -1 && mId.indexOf('e5') === -1 && mId.indexOf('bge') === -1) continue
+            var opt = document.createElement('option')
+            opt.value = mId
+            opt.textContent = mId
+            select.appendChild(opt)
+          }
+          // 如果没有过滤到模型，显示全部
+          if (select.options.length <= 1) {
+            select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
+            for (var mi2 = 0; mi2 < models.length; mi2++) {
+              var m2 = models[mi2]
+              var mId2 = m2.id || m2.model || ''
+              if (!mId2) continue
+              var opt2 = document.createElement('option')
+              opt2.value = mId2
+              opt2.textContent = mId2
+              select.appendChild(opt2)
+            }
+          }
+          if (statusEl) statusEl.textContent = '\u627E\u5230 ' + models.length + ' \u4E2A\u6A21\u578B'
+          select.addEventListener('change', function() {
+            var modelInput = document.getElementById('set-vec-model')
+            if (modelInput) modelInput.value = this.value
+          })
+        }).catch(function(e) {
+          if (statusEl) statusEl.textContent = '\u5237\u65B0\u5931\u8D25: ' + (e.message || e)
+        })
+      })
+    }
+
+    // 测试向量API调用
+    var vecTestBtn = document.getElementById('set-vec-test')
+    if (vecTestBtn) {
+      vecTestBtn.addEventListener('click', function() {
+        var endpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
+        var apiKey = (document.getElementById('set-vec-key') || {}).value || ''
+        var model = (document.getElementById('set-vec-model') || {}).value || ''
+        if (!endpoint || !apiKey || !model) { self._toast('\u8BF7\u5148\u586B\u5199\u5B8C\u6574\u914D\u7F6E'); return }
+        var statusEl = document.getElementById('set-vec-status')
+        if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u4E2D...'
+        var url = endpoint.replace(/\/+$/, '') + '/embeddings'
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, input: 'Hello' })
+        }).then(function(r) { return r.json() }).then(function(data) {
+          if (data.data && data.data[0] && data.data[0].embedding) {
+            var dim = data.data[0].embedding.length
+            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u6210\u529F\uFF01\u5411\u91CF\u7EF4\u5EA6: ' + dim
+            self._toast('\u5411\u91CF API \u6D4B\u8BD5\u6210\u529F')
+          } else {
+            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (data.error || JSON.stringify(data)).substring(0, 100)
+          }
+        }).catch(function(e) {
+          if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (e.message || e)
+        })
+      })
+    }
+
+    // 保存设置
     var saveBtn = document.getElementById('set-save-btn')
     if (saveBtn) {
       saveBtn.addEventListener('click', function() {
-        var s = {
-          subEndpoint: (document.getElementById('set-sub-endpoint') || {}).value || '',
-          subApiKey: (document.getElementById('set-sub-key') || {}).value || '',
-          subModel: (document.getElementById('set-sub-model') || {}).value || '',
-          vecEndpoint: (document.getElementById('set-vec-endpoint') || {}).value || '',
-          vecApiKey: (document.getElementById('set-vec-key') || {}).value || '',
-          vecModel: (document.getElementById('set-vec-model') || {}).value || '',
-          factSendCount: parseInt((document.getElementById('set-mem-fact-send') || {}).value) || 10,
-          summarizeInterval: parseInt((document.getElementById('set-mem-summarize-interval') || {}).value) || 30,
-          coreCharLimit: parseInt((document.getElementById('set-mem-core-limit') || {}).value) || 2000,
-          recallMaxCount: parseInt((document.getElementById('set-mem-recall-max') || {}).value) || 8,
-          recallMode: (document.getElementById('set-mem-recall-mode') || {}).value || 'vector'
+        // 更新当前预设
+        var cur = settings.activePresetId
+        var p = null
+        for (var si2 = 0; si2 < settings.presets.length; si2++) {
+          if (settings.presets[si2].id === cur) { p = settings.presets[si2]; break }
         }
-        self._saveSettings(s)
+        if (!p) return
+        p.subEndpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
+        p.subApiKey = (document.getElementById('set-sub-key') || {}).value || ''
+        p.subModel = (document.getElementById('set-sub-model') || {}).value || ''
+        p.vecEndpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
+        p.vecApiKey = (document.getElementById('set-vec-key') || {}).value || ''
+        p.vecModel = (document.getElementById('set-vec-model') || {}).value || ''
+        // 全局参数
+        settings.factSendCount = parseInt((document.getElementById('set-mem-fact-send') || {}).value) || 10
+        settings.summarizeInterval = parseInt((document.getElementById('set-mem-summarize-interval') || {}).value) || 30
+        settings.coreCharLimit = parseInt((document.getElementById('set-mem-core-limit') || {}).value) || 2000
+        settings.recallMaxCount = parseInt((document.getElementById('set-mem-recall-max') || {}).value) || 8
+        settings.recallMode = (document.getElementById('set-mem-recall-mode') || {}).value || 'vector'
+        self._saveSettings(settings)
         self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
       })
     }
@@ -4725,12 +4979,19 @@
       var raw = localStorage.getItem('pua-settings')
       if (raw) {
         this._settingsCache = JSON.parse(raw)
+        // 确保预设列表存在
+        if (!this._settingsCache.presets) {
+          this._settingsCache.presets = [{ id: 'preset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', subEndpoint: '', subApiKey: '', subModel: '', vecEndpoint: '', vecApiKey: '', vecModel: '' }]
+        }
+        if (!this._settingsCache.activePresetId) {
+          this._settingsCache.activePresetId = this._settingsCache.presets[0].id
+        }
         return this._settingsCache
       }
     } catch(e) {}
     this._settingsCache = {
-      subEndpoint: '', subApiKey: '', subModel: '',
-      vecEndpoint: '', vecApiKey: '', vecModel: '',
+      presets: [{ id: 'preset-default', name: '\u9ED8\u8BA4\u9884\u8BBE', subEndpoint: '', subApiKey: '', subModel: '', vecEndpoint: '', vecApiKey: '', vecModel: '' }],
+      activePresetId: 'preset-default',
       factSendCount: 10, summarizeInterval: 30,
       coreCharLimit: 2000, recallMaxCount: 8, recallMode: 'vector'
     }
@@ -4740,6 +5001,17 @@
   P._saveSettings = function(s) {
     this._settingsCache = s
     try { localStorage.setItem('pua-settings', JSON.stringify(s)) } catch(e) {}
+  }
+
+  // 获取当前激活的API预设
+  P._getActivePreset = function() {
+    var settings = this._loadSettings()
+    var presets = settings.presets || []
+    var activeId = settings.activePresetId || ''
+    for (var i = 0; i < presets.length; i++) {
+      if (presets[i].id === activeId) return presets[i]
+    }
+    return presets[0] || null
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -4807,6 +5079,7 @@
     }
     h += '<div style="display:flex;gap:6px;margin-top:8px">'
     h += '<button class="pua-btn pua-btn-sm" id="mem-fact-add">+ \u6DFB\u52A0\u4E8B\u5B9E\u8BB0\u5FC6</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="mem-fact-embed">\u751F\u6210\u5411\u91CF</button>'
     h += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="mem-fact-clear">\u6E05\u7A7A\u5168\u90E8</button>'
     h += '</div>'
     h += '</div>'
@@ -4833,6 +5106,14 @@
     if (addFactBtn) {
       addFactBtn.addEventListener('click', function() {
         self._showAddFactModal(memData)
+      })
+    }
+
+    // 生成向量
+    var embedBtn = document.getElementById('mem-fact-embed')
+    if (embedBtn) {
+      embedBtn.addEventListener('click', function() {
+        self._generateEmbeddings(memData)
       })
     }
 
@@ -5012,6 +5293,388 @@
   }
 
   /* ════════════════════════════════════════════════════════════
+     分支存档记忆联动
+     ════════════════════════════════════════════════════════════ */
+
+  P._loadMemFromBranches = function(convIds) {
+    var self = this
+    if (!convIds || convIds.length === 0) return
+    if (!this.roche.memory || !this.roche.memory.getLongTerm) return
+
+    var memData = this._loadMemData()
+
+    for (var i = 0; i < convIds.length; i++) {
+      (function(convId) {
+        self.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
+          if (!data) return
+
+          // 合并核心记忆
+          if (data.core) {
+            var coreText = data.core.summary || data.core.text || String(data.core)
+            if (coreText) {
+              if (!memData.core) memData.core = { relationship: '', events: '' }
+              // 追加到事件摘要（不覆盖）
+              if (memData.core.events && memData.core.events.indexOf(coreText) === -1) {
+                memData.core.events += (memData.core.events ? '\n' : '') + coreText
+              } else if (!memData.core.events) {
+                memData.core.events = coreText
+              }
+            }
+          }
+
+          // 合并事实记忆
+          if (data.facts && data.facts.length > 0) {
+            if (!memData.facts) memData.facts = []
+            for (var fi = 0; fi < data.facts.length; fi++) {
+              var fact = data.facts[fi]
+              // 检查是否已存在（按 summaryText 或 action 去重）
+              var factText = fact.summaryText || fact.action || fact.text || ''
+              if (!factText) continue
+              var exists = false
+              for (var ei = 0; ei < memData.facts.length; ei++) {
+                if (memData.facts[ei].text === factText) { exists = true; break }
+              }
+              if (!exists) {
+                memData.facts.push({
+                  id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                  text: factText,
+                  summary: factText.length > 50 ? factText.substring(0, 50) + '...' : factText,
+                  keywords: '',
+                  embedding: null,
+                  timestamp: new Date().toLocaleString('zh-CN'),
+                  conversationId: convId,
+                  source: 'roche'
+                })
+              }
+            }
+          }
+
+          self._saveMemData(memData)
+        }).catch(function() {})
+      })(convIds[i])
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     BM25 本地实现
+     ════════════════════════════════════════════════════════════ */
+
+  // 简易分词：中文按字符，英文按空格
+  P._tokenize = function(text) {
+    if (!text) return []
+    var tokens = []
+    var word = ''
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i)
+      var code = text.charCodeAt(i)
+      // 中文字符
+      if (code >= 0x4E00 && code <= 0x9FFF) {
+        if (word) { tokens.push(word.toLowerCase()); word = '' }
+        tokens.push(ch)
+      } else if (/[a-zA-Z0-9]/.test(ch)) {
+        word += ch
+      } else {
+        if (word) { tokens.push(word.toLowerCase()); word = '' }
+      }
+    }
+    if (word) tokens.push(word.toLowerCase())
+    return tokens
+  }
+
+  // BM25 打分
+  P._bm25Score = function(queryTokens, docTokens, avgDocLen, docCount, dfMap) {
+    var k1 = 1.5
+    var b = 0.75
+    var score = 0
+    var docLen = docTokens.length
+    var tfMap = {}
+    for (var i = 0; i < docTokens.length; i++) {
+      tfMap[docTokens[i]] = (tfMap[docTokens[i]] || 0) + 1
+    }
+    for (var qi = 0; qi < queryTokens.length; qi++) {
+      var qt = queryTokens[qi]
+      var tf = tfMap[qt] || 0
+      if (tf === 0) continue
+      var df = dfMap[qt] || 1
+      var idf = Math.log((docCount - df + 0.5) / (df + 0.5) + 1)
+      var tfNorm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * docLen / (avgDocLen || 1)))
+      score += idf * tfNorm
+    }
+    return score
+  }
+
+  // BM25 检索事实记忆
+  P._bm25Recall = function(query, facts, topK) {
+    if (!facts || facts.length === 0) return []
+    var queryTokens = this._tokenize(query)
+    if (queryTokens.length === 0) return []
+
+    // 构建文档
+    var docs = []
+    var totalLen = 0
+    var dfMap = {}
+    for (var i = 0; i < facts.length; i++) {
+      var text = (facts[i].text || '') + ' ' + (facts[i].keywords || '') + ' ' + (facts[i].summary || '')
+      var tokens = this._tokenize(text)
+      docs.push({ fact: facts[i], tokens: tokens })
+      totalLen += tokens.length
+      // 计算 df
+      var seen = {}
+      for (var ti = 0; ti < tokens.length; ti++) {
+        if (!seen[tokens[ti]]) {
+          seen[tokens[ti]] = true
+          dfMap[tokens[ti]] = (dfMap[tokens[ti]] || 0) + 1
+        }
+      }
+    }
+    var avgDocLen = totalLen / docs.length
+
+    // 打分
+    var scored = []
+    for (var si = 0; si < docs.length; si++) {
+      var s = this._bm25Score(queryTokens, docs[si].tokens, avgDocLen, docs.length, dfMap)
+      if (s > 0) scored.push({ fact: docs[si].fact, score: s })
+    }
+
+    // 排序
+    scored.sort(function(a, b) { return b.score - a.score })
+
+    return scored.slice(0, topK || 10)
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     向量召回流程
+     ════════════════════════════════════════════════════════════ */
+
+  // 获取文本的 embedding
+  P._getEmbedding = function(text) {
+    var preset = this._getActivePreset()
+    if (!preset || !preset.vecEndpoint || !preset.vecApiKey || !preset.vecModel) {
+      return Promise.reject(new Error('\u5411\u91CF API \u672A\u914D\u7F6E'))
+    }
+    var url = preset.vecEndpoint.replace(/\/+$/, '') + '/embeddings'
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.vecApiKey },
+      body: JSON.stringify({ model: preset.vecModel, input: text })
+    }).then(function(r) { return r.json() }).then(function(data) {
+      if (data.data && data.data[0] && data.data[0].embedding) {
+        return data.data[0].embedding
+      }
+      return Promise.reject(new Error(data.error ? data.error.message : '\u65E0\u6548\u54CD\u5E94'))
+    })
+  }
+
+  // 余弦相似度
+  P._cosineSimilarity = function(a, b) {
+    if (!a || !b || a.length !== b.length) return 0
+    var dot = 0, na = 0, nb = 0
+    for (var i = 0; i < a.length; i++) {
+      dot += a[i] * b[i]
+      na += a[i] * a[i]
+      nb += b[i] * b[i]
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1)
+  }
+
+  // 向量召回
+  P._vectorRecall = function(query, facts, topK) {
+    var self = this
+    if (!facts || facts.length === 0) return Promise.resolve([])
+
+    return self._getEmbedding(query).then(function(queryEmb) {
+      var scored = []
+      for (var i = 0; i < facts.length; i++) {
+        if (facts[i].embedding && facts[i].embedding.length > 0) {
+          var sim = self._cosineSimilarity(queryEmb, facts[i].embedding)
+          if (sim > 0) scored.push({ fact: facts[i], score: sim })
+        }
+      }
+      scored.sort(function(a, b) { return b.score - a.score })
+      return scored.slice(0, topK || 10)
+    }).catch(function(e) {
+      // 向量检索失败，回退到 BM25
+      return self._bm25Recall(query, facts, topK)
+    })
+  }
+
+  // 混合召回：BM25 + 向量 + RRF 融合
+  P._hybridRecall = function(query, facts, topK) {
+    var self = this
+    if (!facts || facts.length === 0) return Promise.resolve([])
+
+    var k = 60 // RRF 参数
+
+    // BM25 检索
+    var bm25Results = self._bm25Recall(query, facts, topK * 3)
+
+    // 向量检索
+    return self._vectorRecall(query, facts, topK * 3).then(function(vecResults) {
+      // RRF 融合
+      var rrfScores = {}
+
+      // BM25 排名
+      for (var bi = 0; bi < bm25Results.length; bi++) {
+        var fid = bm25Results[bi].fact.id
+        rrfScores[fid] = (rrfScores[fid] || 0) + 1 / (k + bi + 1)
+      }
+
+      // 向量排名
+      for (var vi = 0; vi < vecResults.length; vi++) {
+        var vid = vecResults[vi].fact.id
+        rrfScores[vid] = (rrfScores[vid] || 0) + 1 / (k + vi + 1)
+      }
+
+      // 按 RRF 分数排序
+      var merged = []
+      for (var ri = 0; ri < facts.length; ri++) {
+        var fId = facts[ri].id
+        if (rrfScores[fId]) {
+          merged.push({ fact: facts[ri], score: rrfScores[fId] })
+        }
+      }
+      merged.sort(function(a, b) { return b.score - a.score })
+
+      return merged.slice(0, topK || 10)
+    }).catch(function() {
+      // 回退到纯 BM25
+      return bm25Results.slice(0, topK || 10)
+    })
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     副 API 召回流程
+     ════════════════════════════════════════════════════════════ */
+
+  P._subApiRecall = function(query, facts, topK) {
+    var self = this
+    var preset = self._getActivePreset()
+    if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
+      return Promise.reject(new Error('\u526F API \u672A\u914D\u7F6E'))
+    }
+    if (!facts || facts.length === 0) return Promise.resolve([])
+
+    // 构建摘要列表
+    var summaryList = ''
+    for (var i = 0; i < facts.length; i++) {
+      summaryList += (i + 1) + '. ' + (facts[i].summary || facts[i].text || '') + '\n'
+    }
+
+    var settings = self._loadSettings()
+    var maxRecall = settings.recallMaxCount || 8
+
+    var prompt = '\u4F60\u662F\u4E00\u4E2A\u8BB0\u5FC6\u53EC\u56DE\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u5F53\u524D\u8F93\u5165\uFF0C\u4ECE\u4EE5\u4E0B\u4E8B\u5B9E\u8BB0\u5FC6\u6458\u8981\u5217\u8868\u4E2D\uFF0C\u9009\u51FA\u4E0E\u5F53\u524D\u5BF9\u8BDD\u6700\u76F8\u5173\u7684\u8BB0\u5FC6\u3002\n\n'
+    prompt += '\u7528\u6237\u8F93\u5165: ' + query + '\n\n'
+    prompt += '\u4E8B\u5B9E\u8BB0\u5FC6\u6458\u8981\u5217\u8868:\n' + summaryList + '\n'
+    prompt += '\u8BF7\u53EA\u8F93\u51FA\u76F8\u5173\u8BB0\u5FC6\u7684\u7F16\u53F7\uFF0C\u7528\u9017\u53F7\u5206\u9694\uFF0C\u6700\u591A' + maxRecall + '\u4E2A\u3002\u4F8B\u5982: 3,7,15\n\u5982\u679C\u6CA1\u6709\u76F8\u5173\u7684\uFF0C\u8F93\u51FA none'
+
+    var url = preset.subEndpoint.replace(/\/+$/, '') + '/chat/completions'
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.subApiKey },
+      body: JSON.stringify({
+        model: preset.subModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 100
+      })
+    }).then(function(r) { return r.json() }).then(function(data) {
+      if (!data.choices || !data.choices[0]) return []
+      var content = (data.choices[0].message || {}).content || ''
+      if (content.trim().toLowerCase() === 'none') return []
+
+      // 解析编号
+      var indices = []
+      var parts = content.split(/[,，\s]+/)
+      for (var pi = 0; pi < parts.length; pi++) {
+        var num = parseInt(parts[pi])
+        if (!isNaN(num) && num >= 1 && num <= facts.length) {
+          indices.push(num - 1)
+        }
+      }
+
+      var results = []
+      for (var ii = 0; ii < indices.length; ii++) {
+        if (results.length >= maxRecall) break
+        var fact = facts[indices[ii]]
+        results.push({ fact: fact, score: 1 - ii * 0.1 })
+      }
+      return results
+    })
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     统一召回入口
+     ════════════════════════════════════════════════════════════ */
+
+  P._recallMemories = function(query, facts, topK) {
+    var self = this
+    var settings = this._loadSettings()
+    var mode = settings.recallMode || 'vector'
+
+    if (mode === 'subapi') {
+      return self._subApiRecall(query, facts, topK)
+    }
+    // 默认向量模式（含BM25混合）
+    return self._hybridRecall(query, facts, topK)
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     生成 Embedding
+     ════════════════════════════════════════════════════════════ */
+
+  P._generateEmbeddings = function(memData) {
+    var self = this
+    var preset = this._getActivePreset()
+    if (!preset || !preset.vecEndpoint || !preset.vecApiKey || !preset.vecModel) {
+      this._toast('\u8BF7\u5148\u914D\u7F6E\u5411\u91CF API')
+      return
+    }
+    if (!memData.facts || memData.facts.length === 0) {
+      this._toast('\u65E0\u4E8B\u5B9E\u8BB0\u5FC6')
+      return
+    }
+
+    this._toast('\u5F00\u59CB\u751F\u6210\u5411\u91CF...')
+
+    var toEmbed = []
+    for (var i = 0; i < memData.facts.length; i++) {
+      if (!memData.facts[i].embedding || memData.facts[i].embedding.length === 0) {
+        toEmbed.push(i)
+      }
+    }
+
+    if (toEmbed.length === 0) {
+      this._toast('\u6240\u6709\u8BB0\u5FC6\u5DF2\u6709\u5411\u91CF')
+      return
+    }
+
+    var idx = 0
+    function embedNext() {
+      if (idx >= toEmbed.length) {
+        self._saveMemData(memData)
+        self._toast('\u5411\u91CF\u751F\u6210\u5B8C\u6210')
+        self._render()
+        return
+      }
+      var fi = toEmbed[idx]
+      var text = memData.facts[fi].text || memData.facts[fi].summary || ''
+      if (!text) { idx++; embedNext(); return }
+
+      self._getEmbedding(text).then(function(emb) {
+        memData.facts[fi].embedding = emb
+        idx++
+        embedNext()
+      }).catch(function(e) {
+        self._toast('\u5411\u91CF\u751F\u6210\u5931\u8D25: ' + (e.message || e))
+        self._saveMemData(memData)
+      })
+    }
+
+    embedNext()
+  }
+
+  /* ════════════════════════════════════════════════════════════
      注册入口
      ════════════════════════════════════════════════════════════ */
 
@@ -5020,7 +5683,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.7.0',
+    version: '0.8.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
