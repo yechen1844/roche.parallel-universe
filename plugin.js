@@ -3308,13 +3308,16 @@
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
+      // Roche 格式：每个分类的预设作为一组导入，标题加 [分类名] 前缀
       for (var ci = 0; ci < data.categories.length; ci++) {
-        var presets = data.categories[ci].presets || []
+        var cat = data.categories[ci]
+        var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
+        var presets = cat.presets || []
         for (var pi = 0; pi < presets.length; pi++) {
           var src = presets[pi]
           this.presets.push({
             id: 'p' + Date.now() + '_' + count,
-            title: src.title || '\u672A\u547D\u540D',
+            title: '[' + catName + '] ' + (src.title || '\u672A\u547D\u540D'),
             role: 'system',
             on: true,
             content: src.content || '',
@@ -4129,13 +4132,16 @@
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
+      // Roche 格式：每个分类的正则作为一组导入，名称加 [分类名] 前缀
       for (var ci = 0; ci < data.categories.length; ci++) {
-        var entries = data.categories[ci].entries || []
+        var cat = data.categories[ci]
+        var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
+        var entries = cat.entries || []
         for (var ei = 0; ei < entries.length; ei++) {
           var src = entries[ei]
           this.regexes.push({
             id: 'r' + Date.now() + '_' + count,
-            name: src.name || '\u672A\u547D\u540D',
+            name: '[' + catName + '] ' + (src.name || '\u672A\u547D\u540D'),
             regex: src.regex || '',
             html: src.html || '',
             type: 'render',
@@ -4298,6 +4304,28 @@
     this.roche.storage.get('pua_asm_order').then(function(data) {
       if (data && data.order && data.order.length) {
         self.asmOrder = data.order
+        // 迁移：如果保存的顺序中没有 recall，自动补上（在 memory-fact 之后）
+        var hasRecall = false
+        for (var i = 0; i < self.asmOrder.length; i++) {
+          if (self.asmOrder[i].type === 'recall') { hasRecall = true; break }
+        }
+        if (!hasRecall) {
+          // 在 memory-fact 后面插入 recall
+          for (var j = 0; j < self.asmOrder.length; j++) {
+            if (self.asmOrder[j].type === 'memory-fact') {
+              self.asmOrder.splice(j + 1, 0, { type: 'recall', id: 'recall' })
+              break
+            }
+          }
+          // 如果连 memory-fact 都没有，就追加到末尾
+          if (!hasRecall) {
+            hasRecall = false
+            for (var k = 0; k < self.asmOrder.length; k++) {
+              if (self.asmOrder[k].type === 'recall') { hasRecall = true; break }
+            }
+            if (!hasRecall) self.asmOrder.push({ type: 'recall', id: 'recall' })
+          }
+        }
       }
     }).catch(function() {})
   }
