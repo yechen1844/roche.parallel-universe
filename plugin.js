@@ -599,6 +599,8 @@
   /* ── 初始化 ── */
   P.init = function(container) {
     this.container = container
+    // 重置渲染状态
+    this._rendering = false
 
     // 注入样式
     if (!this.styleEl) {
@@ -619,8 +621,7 @@
     // 捕获控制台日志
     this._captureConsole()
 
-    // 加载已保存的分支和预设
-    this._loadBranches()
+    // 加载已保存的分支和预设（同步数据）
     this._loadPresets()
     this._loadRegexes()
     this._loadRegexPresets()
@@ -629,6 +630,9 @@
     this._loadAsmOrder()
     this._loadSettings()
     this._currentMemBranchId = ''
+
+    // 异步加载分支，完成后渲染
+    this._loadBranches()
   }
 
   /* ── 捕获控制台日志 ── */
@@ -724,15 +728,15 @@
 
   P._loadBranches = function() {
     var self = this
-    if (!this.roche || !this.roche.storage) return
+    if (!this.roche || !this.roche.storage) {
+      // storage 不可用时也要渲染
+      this._render()
+      return
+    }
     this.roche.storage.get('pua_branches').then(function(data) {
       if (data && data.branches) self.branches = data.branches
-      // 只在首次加载时渲染，后续不自动触发
-      if (!self._branchesLoaded) {
-        self._branchesLoaded = true
-        self._render()
-      }
-    }).catch(function() { self.branches = []; if (!self._branchesLoaded) { self._branchesLoaded = true; self._render() } })
+      self._render()
+    }).catch(function() { self.branches = []; self._render() })
   }
 
   P._saveBranches = function() {
