@@ -960,7 +960,13 @@
       if (i > 0) text += ' '
       var a = args[i]
       try {
-        text += typeof a === 'object' ? JSON.stringify(a, null, 0) : String(a)
+        if (a instanceof Error) {
+          text += a.message + (a.stack ? '\n' + a.stack : '')
+        } else if (typeof a === 'object' && a !== null) {
+          try { text += JSON.stringify(a, null, 2) } catch(e2) { text += String(a) }
+        } else {
+          text += String(a)
+        }
       } catch(e) {
         text += String(a)
       }
@@ -3598,6 +3604,7 @@
   P._importPresetDialog = function() {
     var self = this
     var modal = this._modalOverlay
+    console.log('[PUA] _importPresetDialog called, modal=' + (modal ? 'exists' : 'NULL'))
     if (!modal) return
 
     var body = ''
@@ -3659,15 +3666,18 @@
   /* ── 读取预设文件 ── */
   P._readPresetFile = function(file) {
     var self = this
+    console.log('[PUA] _readPresetFile called, file=' + file.name)
     var reader = new FileReader()
     reader.onload = function(e) {
       try {
         var data = JSON.parse(e.target.result)
         self._parsedPresetData = data
         var modal = self._modalOverlay
+        console.log('[PUA] _readPresetFile parsed, modal=' + (modal ? 'exists' : 'NULL') + ' data type=' + data.type + ' has categories=' + !!(data.categories) + ' has presets=' + !!(data.presets))
         var previewEl = modal ? modal.querySelector('#pua-preset-import-preview') : null
         var resultEl = modal ? modal.querySelector('#pua-preset-import-result') : null
         var confirmBtn = modal ? modal.querySelector('#pua-preset-import-confirm') : null
+        console.log('[PUA] _readPresetFile elements: preview=' + (previewEl ? 'found' : 'NULL') + ' result=' + (resultEl ? 'found' : 'NULL') + ' confirm=' + (confirmBtn ? 'found' : 'NULL'))
         if (!previewEl || !resultEl) return
 
         if (data && data.type === 'pua_plugin_presets' && data.presets && Array.isArray(data.presets)) {
@@ -3724,11 +3734,13 @@
 
   /* ── 执行导入预设 ── */
   P._doImportPreset = function() {
+    console.log('[PUA] _doImportPreset called, parsedData=' + (this._parsedPresetData ? 'exists' : 'NULL'))
     if (!this._parsedPresetData) {
       this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6570\u636E')
       return
     }
     var data = this._parsedPresetData
+    console.log('[PUA] _doImportPreset data type=' + data.type + ' has categories=' + !!(data.categories) + ' has presets=' + !!(data.presets))
     var count = 0
     var importGroup = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'2digit',hour:'2-digit',minute:'2-digit'}))
 
@@ -4767,15 +4779,18 @@
   /* ── 读取正则文件 ── */
   P._readRegexFile = function(file) {
     var self = this
+    console.log('[PUA] _readRegexFile called, file=' + file.name)
     var reader = new FileReader()
     reader.onload = function(e) {
       try {
         var data = JSON.parse(e.target.result)
         self._parsedRegexData = data
         var modal = self._modalOverlay
+        console.log('[PUA] _readRegexFile parsed, modal=' + (modal ? 'exists' : 'NULL') + ' data type=' + data.type + ' has categories=' + !!(data.categories))
         var previewEl = modal ? modal.querySelector('#pua-regex-import-preview') : null
         var resultEl = modal ? modal.querySelector('#pua-regex-import-result') : null
         var confirmBtn = modal ? modal.querySelector('#pua-regex-import-confirm') : null
+        console.log('[PUA] _readRegexFile elements: preview=' + (previewEl ? 'found' : 'NULL') + ' result=' + (resultEl ? 'found' : 'NULL') + ' confirm=' + (confirmBtn ? 'found' : 'NULL'))
         if (!previewEl || !resultEl) return
 
         if (data && data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
@@ -4822,6 +4837,7 @@
 
   /* ── 执行导入正则 ── */
   P._doImportRegex = function() {
+    console.log('[PUA] _doImportRegex called, parsedData=' + (this._parsedRegexData ? 'exists' : 'NULL'))
     if (!this._parsedRegexData) {
       this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6570\u636E')
       return
@@ -8439,18 +8455,30 @@
     for (var mi = 0; mi < msgEls.length; mi++) {
       (function(msgEl) {
         var longPressTimer = null
+        var longPressFired = false
         msgEl.addEventListener('touchstart', function(e) {
+          longPressFired = false
           longPressTimer = setTimeout(function() {
+            longPressFired = true
             var msgId = msgEl.getAttribute('data-msg-id')
+            console.log('[PUA] longpress fired for msgId=' + msgId)
             if (msgId) self._toggleEditMode(msgId)
           }, 600)
         }, { passive: true })
-        msgEl.addEventListener('touchend', function() { clearTimeout(longPressTimer) })
+        msgEl.addEventListener('touchend', function(e) {
+          clearTimeout(longPressTimer)
+          // Prevent click event from firing after long press
+          if (longPressFired) {
+            e.preventDefault()
+          }
+        })
         msgEl.addEventListener('touchmove', function() { clearTimeout(longPressTimer) })
         msgEl.addEventListener('contextmenu', function(e) {
           e.preventDefault()
           var msgId = msgEl.getAttribute('data-msg-id')
-          if (msgId) self._toggleEditMode(msgId)
+          console.log('[PUA] contextmenu fired for msgId=' + msgId + ', longPressFired=' + longPressFired)
+          // Only trigger if not already triggered by touch long press
+          if (!longPressFired && msgId) self._toggleEditMode(msgId)
         })
       })(msgEls[mi])
     }
@@ -9056,32 +9084,37 @@
   }
 
   P._toggleEditMode = function(msgId) {
+    console.log('[PUA] _toggleEditMode called, msgId=' + msgId + ', current editing=' + this._editingMsgId)
     if (this._editingMsgId === msgId) {
       this._editingMsgId = null
     } else {
       this._editingMsgId = msgId
     }
+    var newMode = this._editingMsgId
+    console.log('[PUA] _toggleEditMode result, editingMsgId=' + newMode)
     // Local update: only modify the target message's content area, no full rebuild
     var contentEl = this._contentEl
-    if (!contentEl) return
+    if (!contentEl) { console.warn('[PUA] _toggleEditMode: contentEl is null'); return }
     var msgEl = contentEl.querySelector('[data-msg-id="' + msgId + '"]')
-    if (!msgEl) return
+    if (!msgEl) { console.warn('[PUA] _toggleEditMode: msgEl not found for id=' + msgId); return }
     var contentDiv = msgEl.querySelector('.pua-conv-msg-content')
-    if (!contentDiv) return
+    if (!contentDiv) { console.warn('[PUA] _toggleEditMode: contentDiv not found'); return }
 
     // Find the message object
     var msg = null
     for (var i = 0; i < this._convMessages.length; i++) {
       if (this._convMessages[i].id === msgId) { msg = this._convMessages[i]; break }
     }
-    if (!msg) return
+    if (!msg) { console.warn('[PUA] _toggleEditMode: msg not found in _convMessages'); return }
 
-    if (this._editingMsgId === msgId) {
+    if (newMode === msgId) {
       // Enter edit mode: show raw content
+      console.log('[PUA] Entering edit mode for msg ' + msgId)
       contentDiv.className = 'pua-conv-msg-content pua-conv-edit-mode'
       contentDiv.innerHTML = this._escHtml(msg.content || '')
     } else {
       // Exit edit mode: restore rendered view
+      console.log('[PUA] Exiting edit mode for msg ' + msgId)
       contentDiv.className = 'pua-conv-msg-content'
       var c = msg.content || ''
       if (msg.role === 'assistant') {
@@ -9097,7 +9130,7 @@
 
     // Update toggle button text
     var toggleBtn = msgEl.querySelector('[data-action="toggleEdit"]')
-    if (toggleBtn) toggleBtn.textContent = this._editingMsgId ? '预览' : '源码'
+    if (toggleBtn) toggleBtn.textContent = newMode ? '预览' : '源码'
   }
 
   /* ── Switch alternative version ── */
