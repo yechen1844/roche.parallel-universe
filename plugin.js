@@ -649,10 +649,22 @@
     '.pua-prompt-modal-body { flex:1; overflow-y:auto; padding:16px; color:#e0e0e0; }',
     '.pua-prompt-modal-textarea { width:100%; min-height:200px; background:#0d0d1a; border:1px solid var(--pua-border); border-radius:6px; padding:8px 10px; color:#ffffff; font-size:10px; font-family:"Cascadia Code","Fira Code",monospace; line-height:1.5; outline:none; resize:vertical; }',
     '.pua-prompt-modal-textarea:focus { border-color:var(--pua-accent); }',
-    '.pua-prompt-modal-presets { margin-top:8px; display:flex; gap:4px; flex-wrap:wrap; }',
-    '.pua-prompt-preset-tag { font-size:8px; padding:2px 6px; border-radius:3px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
-    '.pua-prompt-preset-tag:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
-    '.pua-prompt-modal-footer { padding:10px 16px; border-top:1px solid var(--pua-border); display:flex; gap:6px; justify-content:flex-end; }',
+    '.pua-prompt-modal-presets { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }',
+    '.pua-prompt-modal-preset-select { background:#0d0d1a; border:1px solid var(--pua-border); border-radius:6px; padding:4px 8px; color:#ffffff; font-size:10px; font-family:inherit; outline:none; cursor:pointer; min-width:120px; }',
+    '.pua-prompt-modal-preset-select:focus { border-color:#c8a84e; }',
+    '.pua-prompt-modal-preset-btn { padding:6px 10px; border-radius:6px; font-weight:600; font-size:11px; cursor:pointer; border:none; transition:all 0.2s; display:flex; align-items:center; gap:2px; }',
+    '.pua-prompt-modal-save-btn { background:#c8a84e; color:#1a1a2e; }',
+    '.pua-prompt-modal-save-btn:hover { background:#d4b85a; }',
+    '.pua-prompt-modal-del-btn { background:transparent; border:1px solid #c8a84e; color:#c8a84e; }',
+    '.pua-prompt-modal-del-btn:hover { background:rgba(200,168,78,0.15); }',
+    '.pua-prompt-modal-name-input { background:#0d0d1a; border:1px solid #c8a84e; border-radius:6px; padding:4px 8px; color:#ffffff; font-size:10px; font-family:inherit; outline:none; width:100px; display:none; }',
+    '.pua-prompt-modal-name-input.visible { display:inline-block; }',
+    '.pua-prompt-modal-footer { padding:12px 16px; border-top:1px solid var(--pua-border); display:flex; gap:8px; justify-content:flex-end; align-items:center; }',
+    '.pua-prompt-modal-footer .pua-btn { padding:8px 16px !important; border-radius:6px !important; font-weight:600 !important; font-size:11px !important; }',
+    '.pua-prompt-modal-footer #ast-prompt-save, .pua-prompt-modal-footer #ast-preset-save-as { background:#c8a84e !important; color:#1a1a2e !important; border-color:#c8a84e !important; font-weight:700 !important; }',
+    '.pua-prompt-modal-footer #ast-prompt-save:hover, .pua-prompt-modal-footer #ast-preset-save-as:hover { background:#d4b85a !important; }',
+    '.pua-prompt-modal-footer #ast-prompt-reset { background:transparent !important; border:1px solid #c8a84e !important; color:#c8a84e !important; font-weight:600 !important; }',
+    '.pua-prompt-modal-footer #ast-prompt-reset:hover { background:rgba(200,168,78,0.15) !important; }',
   ].join('\n')
 
   /* ════════════════════════════════════════════════════════════
@@ -4076,48 +4088,59 @@
         regexElemInfoDiv.innerHTML = editorHtml
         regexElemInfoDiv.style.display = 'block'
 
-        // Bind color picker sync
+        // Bind color picker sync + instant preview
         var colorInputs = regexElemInfoDiv.querySelectorAll('.pua-elem-color-group')
         for (var ci = 0; ci < colorInputs.length; ci++) {
           (function(group) {
             var textIn = group.querySelector('.pua-elem-editor-input')
             var colorIn = group.querySelector('.pua-elem-color-picker')
             if (textIn && colorIn) {
-              colorIn.addEventListener('input', function() { textIn.value = this.value })
-              textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
+              colorIn.addEventListener('input', function() { textIn.value = this.value; _regApplyToEl() })
+              textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {}; _regApplyToEl() })
             }
           })(colorInputs[ci])
         }
 
-        // Bind range slider sync
+        // Bind range slider sync + instant preview
         var rangeInputs = regexElemInfoDiv.querySelectorAll('.pua-elem-editor-range')
         for (var ri = 0; ri < rangeInputs.length; ri++) {
           (function(range) {
             var prop = range.getAttribute('data-prop')
             var textIn = regexElemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="' + prop + '"]')
             if (textIn) {
-              range.addEventListener('input', function() { textIn.value = this.value })
-              textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v })
+              range.addEventListener('input', function() { textIn.value = this.value; _regApplyToEl() })
+              textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v; _regApplyToEl() })
             }
           })(rangeInputs[ri])
         }
 
-        // Apply button - also update the HTML textarea
+        // Bind textContent input instant preview
+        var textContentIn = regexElemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="textContent"]')
+        if (textContentIn) {
+          textContentIn.addEventListener('input', function() { _regApplyToEl() })
+        }
+
+        // Instant preview: apply current editor values to the element
+        function _regApplyToEl() {
+          if (!regexSelectedEl) return
+          var inputs = regexElemInfoDiv.querySelectorAll('.pua-elem-editor-input')
+          for (var ii = 0; ii < inputs.length; ii++) {
+            var prop = inputs[ii].getAttribute('data-prop')
+            var val = inputs[ii].value
+            if (prop === 'textContent') {
+              regexSelectedEl.textContent = val
+            } else if (val) {
+              regexSelectedEl.style[prop] = val
+            }
+          }
+        }
+
+        // Apply button - update the HTML textarea with the modified template
         var applyBtn = regexElemInfoDiv.querySelector('.pua-elem-apply-btn')
         if (applyBtn) {
           applyBtn.addEventListener('click', function() {
             if (!regexSelectedEl) return
-            var inputs = regexElemInfoDiv.querySelectorAll('.pua-elem-editor-input')
-            for (var ii = 0; ii < inputs.length; ii++) {
-              var prop = inputs[ii].getAttribute('data-prop')
-              var val = inputs[ii].value
-              if (prop === 'textContent') {
-                regexSelectedEl.textContent = val
-              } else if (val) {
-                regexSelectedEl.style[prop] = val
-              }
-            }
-            // Update the HTML textarea with the modified element's outerHTML
+            // Values are already applied via instant preview, just update textarea
             var htmlTextarea = document.querySelector('.pua-regex-html')
             if (htmlTextarea && regexSelectedEl) {
               // Find the selected element's position in the preview and update template
@@ -6579,48 +6602,60 @@
           elemInfoDiv.innerHTML = editorHtml
           elemInfoDiv.style.display = 'block'
 
-          // Bind color picker sync
+          // Bind color picker sync + instant preview
           var colorInputs = elemInfoDiv.querySelectorAll('.pua-elem-color-group')
           for (var ci = 0; ci < colorInputs.length; ci++) {
             (function(group) {
               var textIn = group.querySelector('.pua-elem-editor-input')
               var colorIn = group.querySelector('.pua-elem-color-picker')
               if (textIn && colorIn) {
-                colorIn.addEventListener('input', function() { textIn.value = this.value })
-                textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {} })
+                colorIn.addEventListener('input', function() { textIn.value = this.value; _applyToEl() })
+                textIn.addEventListener('input', function() { try { colorIn.value = this.value } catch(e) {}; _applyToEl() })
               }
             })(colorInputs[ci])
           }
 
-          // Bind range slider sync
+          // Bind range slider sync + instant preview
           var rangeInputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-range')
           for (var ri = 0; ri < rangeInputs.length; ri++) {
             (function(range) {
               var prop = range.getAttribute('data-prop')
               var textIn = elemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="' + prop + '"]')
               if (textIn) {
-                range.addEventListener('input', function() { textIn.value = this.value })
-                textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v })
+                range.addEventListener('input', function() { textIn.value = this.value; _applyToEl() })
+                textIn.addEventListener('input', function() { var v = parseFloat(this.value); if (!isNaN(v)) range.value = v; _applyToEl() })
               }
             })(rangeInputs[ri])
           }
 
-          // Apply button
+          // Bind textContent input instant preview
+          var textContentIn = elemInfoDiv.querySelector('.pua-elem-editor-input[data-prop="textContent"]')
+          if (textContentIn) {
+            textContentIn.addEventListener('input', function() { _applyToEl() })
+          }
+
+          // Instant preview: apply current editor values to the element
+          function _applyToEl() {
+            if (!selectedEl) return
+            var inputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-input')
+            for (var ii = 0; ii < inputs.length; ii++) {
+              var prop = inputs[ii].getAttribute('data-prop')
+              var val = inputs[ii].value
+              if (prop === 'textContent') {
+                selectedEl.textContent = val
+              } else if (val) {
+                selectedEl.style[prop] = val
+              }
+            }
+          }
+
+          // Apply button - show toast for assistant page
           var applyBtn = elemInfoDiv.querySelector('.pua-elem-apply-btn')
           if (applyBtn) {
             applyBtn.addEventListener('click', function() {
               if (!selectedEl) return
-              var inputs = elemInfoDiv.querySelectorAll('.pua-elem-editor-input')
-              for (var ii = 0; ii < inputs.length; ii++) {
-                var prop = inputs[ii].getAttribute('data-prop')
-                var val = inputs[ii].value
-                if (prop === 'textContent') {
-                  selectedEl.textContent = val
-                } else if (val) {
-                  selectedEl.style[prop] = val
-                }
-              }
-              self._toast('\u4FEE\u6539\u5DF2\u5E94\u7528\u5230\u9884\u89C8\uFF0C\u5982\u9700\u4FDD\u5B58\u8BF7\u7F16\u8F91\u6B63\u5219')
+              // Values are already applied via instant preview
+              self._toast('\u4FEE\u6539\u5DF2\u5E94\u7528\u5230\u9884\u89C8')
             })
           }
 
@@ -7164,7 +7199,25 @@
     }
     if (!this._assistantData.promptPresets) this._assistantData.promptPresets = []
 
+    // Ensure default preset exists
+    var defaultPresetIdx = -1
+    for (var dpi = 0; dpi < this._assistantData.promptPresets.length; dpi++) {
+      if (this._assistantData.promptPresets[dpi].name === '\u9ED8\u8BA4\u52A9\u624B') { defaultPresetIdx = dpi; break }
+    }
+    if (defaultPresetIdx < 0) {
+      this._assistantData.promptPresets.unshift({ name: '\u9ED8\u8BA4\u52A9\u624B', content: this._getDefaultSystemPrompt() })
+      defaultPresetIdx = 0
+    }
+
     var currentPrompt = this._assistantData.systemPrompt || this._getDefaultSystemPrompt()
+
+    // Determine active preset index
+    var activePresetIdx = 0
+    if (this._assistantData.systemPrompt) {
+      for (var api = 0; api < this._assistantData.promptPresets.length; api++) {
+        if (this._assistantData.promptPresets[api].content === this._assistantData.systemPrompt) { activePresetIdx = api; break }
+      }
+    }
 
     // Remove existing modal if any
     var existingOverlay = document.querySelector('.pua-prompt-modal-overlay')
@@ -7179,20 +7232,22 @@
     h += '<button class="pua-prompt-modal-close">\u00D7</button>'
     h += '</div>'
     h += '<div class="pua-prompt-modal-body">'
-    h += '<textarea class="pua-prompt-modal-textarea" id="ast-prompt-textarea">' + this._escHtml(currentPrompt) + '</textarea>'
-    // Preset tags
-    if (this._assistantData.promptPresets.length > 0) {
-      h += '<div class="pua-prompt-modal-presets">'
-      h += '<span style="font-size:9px;color:var(--pua-text-sub);margin-right:4px">\u9884\u8BBE:</span>'
-      for (var pi = 0; pi < this._assistantData.promptPresets.length; pi++) {
-        h += '<span class="pua-prompt-preset-tag" data-preset-idx="' + pi + '">' + this._escHtml(this._assistantData.promptPresets[pi].name) + '</span>'
-      }
-      h += '</div>'
+    // Preset selector row
+    h += '<div class="pua-prompt-modal-presets" style="margin-bottom:10px">'
+    h += '<select class="pua-prompt-modal-preset-select" id="ast-preset-select">'
+    for (var pi = 0; pi < this._assistantData.promptPresets.length; pi++) {
+      h += '<option value="' + pi + '"' + (pi === activePresetIdx ? ' selected' : '') + '>' + this._escHtml(this._assistantData.promptPresets[pi].name) + '</option>'
     }
+    h += '</select>'
+    h += '<button class="pua-prompt-modal-preset-btn pua-prompt-modal-save-btn" id="ast-preset-add" title="\u4FDD\u5B58\u4E3A\u65B0\u9884\u8BBE">\u2795</button>'
+    h += '<button class="pua-prompt-modal-preset-btn pua-prompt-modal-del-btn" id="ast-preset-del" title="\u5220\u9664\u5F53\u524D\u9884\u8BBE">\uD83D\uDDD1\uFE0F</button>'
+    h += '<input class="pua-prompt-modal-name-input" id="ast-preset-name-input" placeholder="\u9884\u8BBE\u540D\u79F0">'
+    h += '</div>'
+    h += '<textarea class="pua-prompt-modal-textarea" id="ast-prompt-textarea">' + this._escHtml(currentPrompt) + '</textarea>'
     h += '</div>'
     h += '<div class="pua-prompt-modal-footer">'
-    h += '<button class="pua-btn pua-btn-sm" id="ast-preset-save-as">\u4FDD\u5B58\u4E3A\u9884\u8BBE</button>'
     h += '<button class="pua-btn pua-btn-sm" id="ast-prompt-reset">\u91CD\u7F6E\u9ED8\u8BA4</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="ast-preset-save-as">\u4FDD\u5B58\u4E3A\u9884\u8BBE</button>'
     h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="ast-prompt-save">\u4FDD\u5B58</button>'
     h += '</div>'
     h += '</div>'
@@ -7205,14 +7260,68 @@
     var saveBtn = overlay.querySelector('#ast-prompt-save')
     var resetBtn = overlay.querySelector('#ast-prompt-reset')
     var saveAsBtn = overlay.querySelector('#ast-preset-save-as')
+    var presetSelect = overlay.querySelector('#ast-preset-select')
+    var addBtn = overlay.querySelector('#ast-preset-add')
+    var delBtn = overlay.querySelector('#ast-preset-del')
+    var nameInput = overlay.querySelector('#ast-preset-name-input')
 
     // Close
     closeBtn.addEventListener('click', function() { overlay.remove() })
     overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove() })
 
-    // Save
+    // Preset select - load preset content into textarea
+    presetSelect.addEventListener('change', function() {
+      var idx = parseInt(this.value)
+      if (self._assistantData.promptPresets[idx]) {
+        textarea.value = self._assistantData.promptPresets[idx].content
+      }
+    })
+
+    // Add new preset (inline name input)
+    addBtn.addEventListener('click', function() {
+      if (!nameInput.classList.contains('visible')) {
+        nameInput.classList.add('visible')
+        nameInput.focus()
+        return
+      }
+      var name = nameInput.value.trim()
+      if (!name) { nameInput.focus(); return }
+      self._assistantData.promptPresets.push({ name: name, content: textarea.value })
+      self._saveAssistantData()
+      nameInput.classList.remove('visible')
+      nameInput.value = ''
+      self._toast('\u5DF2\u4FDD\u5B58\u9884\u8BBE: ' + name)
+      overlay.remove()
+      self._showPromptModal()
+    })
+
+    nameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { addBtn.click() }
+      if (e.key === 'Escape') { nameInput.classList.remove('visible'); nameInput.value = '' }
+    })
+
+    // Delete selected preset
+    delBtn.addEventListener('click', function() {
+      var idx = parseInt(presetSelect.value)
+      if (self._assistantData.promptPresets.length <= 1) {
+        self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u9884\u8BBE')
+        return
+      }
+      var removedName = self._assistantData.promptPresets[idx].name
+      self._assistantData.promptPresets.splice(idx, 1)
+      self._saveAssistantData()
+      self._toast('\u5DF2\u5220\u9664\u9884\u8BBE: ' + removedName)
+      overlay.remove()
+      self._showPromptModal()
+    })
+
+    // Save - save current textarea content as the active preset
     saveBtn.addEventListener('click', function() {
+      var idx = parseInt(presetSelect.value)
       self._assistantData.systemPrompt = textarea.value
+      if (self._assistantData.promptPresets[idx]) {
+        self._assistantData.promptPresets[idx].content = textarea.value
+      }
       self._saveAssistantData()
       self._toast('\u63D0\u793A\u8BCD\u5DF2\u4FDD\u5B58')
       overlay.remove()
@@ -7222,33 +7331,31 @@
     resetBtn.addEventListener('click', function() {
       textarea.value = self._getDefaultSystemPrompt()
       self._assistantData.systemPrompt = ''
+      // Update default preset content
+      if (self._assistantData.promptPresets[0] && self._assistantData.promptPresets[0].name === '\u9ED8\u8BA4\u52A9\u624B') {
+        self._assistantData.promptPresets[0].content = self._getDefaultSystemPrompt()
+      }
       self._saveAssistantData()
       self._toast('\u5DF2\u91CD\u7F6E\u4E3A\u9ED8\u8BA4\u63D0\u793A\u8BCD')
     })
 
-    // Save as preset
+    // Save as preset (inline name input)
     saveAsBtn.addEventListener('click', function() {
-      var name = prompt('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0', '\u81EA\u5B9A\u4E49\u63D0\u793A\u8BCD')
-      if (!name) return
-      self._assistantData.promptPresets.push({ name: name, prompt: textarea.value })
+      if (!nameInput.classList.contains('visible')) {
+        nameInput.classList.add('visible')
+        nameInput.focus()
+        return
+      }
+      var name = nameInput.value.trim()
+      if (!name) { nameInput.focus(); return }
+      self._assistantData.promptPresets.push({ name: name, content: textarea.value })
       self._saveAssistantData()
+      nameInput.classList.remove('visible')
+      nameInput.value = ''
       self._toast('\u5DF2\u4FDD\u5B58\u4E3A\u9884\u8BBE: ' + name)
       overlay.remove()
-      self._showPromptModal() // Re-render modal with new preset
+      self._showPromptModal()
     })
-
-    // Preset tags click
-    var presetTags = overlay.querySelectorAll('.pua-prompt-preset-tag')
-    for (var ti = 0; ti < presetTags.length; ti++) {
-      (function(tag) {
-        tag.addEventListener('click', function() {
-          var idx = parseInt(this.getAttribute('data-preset-idx'))
-          if (self._assistantData.promptPresets[idx]) {
-            textarea.value = self._assistantData.promptPresets[idx].prompt
-          }
-        })
-      })(presetTags[ti])
-    }
   }
 
   /* ════════════════════════════════════════════════════════════
