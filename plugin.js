@@ -4995,7 +4995,7 @@
   }
 
   /* ── 数据拉取 ── */
-  P._fetchAsmData = function() {
+  P._fetchAsmData = function(silent) {
     var self = this
 
     // 找到选中的分支
@@ -5010,7 +5010,7 @@
 
     this.asmLoading = true
     this.asmData = { branch: branch, char: null, chars: [], userPersona: null, shortTerm: [], longTerm: null, worldbook: [], worldEntries: [] }
-    this._render()
+    if (!silent) this._render()
 
     var promises = []
 
@@ -5207,10 +5207,10 @@
         }
       }
       self.asmLoading = false
-      self._render()
+      if (!silent) self._render()
     }).catch(function() {
       self.asmLoading = false
-      self._render()
+      if (!silent) self._render()
     })
   }
 
@@ -7032,8 +7032,9 @@
 
     // Get API config
     var preset = this._getActivePreset()
-    if (!preset) { this._toast('\u8BF7\u5148\u914D\u7F6E API'); return }
+    if (!preset) { this._toast('请先配置 API'); return }
 
+    var useRocheAi = (this._assistantData.apiChoice === 'main') && this.roche && this.roche.ai && this.roche.ai.chat
     var endpoint, apiKey, model
     if (this._assistantData.apiChoice === 'main') {
       endpoint = preset.mainEndpoint
@@ -7049,9 +7050,9 @@
       model = preset.subModel
     }
 
-    if (!endpoint || !apiKey || !model) {
-      var apiLabel = this._assistantData.apiChoice === 'main' ? '\u4E3B' : (this._assistantData.apiChoice === 'vec' ? '\u5411\u91CF' : '\u526F')
-      this._toast('\u8BF7\u5148\u914D\u7F6E' + apiLabel + ' API')
+    if (!useRocheAi && (!endpoint || !apiKey || !model)) {
+      var apiLabel = this._assistantData.apiChoice === 'main' ? '主' : (this._assistantData.apiChoice === 'vec' ? '向量' : '副')
+      this._toast('请先配置' + apiLabel + ' API')
       return
     }
 
@@ -7080,17 +7081,29 @@
       }
     }
 
-    var url = endpoint.replace(/\/+$/, '') + '/chat/completions'
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({
-        model: model,
+    var url = useRocheAi ? '' : (endpoint.replace(/\/+$/, '') + '/chat/completions')
+    var apiPromise
+    if (useRocheAi) {
+      apiPromise = self.roche.ai.chat({
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000
+        temperature: 0.7
+      }).then(function(result) {
+        return { choices: [{ message: { content: (result && result.text) || '' } }] }
       })
-    }).then(function(r) { return r.json() }).then(function(data) {
+    } else {
+      apiPromise = fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      }).then(function(r) { return r.json() })
+    }
+
+    apiPromise.then(function(data) {
       // Remove typing indicator
       var typingEl2 = contentEl.querySelector('#ast-typing')
       if (typingEl2) typingEl2.remove()
@@ -7573,8 +7586,14 @@
     }
     if (branch) branchName = branch.name || ''
 
+    // Sync asmBranchId and load asmData silently for context viewing
+    if (branch && (!this.asmData.branch || this.asmData.branch.id !== branch.id)) {
+      this.asmBranchId = branch.id
+      this._fetchAsmData(true) // silent mode - no re-render
+    }
+
     // Load messages from storage
-    this._loadConvMessages()
+    this._loadConvMessages(branch)
 
     var h = '<div class="pua-conv-layout" style="position:relative">'
 
@@ -7662,7 +7681,11 @@
       branchSelect.addEventListener('change', function() {
         self._convBranchId = this.value
         self._convMessages = []
-        self._loadConvMessages()
+        var selBranch = null
+        for (var sbi = 0; sbi < self.branches.length; sbi++) {
+          if (self.branches[sbi].id === self._convBranchId) { selBranch = self.branches[sbi]; break }
+        }
+        self._loadConvMessages(selBranch)
         self._renderPage()
       })
     }
@@ -7851,6 +7874,7 @@
     }
     h += '<button class="pua-conv-msg-action' + (msg.favorited ? ' active' : '') + '" data-action="favorite" data-msg-id="' + this._escHtml(msg.id) + '">\u2B50</button>'
     h += '<button class="pua-conv-msg-action" data-action="viewctx" data-msg-id="' + this._escHtml(msg.id) + '">\uD83D\uDCCB</button>'
+    h += '<button class="pua-conv-msg-action" data-action="delete" data-msg-id="' + this._escHtml(msg.id) + '">\uD83D\uDDD1\uFE0F</button>'
     h += '</div>'
 
     h += '</div>'
@@ -7885,6 +7909,7 @@
           else if (action === 'edit') self._editMessage(msgId)
           else if (action === 'favorite') self._toggleFavorite(msgId)
           else if (action === 'viewctx') self._viewContext(msgId)
+          else if (action === 'delete') self._deleteMessage(msgId)
         })
       })(actionBtns[ai])
     }
@@ -7921,7 +7946,7 @@
     }
   }
 
-  P._loadConvMessages = function() {
+  P._loadConvMessages = function(branch) {
     if (!this._convBranchId) { this._convMessages = []; return }
     var key = 'pua_conv_' + this._convBranchId
     try {
@@ -7935,6 +7960,25 @@
         return
       }
     } catch(e) {}
+
+    // Fallback: load from branch.messages (offline imports / online conversations)
+    if (branch && branch.messages && branch.messages.length > 0) {
+      var msgs = []
+      for (var mi = 0; mi < branch.messages.length; mi++) {
+        var m = branch.messages[mi]
+        var role = 'user'
+        if (m.type === 'assistant' || m.type === 'model') role = 'assistant'
+        else if (m.type === 'system') role = 'system'
+        var msg = this._createMessage(role, m.text || m.content || '', branch.source === 'offline' ? 'offline' : 'online')
+        msg.floorNumber = mi + 1
+        if (m.timestamp) msg.timestamp = m.timestamp
+        msgs.push(msg)
+      }
+      this._convMessages = msgs
+      this._saveConvMessages()
+      return
+    }
+
     this._convMessages = []
   }
 
@@ -8060,13 +8104,6 @@
     // Use _buildMessages for system context (presets, char, worldbook, memory)
     var systemCtx = this._buildMessages()
 
-    // Add system context (everything except chat)
-    var chatStartIdx = -1
-    for (var si = systemCtx.length - 1; si >= 0; si--) {
-      // Find where chat messages start (they have role user/assistant and are at the end)
-      // We'll use all system messages from _buildMessages
-    }
-
     // Add all system-level messages from _buildMessages
     for (var i = 0; i < systemCtx.length; i++) {
       messages.push({ role: systemCtx[i].role, content: systemCtx[i].content })
@@ -8139,14 +8176,106 @@
 
   P._streamChat = function(messages) {
     var self = this
+
+    // Priority 1: Use roche.ai.chat (Roche's built-in AI API)
+    if (this.roche && this.roche.ai && this.roche.ai.chat) {
+      return this._streamChatViaRoche(messages)
+    }
+
+    // Priority 2: Fallback to user-configured endpoint
     var preset = this._getActivePreset()
-    if (!preset) return Promise.reject(new Error('\u8BF7\u5148\u914D\u7F6E API'))
+    if (!preset) return Promise.reject(new Error('请先配置 API'))
     var endpoint = (preset.mainEndpoint || '').replace(/\/+$/, '')
     var apiKey = preset.mainApiKey || ''
     var model = preset.mainModel || ''
-    if (!endpoint || !apiKey || !model) return Promise.reject(new Error('\u8BF7\u5148\u914D\u7F6E\u4E3B API'))
+    if (!endpoint || !apiKey || !model) return Promise.reject(new Error('roche.ai.chat 不可用，请先配置主 API'))
 
+    return this._streamChatViaFetch(messages, endpoint, apiKey, model)
+  }
+
+  P._streamChatViaRoche = function(messages) {
+    var self = this
+    var contentEl = self._contentEl
+
+    return this.roche.ai.chat({
+      messages: messages,
+      stream: true
+    }).then(function(result) {
+      // Check if result is a ReadableStream (streaming response)
+      if (result && typeof result.getReader === 'function') {
+        return self._processStream(result, contentEl)
+      }
+      // Check if result has body as ReadableStream
+      if (result && result.body && typeof result.body.getReader === 'function') {
+        return self._processStream(result.body, contentEl)
+      }
+      // Non-streaming result
+      var text = (result && result.text) || ''
+      if (text) {
+        self._updateStreamingMessage(contentEl, self._escHtml(text), false)
+      }
+      return text
+    }).catch(function(e) {
+      // If roche.ai.chat streaming fails, try non-streaming
+      return self.roche.ai.chat({
+        messages: messages
+      }).then(function(result) {
+        var text = (result && result.text) || ''
+        if (text) {
+          self._updateStreamingMessage(contentEl, self._escHtml(text), false)
+        }
+        return text
+      }).catch(function(e2) {
+        // Final fallback: try user-configured endpoint
+        var preset = self._getActivePreset()
+        if (preset && preset.mainEndpoint && preset.mainApiKey && preset.mainModel) {
+          return self._streamChatViaFetch(messages, preset.mainEndpoint.replace(/\/+$/, ''), preset.mainApiKey, preset.mainModel)
+        }
+        return Promise.reject(new Error('AI 调用失败: ' + (e2.message || e2)))
+      })
+    })
+  }
+
+  P._processStream = function(readableStream, contentEl) {
+    var self = this
+    var reader = readableStream.getReader()
+    var decoder = new TextDecoder()
+    var buffer = ''
+    var fullContent = ''
+
+    function processChunk() {
+      return reader.read().then(function(result) {
+        if (result.done) {
+          self._updateStreamingMessage(contentEl, self._escHtml(fullContent), false)
+          return fullContent
+        }
+        buffer += decoder.decode(result.value, { stream: true })
+        var lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (var li = 0; li < lines.length; li++) {
+          var line = lines[li].trim()
+          if (!line || !line.startsWith('data: ')) continue
+          if (line === 'data: [DONE]') continue
+          try {
+            var json = JSON.parse(line.substring(6))
+            var delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content || ''
+            if (delta) {
+              fullContent += delta
+              self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
+            }
+          } catch(e) {}
+        }
+        return processChunk()
+      })
+    }
+
+    return processChunk()
+  }
+
+  P._streamChatViaFetch = function(messages, endpoint, apiKey, model) {
+    var self = this
     var url = endpoint + '/v1/chat/completions'
+    var contentEl = self._contentEl
 
     return fetch(url, {
       method: 'POST',
@@ -8161,36 +8290,7 @@
       })
     }).then(function(response) {
       if (!response.ok) throw new Error('HTTP ' + response.status)
-      var reader = response.body.getReader()
-      var decoder = new TextDecoder()
-      var buffer = ''
-      var fullContent = ''
-      var contentEl = self._contentEl
-
-      function processChunk() {
-        return reader.read().then(function(result) {
-          if (result.done) return fullContent
-          buffer += decoder.decode(result.value, { stream: true })
-          var lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-          for (var li = 0; li < lines.length; li++) {
-            var line = lines[li].trim()
-            if (!line || !line.startsWith('data: ')) continue
-            if (line === 'data: [DONE]') continue
-            try {
-              var json = JSON.parse(line.substring(6))
-              var delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content || ''
-              if (delta) {
-                fullContent += delta
-                self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
-              }
-            } catch(e) {}
-          }
-          return processChunk()
-        })
-      }
-
-      return processChunk()
+      return self._processStream(response.body, contentEl)
     })
   }
 
@@ -8338,6 +8438,46 @@
 
     // Re-render
     this._renderConvMessages(contentEl)
+  }
+
+  P._deleteMessage = function(msgId) {
+    var self = this
+    // Find the message
+    var msgIdx = -1
+    for (var i = 0; i < this._convMessages.length; i++) {
+      if (this._convMessages[i].id === msgId) { msgIdx = i; break }
+    }
+    if (msgIdx === -1) return
+
+    var msg = this._convMessages[msgIdx]
+
+    // Confirm deletion
+    if (this.roche && this.roche.ui && this.roche.ui.confirm) {
+      this.roche.ui.confirm({
+        title: '删除消息',
+        message: '确定要删除 #' + (msg.floorNumber || '') + ' 消息吗？'
+      }).then(function(ok) {
+        if (!ok) return
+        self._doDeleteMessage(msgIdx)
+      })
+    } else {
+      // Fallback: just delete directly
+      this._doDeleteMessage(msgIdx)
+    }
+  }
+
+  P._doDeleteMessage = function(msgIdx) {
+    // Remove from messages array
+    this._convMessages.splice(msgIdx, 1)
+
+    // Re-assign floor numbers
+    for (var i = 0; i < this._convMessages.length; i++) {
+      this._convMessages[i].floorNumber = i + 1
+    }
+
+    this._saveConvMessages()
+    this._renderPage()
+    this._toast('消息已删除')
   }
 
   /* ── Switch alternative version ── */
@@ -8714,7 +8854,11 @@
     this._convBranchId = fav.branchId
     this._convShowJump = true
     this.currentPage = 'chat'
-    this._loadConvMessages()
+    var favBranch = null
+    for (var fbi = 0; fbi < this.branches.length; fbi++) {
+      if (this.branches[fbi].id === fav.branchId) { favBranch = this.branches[fbi]; break }
+    }
+    this._loadConvMessages(favBranch)
     this._render()
 
     // Scroll to floor after render
@@ -9324,18 +9468,19 @@
 
     // 主 API 配置
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u4E3B API \u914D\u7F6E</div>'
-    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
-    h += '<input class="pua-settings-input" id="set-main-endpoint" placeholder="https://api.example.com/v1" value="' + self._escHtml(activePreset ? activePreset.mainEndpoint : '') + '"></div>'
+    h += '<div class="pua-settings-title">✦ 主 API 配置</div>'
+    h += '<div style="font-size:9px;color:var(--pua-accent);margin-bottom:6px;padding:4px 8px;background:var(--pua-accent-glow);border-radius:4px">默认使用 Roche 内置 AI (roche.ai.chat)，留空则自动使用 Roche 当前 AI 配置。如需覆盖可填写以下配置。</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">接口地址</span>'
+    h += '<input class="pua-settings-input" id="set-main-endpoint" placeholder="留空使用 Roche 内置 AI" value="' + self._escHtml(activePreset ? activePreset.mainEndpoint : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
-    h += '<input class="pua-settings-input" id="set-main-key" type="password" placeholder="sk-..." value="' + self._escHtml(activePreset ? activePreset.mainApiKey : '') + '"></div>'
-    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6A21\u578B</span>'
-    h += '<select class="pua-settings-select" id="set-main-model-select"><option value="">\u8BF7\u5148\u5237\u65B0</option></select>'
-    h += '<input class="pua-settings-input" id="set-main-model" placeholder="\u6216\u624B\u52A8\u8F93\u5165\u6A21\u578B\u540D" value="' + self._escHtml(activePreset ? activePreset.mainModel : '') + '" style="margin-top:4px">'
+    h += '<input class="pua-settings-input" id="set-main-key" type="password" placeholder="留空使用 Roche 内置 AI" value="' + self._escHtml(activePreset ? activePreset.mainApiKey : '') + '"></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">模型</span>'
+    h += '<select class="pua-settings-select" id="set-main-model-select"><option value="">请先刷新</option></select>'
+    h += '<input class="pua-settings-input" id="set-main-model" placeholder="或手动输入模型名" value="' + self._escHtml(activePreset ? activePreset.mainModel : '') + '" style="margin-top:4px">'
     h += '</div>'
     h += '<div style="display:flex;gap:6px;margin-top:4px">'
-    h += '<button class="pua-btn pua-btn-sm" id="set-main-refresh">\u5237\u65B0\u6A21\u578B</button>'
-    h += '<button class="pua-btn pua-btn-sm" id="set-main-test">\u6D4B\u8BD5\u8C03\u7528</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-main-refresh">刷新模型</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-main-test">测试调用</button>'
     h += '</div>'
     h += '<div id="set-main-status" style="font-size:9px;color:var(--pua-text-dim);margin-top:4px"></div>'
     h += '</div>'
@@ -9520,9 +9665,28 @@
         var endpoint = (document.getElementById('set-main-endpoint') || {}).value || ''
         var apiKey = (document.getElementById('set-main-key') || {}).value || ''
         var model = (document.getElementById('set-main-model') || {}).value || ''
-        if (!endpoint || !apiKey || !model) { self._toast('\u8BF7\u5148\u586B\u5199\u5B8C\u6574\u914D\u7F6E'); return }
         var statusEl = document.getElementById('set-main-status')
-        if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u4E2D...'
+        if (statusEl) statusEl.textContent = '测试中...'
+
+        // If no custom config, test with roche.ai.chat
+        if (!endpoint || !apiKey || !model) {
+          if (self.roche && self.roche.ai && self.roche.ai.chat) {
+            self.roche.ai.chat({
+              messages: [{ role: 'user', content: 'Hi' }],
+              max_tokens: 5
+            }).then(function(result) {
+              var text = (result && result.text) || ''
+              if (statusEl) statusEl.textContent = 'Roche 内置 AI 测试成功！回复: ' + text.substring(0, 50)
+              self._toast('Roche 内置 AI 测试成功')
+            }).catch(function(e) {
+              if (statusEl) statusEl.textContent = 'Roche 内置 AI 测试失败: ' + (e.message || e)
+            })
+          } else {
+            self._toast('Roche 内置 AI 不可用，请填写自定义配置')
+          }
+          return
+        }
+
         var url = endpoint.replace(/\/+$/, '') + '/chat/completions'
         fetch(url, {
           method: 'POST',
@@ -9530,13 +9694,13 @@
           body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Hi' }], max_tokens: 5 })
         }).then(function(r) { return r.json() }).then(function(data) {
           if (data.choices && data.choices[0]) {
-            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u6210\u529F\uFF01\u56DE\u590D: ' + (data.choices[0].message || {}).content
-            self._toast('\u4E3B API \u6D4B\u8BD5\u6210\u529F')
+            if (statusEl) statusEl.textContent = '测试成功！回复: ' + (data.choices[0].message || {}).content
+            self._toast('主 API 测试成功')
           } else {
-            if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (data.error || JSON.stringify(data)).substring(0, 100)
+            if (statusEl) statusEl.textContent = '测试失败: ' + (data.error || JSON.stringify(data)).substring(0, 100)
           }
         }).catch(function(e) {
-          if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u5931\u8D25: ' + (e.message || e)
+          if (statusEl) statusEl.textContent = '测试失败: ' + (e.message || e)
         })
       })
     }
