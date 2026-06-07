@@ -688,17 +688,17 @@
     '.pua-conv-chat::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }',
     '.pua-conv-collapsed { text-align:center; padding:8px; font-size:10px; color:var(--pua-text-dim); cursor:pointer; }',
     '.pua-conv-collapsed:hover { color:var(--pua-accent); }',
-    '.pua-conv-msg { max-width:85%; padding:10px 14px; border-radius:12px; font-size:11px; line-height:1.6; word-break:break-word; position:relative; }',
-    '.pua-conv-msg-user { align-self:flex-end; background:var(--pua-accent-glow); border:1px solid var(--pua-border-active); color:var(--pua-accent-text); border-bottom-right-radius:4px; }',
-    '.pua-conv-msg-assistant { align-self:flex-start; background:var(--pua-bg-card); border:1px solid var(--pua-border); color:var(--pua-text); border-bottom-left-radius:4px; }',
+    '.pua-conv-msg { max-width:92%; padding:12px 18px; border-radius:14px; font-size:12px; line-height:1.8; word-break:break-word; position:relative; margin:0 auto; width:100%; }',
+    '.pua-conv-msg-user { background:transparent; border:none; color:var(--pua-accent-text); text-align:right; padding-right:0; font-style:italic; }',
+    '.pua-conv-msg-assistant { background:var(--pua-bg-card); border:1px solid var(--pua-border); color:var(--pua-text); text-align:left; padding-left:0; }',
     '.pua-conv-msg-system { align-self:center; background:rgba(91,141,239,0.08); border:1px solid rgba(91,141,239,0.2); color:var(--pua-text-sub); border-radius:8px; font-size:10px; max-width:90%; }',
     '.pua-conv-msg-dimmed { opacity:0.4; }',
     '.pua-conv-msg-dimmed .pua-conv-msg-content { text-decoration:line-through; }',
-    '.pua-conv-msg-header { display:flex; align-items:center; gap:6px; margin-bottom:4px; }',
+    '.pua-conv-msg-header { display:flex; align-items:center; gap:6px; margin-bottom:2px; }',
     '.pua-conv-msg-floor { font-size:9px; color:var(--pua-text-dim); cursor:pointer; font-weight:600; }',
     '.pua-conv-msg-floor:hover { color:var(--pua-accent); }',
     '.pua-conv-msg-time { font-size:8px; color:var(--pua-text-dim); }',
-    '.pua-conv-msg-content { white-space:pre-wrap; }',
+    '.pua-conv-msg-content { white-space:pre-wrap; min-height:1em; }',
     '.pua-conv-msg-actions { display:flex; gap:4px; margin-top:6px; opacity:0; transition:opacity 0.2s; flex-wrap:wrap; }',
     '.pua-conv-msg:hover .pua-conv-msg-actions { opacity:1; }',
     '.pua-conv-msg-action { font-size:10px; padding:3px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); white-space:nowrap; }',
@@ -4583,19 +4583,25 @@
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
-      // Roche 格式：每个分类的正则作为一组导入，名称加 [分类名] 前缀
+      // Roche 格式：根据字段映射到正确的type
+      // Roche: substituteRegex=替换输出→render, scanRegex=过滤输入→filter
       for (var ci = 0; ci < data.categories.length; ci++) {
         var cat = data.categories[ci]
         var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
         var entries = cat.entries || []
         for (var ei = 0; ei < entries.length; ei++) {
           var src = entries[ei]
+          // Determine type from Roche fields
+          var regType = 'render'
+          if (src.substituteRegex) regType = 'render'  // 替换输出 = 前端渲染
+          if (src.scanRegex) regType = 'filter'         // 过滤输入 = 后端过滤
+          if (src.scanRegex && src.substituteRegex) regType = 'replace' // 两者都有 = 后端替换
           this.regexes.push({
             id: 'r' + Date.now() + '_' + count,
             name: '[' + catName + '] ' + (src.name || '\u672A\u547D\u540D'),
-            regex: src.regex || '',
-            html: src.html || '',
-            type: 'render',
+            regex: src.substituteRegex || src.scanRegex || src.regex || '',
+            html: src.substituteHtml || src.html || '',
+            type: regType,
             on: true,
             dMin: 0,
             dMax: Infinity
@@ -5559,13 +5565,15 @@
         })
 
         // Click events (distinguish drag vs click)
-        var dragDist = 0
-        card.addEventListener('mousedown', function() { dragDist = 0 })
-        card.addEventListener('mousemove', function() { dragDist++ })
+        var clickStartX = 0, clickStartY = 0, clickMoved = false
+        card.addEventListener('mousedown', function(e) {
+          clickStartX = e.clientX; clickStartY = e.clientY; clickMoved = false
+        })
+        card.addEventListener('mousemove', function(e) {
+          if (Math.abs(e.clientX - clickStartX) > 5 || Math.abs(e.clientY - clickStartY) > 5) clickMoved = true
+        })
         card.addEventListener('click', function() {
-          if (dragDist < 5) {
-            self._showAsmDetail(bType, bId)
-          }
+          if (!clickMoved) self._showAsmDetail(bType, bId)
         })
 
         // Touch events
@@ -5575,9 +5583,16 @@
             touchStartX = e.touches[0].clientX
             touchStartY = e.touches[0].clientY
           }
-        })
+        }, { passive: true })
+        card.addEventListener('touchmove', function(e) {
+          if (e.touches.length > 0) {
+            var dx = Math.abs(e.touches[0].clientX - touchStartX)
+            var dy = Math.abs(e.touches[0].clientY - touchStartY)
+            if (dx > 5 || dy > 5) clickMoved = true
+          }
+        }, { passive: true })
         card.addEventListener('touchend', function(e) {
-          if (e.changedTouches.length > 0) {
+          if (!clickMoved && e.changedTouches.length > 0) {
             var dx = Math.abs(e.changedTouches[0].clientX - touchStartX)
             var dy = Math.abs(e.changedTouches[0].clientY - touchStartY)
             if (dx < 10 && dy < 10) {
@@ -7906,8 +7921,10 @@
         content = msg.alternatives[altIdx - 1]
       }
       if (isEditing) {
-        // Edit mode: show raw content with system regex applied but no render regex
-        h += '<div class="pua-conv-msg-content pua-conv-edit-mode">' + this._escHtml(this._applyConvFilterRegex(content, 'assistant')) + '</div>'
+        // Edit mode: show raw content with filter/replace regex applied, but no render regex
+        // Also show <> tags as-is (don't hide them)
+        var filteredContent = this._applyConvFilterRegex(content, 'assistant')
+        h += '<div class="pua-conv-msg-content pua-conv-edit-mode">' + this._escHtml(filteredContent) + '</div>'
       } else if (msg.rendered) {
         h += '<div class="pua-conv-msg-content">' + msg.rendered + '</div>'
       } else {
@@ -8276,29 +8293,29 @@
 
   P._applyConvRegexRender = function(text) {
     if (!text) return this._escHtml(text)
-    // Apply render-type regexes on raw text FIRST, then escape remaining HTML
+    // Apply render-type regexes on raw text FIRST
     var result = text
-    var replacements = [] // Track replacement positions to preserve HTML
+    var replacements = []
     for (var ri = 0; ri < this.regexes.length; ri++) {
       var rx = this.regexes[ri]
       if (!rx.on || rx.type !== 'render' || !rx.regex) continue
       try {
         var re = new RegExp(rx.regex, 'g')
         result = result.replace(re, function(match) {
-          var placeholder = '\x00RENDER_' + replacements.length + '\x00'
-          replacements.push(rx.html || '')
-          return placeholder
+          var idx = replacements.length
+          replacements.push({ html: rx.html || '', match: match })
+          return '\x01R' + idx + 'R\x01'
         })
       } catch(e) {}
     }
     // Escape HTML in the remaining text
     result = this._escHtml(result)
-    // Restore replacement HTML (already safe, not escaped)
+    // Restore replacement HTML
     for (var k = 0; k < replacements.length; k++) {
-      result = result.replace('\x00RENDER_' + k + '\x00', replacements[k])
+      result = result.replace('\x01R' + k + 'R\x01', replacements[k].html)
     }
-    // Hide <> tags in display mode (not edit mode)
-    result = result.replace(/&lt;([^&]*)&gt;/g, '')
+    // Hide <> tags but preserve their content (e.g. <nexus>1</nexus> → 1)
+    result = result.replace(/&lt;\/?[^&]*?&gt;/g, '')
     return result
   }
 
@@ -8374,6 +8391,8 @@
     function processChunk() {
       return reader.read().then(function(result) {
         if (result.done) {
+          // Update streaming message content
+          if (self._convStreamingMsg) self._convStreamingMsg.content = fullContent
           self._updateStreamingMessage(contentEl, self._escHtml(fullContent), false)
           return fullContent
         }
@@ -8389,6 +8408,8 @@
             var delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content || ''
             if (delta) {
               fullContent += delta
+              // Store content in message object so it survives page switches
+              if (self._convStreamingMsg) self._convStreamingMsg.content = fullContent
               self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
             }
           } catch(e) {}
@@ -8620,7 +8641,8 @@
     } else {
       this._editingMsgId = msgId
     }
-    this._renderPage()
+    var contentEl = this._contentEl
+    if (contentEl) this._renderConvMessages(contentEl)
   }
 
   /* ── Switch alternative version ── */
