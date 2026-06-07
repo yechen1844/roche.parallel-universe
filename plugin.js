@@ -1707,7 +1707,6 @@
     var self = this
     var modal = this._modalOverlay
     var selectEl = modal ? modal.querySelector('#pua-branch-char') : null
-    if (!selectEl) selectEl = document.getElementById('pua-branch-char')
     if (!selectEl) return
 
     console.log('[PUA] _loadCharOptions: fetching character list...')
@@ -1822,7 +1821,6 @@
   P._onCharSelect = function() {
     var modal = this._modalOverlay
     var selectEl = modal ? modal.querySelector('#pua-branch-char') : null
-    if (!selectEl) selectEl = document.getElementById('pua-branch-char')
     if (!selectEl) return
 
     var selectedValue = selectEl.value || ''
@@ -1943,11 +1941,6 @@
       memShortCheck = modal.querySelector('#pua-branch-mem-short')
       memLongCheck = modal.querySelector('#pua-branch-mem-long')
     }
-    if (!nameInput) nameInput = document.getElementById('pua-branch-name')
-    if (!depthInput) depthInput = document.getElementById('pua-branch-depth')
-    if (!tagsInput) tagsInput = document.getElementById('pua-branch-tags')
-    if (!memShortCheck) memShortCheck = document.getElementById('pua-branch-mem-short')
-    if (!memLongCheck) memLongCheck = document.getElementById('pua-branch-mem-long')
 
     var branchName = nameInput ? nameInput.value.trim() : ''
     var depth = depthInput ? parseInt(depthInput.value) || 50 : 50
@@ -2266,7 +2259,7 @@
     // ===== 异步加载会话列表（记忆绑定） =====
     if (this.roche.conversation && this.roche.conversation.list) {
       this.roche.conversation.list().then(function(convs) {
-        var memList = document.getElementById('branch-mem-list')
+        var memList = modal.querySelector('#branch-mem-list')
         if (!memList) return
         var h = ''
         for (var i = 0; i < (convs || []).length; i++) {
@@ -2295,20 +2288,20 @@
           })
         }
       }).catch(function() {
-        var memList = document.getElementById('branch-mem-list')
+        var memList = modal.querySelector('#branch-mem-list')
         if (memList) memList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
-      var memListEl = document.getElementById('branch-mem-list')
+      var memListEl = modal.querySelector('#branch-mem-list')
       if (memListEl) memListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 异步加载世界书 =====
     if (this.roche.worldbook && this.roche.worldbook.list) {
       this.roche.worldbook.list().then(function(cats) {
-        var wbLocal = document.getElementById('branch-wb-local')
-        var wbGlobalItem = document.getElementById('branch-wb-global-item')
-        var wbGlobalCheck = document.getElementById('branch-wb-global')
+        var wbLocal = modal.querySelector('#branch-wb-local')
+        var wbGlobalItem = modal.querySelector('#branch-wb-global-item')
+        var wbGlobalCheck = modal.querySelector('#branch-wb-global')
         if (!wbLocal) return
 
         // 全局checkbox
@@ -2412,18 +2405,18 @@
           })(localCats[ci])
         }
       }).catch(function() {
-        var wbLocal = document.getElementById('branch-wb-local')
+        var wbLocal = modal.querySelector('#branch-wb-local')
         if (wbLocal) wbLocal.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
-      var wbLocalEl = document.getElementById('branch-wb-local')
+      var wbLocalEl = modal.querySelector('#branch-wb-local')
       if (wbLocalEl) wbLocalEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 异步加载角色列表 =====
     if (this.roche.character && this.roche.character.list) {
       this.roche.character.list().then(function(chars) {
-        var charList = document.getElementById('branch-char-list')
+        var charList = modal.querySelector('#branch-char-list')
         if (!charList) return
         var h = ''
         for (var i = 0; i < (chars || []).length; i++) {
@@ -2450,20 +2443,20 @@
           })
         }
       }).catch(function() {
-        var charList = document.getElementById('branch-char-list')
+        var charList = modal.querySelector('#branch-char-list')
         if (charList) charList.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u52A0\u8F7D\u5931\u8D25</div>'
       })
     } else {
-      var charListEl = document.getElementById('branch-char-list')
+      var charListEl = modal.querySelector('#branch-char-list')
       if (charListEl) charListEl.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);text-align:center;padding:8px">\u4E0D\u53EF\u7528</div>'
     }
 
     // ===== 保存按钮事件 =====
     // 保存记忆绑定
-    var memSaveBtn = document.getElementById('branch-mem-save')
+    var memSaveBtn = modal.querySelector('#branch-mem-save')
     if (memSaveBtn) {
       memSaveBtn.addEventListener('click', function() {
-        var items = document.querySelectorAll('#branch-mem-list .pua-check-item')
+        var items = modal.querySelectorAll('#branch-mem-list .pua-check-item')
         var ids = []
         for (var i = 0; i < items.length; i++) {
           if (items[i].classList.contains('checked')) ids.push(items[i].getAttribute('data-conv-id'))
@@ -2478,16 +2471,16 @@
     }
 
     // 保存世界书挂载
-    var wbSaveBtn = document.getElementById('branch-wb-save')
+    var wbSaveBtn = modal.querySelector('#branch-wb-save')
     if (wbSaveBtn) {
       wbSaveBtn.addEventListener('click', function() {
-        var globalCheck = document.getElementById('branch-wb-global')
+        var globalCheck = modal.querySelector('#branch-wb-global')
         var local = {}
-        var catChecks = document.querySelectorAll('.branch-wb-cat-check')
+        var catChecks = modal.querySelectorAll('.branch-wb-cat-check')
         for (var i = 0; i < catChecks.length; i++) {
           if (catChecks[i].classList.contains('checked')) {
             var catId = catChecks[i].getAttribute('data-cat-id')
-            var entryChecks = document.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
+            var entryChecks = modal.querySelectorAll('.branch-wb-entry-check[data-cat-id="' + catId + '"]')
             if (entryChecks.length > 0) {
               var entryIds = []
               for (var ei = 0; ei < entryChecks.length; ei++) {
@@ -2509,10 +2502,10 @@
     }
 
     // 保存角色人设
-    var charSaveBtn = document.getElementById('branch-char-save')
+    var charSaveBtn = modal.querySelector('#branch-char-save')
     if (charSaveBtn) {
       charSaveBtn.addEventListener('click', function() {
-        var items = document.querySelectorAll('#branch-char-list .pua-check-item')
+        var items = modal.querySelectorAll('#branch-char-list .pua-check-item')
         var ids = []
         for (var i = 0; i < items.length; i++) {
           if (items[i].classList.contains('checked')) ids.push(items[i].getAttribute('data-char-id'))
@@ -3259,7 +3252,7 @@
 
     // 恢复列表滚动位置到选中条目
     if (this.selPreset) {
-      var listBody = document.getElementById('pua-preset-list')
+      var listBody = this._contentEl ? this._contentEl.querySelector('#pua-preset-list') : null
       if (listBody) {
         var selItem = listBody.querySelector('.pua-entry-item.selected')
         if (selItem) {
@@ -3272,7 +3265,7 @@
   /* ── 绑定预设编辑器事件 ── */
   P._bindPresetEvents = function() {
     var self = this
-    var listEl = document.getElementById('pua-preset-list')
+    var listEl = this._contentEl ? this._contentEl.querySelector('#pua-preset-list') : null
     if (!listEl) return
 
     // Item click → select (ES5: manual for loop instead of forEach)
@@ -3319,7 +3312,7 @@
     // --- Detail editor events ---
 
     // Title change (no auto-save, just update memory)
-    var titleInput = document.querySelector('.pua-preset-title')
+    var titleInput = this._contentEl ? this._contentEl.querySelector('.pua-preset-title') : null
     if (titleInput) {
       titleInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3330,7 +3323,7 @@
     }
 
     // Role change (no auto-save, just update memory)
-    var roleSelect = document.querySelector('.pua-preset-role')
+    var roleSelect = this._contentEl ? this._contentEl.querySelector('.pua-preset-role') : null
     if (roleSelect) {
       roleSelect.addEventListener('change', function() {
         var id = this.getAttribute('data-id')
@@ -3341,7 +3334,7 @@
     }
 
     // Content change (no auto-save, just update memory)
-    var contentTextarea = document.querySelector('.pua-preset-content')
+    var contentTextarea = this._contentEl ? this._contentEl.querySelector('.pua-preset-content') : null
     if (contentTextarea) {
       contentTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3352,7 +3345,7 @@
     }
 
     // Output regex change (no auto-save, just update memory)
-    var outRegexInput = document.querySelector('.pua-preset-outregex')
+    var outRegexInput = this._contentEl ? this._contentEl.querySelector('.pua-preset-outregex') : null
     if (outRegexInput) {
       outRegexInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3363,7 +3356,7 @@
     }
 
     // Input regex change (no auto-save, just update memory)
-    var inRegexInput = document.querySelector('.pua-preset-inregex')
+    var inRegexInput = this._contentEl ? this._contentEl.querySelector('.pua-preset-inregex') : null
     if (inRegexInput) {
       inRegexInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3374,7 +3367,7 @@
     }
 
     // Output regex toggle
-    var oRegexToggle = document.querySelector('.pua-preset-oregex-toggle')
+    var oRegexToggle = this._contentEl ? this._contentEl.querySelector('.pua-preset-oregex-toggle') : null
     if (oRegexToggle) {
       oRegexToggle.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
@@ -3387,7 +3380,7 @@
     }
 
     // Input regex toggle
-    var iRegexToggle = document.querySelector('.pua-preset-iregex-toggle')
+    var iRegexToggle = this._contentEl ? this._contentEl.querySelector('.pua-preset-iregex-toggle') : null
     if (iRegexToggle) {
       iRegexToggle.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
@@ -3400,7 +3393,7 @@
     }
 
     // Depth min (no auto-save, just update memory)
-    var dMinInput = document.querySelector('.pua-preset-dmin')
+    var dMinInput = this._contentEl ? this._contentEl.querySelector('.pua-preset-dmin') : null
     if (dMinInput) {
       dMinInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3412,7 +3405,7 @@
     }
 
     // Depth max (no auto-save, just update memory)
-    var dMaxInput = document.querySelector('.pua-preset-dmax')
+    var dMaxInput = this._contentEl ? this._contentEl.querySelector('.pua-preset-dmax') : null
     if (dMaxInput) {
       dMaxInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -3425,7 +3418,7 @@
     }
 
     // Delete button
-    var delBtn = document.querySelector('.pua-preset-delete')
+    var delBtn = this._contentEl ? this._contentEl.querySelector('.pua-preset-delete') : null
     if (delBtn) {
       delBtn.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
@@ -3457,7 +3450,7 @@
     }
 
     // Checkbox: select all
-    var selectAllCb = document.getElementById('preset-select-all')
+    var selectAllCb = this._contentEl ? this._contentEl.querySelector('#preset-select-all') : null
     if (selectAllCb) {
       selectAllCb.addEventListener('change', function() {
         if (this.checked) {
@@ -3471,7 +3464,7 @@
     }
 
     // Batch delete
-    var batchDelBtn = document.getElementById('preset-batch-del')
+    var batchDelBtn = this._contentEl ? this._contentEl.querySelector('#preset-batch-del') : null
     if (batchDelBtn) {
       batchDelBtn.addEventListener('click', function() {
         if (!self._selPresetIds || self._selPresetIds.length === 0) return
@@ -3481,7 +3474,7 @@
     }
 
     // Clear selection
-    var clearSelBtn = document.getElementById('preset-clear-sel')
+    var clearSelBtn = this._contentEl ? this._contentEl.querySelector('#preset-clear-sel') : null
     if (clearSelBtn) {
       clearSelBtn.addEventListener('click', function() {
         self._selPresetIds = []
@@ -3490,7 +3483,7 @@
     }
 
     // Save button
-    var saveBtn = document.getElementById('preset-save-btn')
+    var saveBtn = this._contentEl ? this._contentEl.querySelector('#preset-save-btn') : null
     if (saveBtn) {
       saveBtn.addEventListener('click', function() {
         self._savePresets()
@@ -3499,7 +3492,7 @@
     }
 
     // Mobile back button
-    var mobileBackBtn = document.querySelector('.pua-mobile-back')
+    var mobileBackBtn = this._contentEl ? this._contentEl.querySelector('.pua-mobile-back') : null
     if (mobileBackBtn) {
       if (window.innerWidth < 768) mobileBackBtn.style.display = ''
       mobileBackBtn.addEventListener('click', function() {
@@ -3523,14 +3516,14 @@
 
     // 保存滚动位置
     var self = this
-    var listBody = document.getElementById('pua-preset-list')
+    var listBody = this._contentEl ? this._contentEl.querySelector('#pua-preset-list') : null
     var savedScroll = listBody ? listBody.scrollTop : 0
 
     this._render()
 
     // 下一帧恢复滚动位置
     setTimeout(function() {
-      var newListBody = document.getElementById('pua-preset-list')
+      var newListBody = self._contentEl ? self._contentEl.querySelector('#pua-preset-list') : null
       if (newListBody && savedScroll > 0) {
         newListBody.scrollTop = savedScroll
       }
@@ -3591,9 +3584,9 @@
   }
 
   P._renderPresetsOnly = function() {
-    var titleEl = document.getElementById('pua-page-title')
-    var actionsEl = document.getElementById('pua-page-actions')
-    var contentEl = document.getElementById('pua-page-content')
+    var titleEl = this._titleEl
+    var actionsEl = this._actionsEl
+    var contentEl = this._contentEl
     if (titleEl && actionsEl && contentEl) {
       this._renderPresets(titleEl, actionsEl, contentEl)
     } else {
@@ -3671,9 +3664,10 @@
       try {
         var data = JSON.parse(e.target.result)
         self._parsedPresetData = data
-        var previewEl = document.getElementById('pua-preset-import-preview')
-        var resultEl = document.getElementById('pua-preset-import-result')
-        var confirmBtn = document.getElementById('pua-preset-import-confirm')
+        var modal = self._modalOverlay
+        var previewEl = modal ? modal.querySelector('#pua-preset-import-preview') : null
+        var resultEl = modal ? modal.querySelector('#pua-preset-import-result') : null
+        var confirmBtn = modal ? modal.querySelector('#pua-preset-import-confirm') : null
         if (!previewEl || !resultEl) return
 
         if (data && data.type === 'pua_plugin_presets' && data.presets && Array.isArray(data.presets)) {
@@ -3718,9 +3712,10 @@
         }
       } catch(err) {
         console.warn('[PUA] preset parse error', err)
-        var resultEl = document.getElementById('pua-preset-import-result')
+        var modal = self._modalOverlay
+        var resultEl = modal ? modal.querySelector('#pua-preset-import-result') : null
         if (resultEl) resultEl.textContent = '\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A\u6709\u6548\u7684 JSON \u683C\u5F0F'
-        var previewEl = document.getElementById('pua-preset-import-preview')
+        var previewEl = modal ? modal.querySelector('#pua-preset-import-preview') : null
         if (previewEl) previewEl.style.display = 'block'
       }
     }
@@ -4182,7 +4177,7 @@
 
     // 恢复列表滚动位置到选中条目
     if (this.selRegex) {
-      var listBody = document.getElementById('pua-regex-list')
+      var listBody = this._contentEl ? this._contentEl.querySelector('#pua-regex-list') : null
       if (listBody) {
         var selItem = listBody.querySelector('.pua-entry-item.selected')
         if (selItem) {
@@ -4195,7 +4190,7 @@
   /* ── 绑定正则管理事件 ── */
   P._bindRegexEvents = function() {
     var self = this
-    var listEl = document.getElementById('pua-regex-list')
+    var listEl = this._contentEl ? this._contentEl.querySelector('#pua-regex-list') : null
     if (!listEl) return
 
     // Item click → select
@@ -4242,7 +4237,7 @@
     // --- Detail editor events ---
 
     // Name change (no auto-save, just update memory)
-    var nameInput = document.querySelector('.pua-regex-name')
+    var nameInput = this._contentEl ? this._contentEl.querySelector('.pua-regex-name') : null
     if (nameInput) {
       nameInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -4253,7 +4248,7 @@
     }
 
     // Type change (no auto-save, just update memory + re-render for preview area)
-    var typeSelect = document.querySelector('.pua-regex-type-select')
+    var typeSelect = this._contentEl ? this._contentEl.querySelector('.pua-regex-type-select') : null
     if (typeSelect) {
       typeSelect.addEventListener('change', function() {
         var id = this.getAttribute('data-id')
@@ -4265,7 +4260,7 @@
     }
 
     // Regex pattern change (no auto-save, just update memory)
-    var patternTextarea = document.querySelector('.pua-regex-pattern')
+    var patternTextarea = this._contentEl ? this._contentEl.querySelector('.pua-regex-pattern') : null
     if (patternTextarea) {
       patternTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -4276,7 +4271,7 @@
     }
 
     // HTML template change (no auto-save, just update memory)
-    var htmlTextarea = document.querySelector('.pua-regex-html')
+    var htmlTextarea = this._contentEl ? this._contentEl.querySelector('.pua-regex-html') : null
     if (htmlTextarea) {
       htmlTextarea.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -4287,7 +4282,7 @@
     }
 
     // Depth min (no auto-save, just update memory)
-    var dMinInput = document.querySelector('.pua-regex-dmin')
+    var dMinInput = this._contentEl ? this._contentEl.querySelector('.pua-regex-dmin') : null
     if (dMinInput) {
       dMinInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -4299,7 +4294,7 @@
     }
 
     // Depth max (no auto-save, just update memory)
-    var dMaxInput = document.querySelector('.pua-regex-dmax')
+    var dMaxInput = this._contentEl ? this._contentEl.querySelector('.pua-regex-dmax') : null
     if (dMaxInput) {
       dMaxInput.addEventListener('input', function() {
         var id = this.getAttribute('data-id')
@@ -4312,7 +4307,7 @@
     }
 
     // Delete button
-    var delBtn = document.querySelector('.pua-regex-delete')
+    var delBtn = this._contentEl ? this._contentEl.querySelector('.pua-regex-delete') : null
     if (delBtn) {
       delBtn.addEventListener('click', function() {
         var id = this.getAttribute('data-id')
@@ -4344,7 +4339,7 @@
     }
 
     // Checkbox: select all
-    var rSelectAllCb = document.getElementById('regex-select-all')
+    var rSelectAllCb = this._contentEl ? this._contentEl.querySelector('#regex-select-all') : null
     if (rSelectAllCb) {
       rSelectAllCb.addEventListener('change', function() {
         if (this.checked) {
@@ -4358,7 +4353,7 @@
     }
 
     // Batch delete
-    var rBatchDelBtn = document.getElementById('regex-batch-del')
+    var rBatchDelBtn = this._contentEl ? this._contentEl.querySelector('#regex-batch-del') : null
     if (rBatchDelBtn) {
       rBatchDelBtn.addEventListener('click', function() {
         if (!self._selRegexIds || self._selRegexIds.length === 0) return
@@ -4368,7 +4363,7 @@
     }
 
     // Clear selection
-    var rClearSelBtn = document.getElementById('regex-clear-sel')
+    var rClearSelBtn = this._contentEl ? this._contentEl.querySelector('#regex-clear-sel') : null
     if (rClearSelBtn) {
       rClearSelBtn.addEventListener('click', function() {
         self._selRegexIds = []
@@ -4377,7 +4372,7 @@
     }
 
     // Save button
-    var regexSaveBtn = document.getElementById('regex-save-btn')
+    var regexSaveBtn = this._contentEl ? this._contentEl.querySelector('#regex-save-btn') : null
     if (regexSaveBtn) {
       regexSaveBtn.addEventListener('click', function() {
         self._saveRegexes()
@@ -4386,7 +4381,7 @@
     }
 
     // Mobile back button
-    var mobileBackBtn = document.querySelector('.pua-mobile-back-regex')
+    var mobileBackBtn = this._contentEl ? this._contentEl.querySelector('.pua-mobile-back-regex') : null
     if (mobileBackBtn) {
       if (window.innerWidth < 768) mobileBackBtn.style.display = ''
       mobileBackBtn.addEventListener('click', function() {
@@ -4400,7 +4395,7 @@
     for (var sri = 0; sri < self.regexes.length; sri++) {
       if (self.regexes[sri].id === self.selRegex) { selectedRegex = self.regexes[sri]; break }
     }
-    var regexResultElAuto = document.getElementById('regex-preview-result')
+    var regexResultElAuto = this._contentEl ? this._contentEl.querySelector('#regex-preview-result') : null
     if (regexResultElAuto && selectedRegex && selectedRegex.type === 'render') {
       var htmlTpl = selectedRegex.html || selectedRegex.replace || ''
       if (htmlTpl) {
@@ -4415,7 +4410,7 @@
     }
 
     // Regex management page: element selection mode for preview result
-    var regexResultEl = document.getElementById('regex-preview-result')
+    var regexResultEl = this._contentEl ? this._contentEl.querySelector('#regex-preview-result') : null
     if (regexResultEl) {
       var regexElemSelectActive = false
       var regexSelectedEl = null
@@ -4540,7 +4535,7 @@
           applyBtn.addEventListener('click', function() {
             if (!regexSelectedEl) return
             // Values are already applied via instant preview, just update textarea
-            var htmlTextarea = document.querySelector('.pua-regex-html')
+            var htmlTextarea = self._contentEl ? self._contentEl.querySelector('.pua-regex-html') : null
             if (htmlTextarea && regexSelectedEl) {
               // Find the selected element's position in the preview and update template
               var currentResult = regexResultEl.innerHTML
@@ -4599,14 +4594,14 @@
     }
 
     // Template preview button
-    var tplPreviewBtn = document.getElementById('regex-template-preview-btn')
+    var tplPreviewBtn = this._contentEl ? this._contentEl.querySelector('#regex-template-preview-btn') : null
     if (tplPreviewBtn) {
       var selectedRegexForTpl = null
       for (var sri2 = 0; sri2 < self.regexes.length; sri2++) {
         if (self.regexes[sri2].id === self.selRegex) { selectedRegexForTpl = self.regexes[sri2]; break }
       }
       tplPreviewBtn.addEventListener('click', function() {
-        var resultEl = document.getElementById('regex-preview-result')
+        var resultEl = self._contentEl ? self._contentEl.querySelector('#regex-preview-result') : null
         if (!resultEl || !selectedRegexForTpl) return
         var htmlTpl = selectedRegexForTpl.html || selectedRegexForTpl.replace || ''
         if (!htmlTpl) {
@@ -4669,9 +4664,9 @@
   }
 
   P._renderRegexesOnly = function() {
-    var titleEl = document.getElementById('pua-page-title')
-    var actionsEl = document.getElementById('pua-page-actions')
-    var contentEl = document.getElementById('pua-page-content')
+    var titleEl = this._titleEl
+    var actionsEl = this._actionsEl
+    var contentEl = this._contentEl
     if (titleEl && actionsEl && contentEl) {
       this._renderRegexes(titleEl, actionsEl, contentEl)
     } else {
@@ -4693,14 +4688,14 @@
 
     // 保存滚动位置
     var self = this
-    var listBody = document.getElementById('pua-regex-list')
+    var listBody = this._contentEl ? this._contentEl.querySelector('#pua-regex-list') : null
     var savedScroll = listBody ? listBody.scrollTop : 0
 
     this._render()
 
     // 下一帧恢复滚动位置
     setTimeout(function() {
-      var newListBody = document.getElementById('pua-regex-list')
+      var newListBody = self._contentEl ? self._contentEl.querySelector('#pua-regex-list') : null
       if (newListBody && savedScroll > 0) {
         newListBody.scrollTop = savedScroll
       }
@@ -4777,9 +4772,10 @@
       try {
         var data = JSON.parse(e.target.result)
         self._parsedRegexData = data
-        var previewEl = document.getElementById('pua-regex-import-preview')
-        var resultEl = document.getElementById('pua-regex-import-result')
-        var confirmBtn = document.getElementById('pua-regex-import-confirm')
+        var modal = self._modalOverlay
+        var previewEl = modal ? modal.querySelector('#pua-regex-import-preview') : null
+        var resultEl = modal ? modal.querySelector('#pua-regex-import-result') : null
+        var confirmBtn = modal ? modal.querySelector('#pua-regex-import-confirm') : null
         if (!previewEl || !resultEl) return
 
         if (data && data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
@@ -4797,7 +4793,7 @@
           var html = ''
           for (var ci = 0; ci < data.categories.length; ci++) {
             var cat = data.categories[ci]
-            var entries = cat.entries || []
+            var entries = cat.presets || cat.entries || []
             html += '<div style="margin-bottom:6px;padding:6px;border:1px solid var(--pua-border);border-radius:4px">'
             html += '<div style="font-weight:600;color:var(--pua-accent-text)">' + self._escHtml(cat.name || '\u672A\u547D\u540D\u5206\u7C7B') + '</div>'
             html += '<div style="font-size:9px;color:var(--pua-text-dim)">' + entries.length + ' \u4E2A\u6761\u76EE</div>'
@@ -4814,9 +4810,10 @@
         }
       } catch(err) {
         console.warn('[PUA] regex parse error', err)
-        var resultEl = document.getElementById('pua-regex-import-result')
+        var modal = self._modalOverlay
+        var resultEl = modal ? modal.querySelector('#pua-regex-import-result') : null
         if (resultEl) resultEl.textContent = '\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u786E\u8BA4\u6587\u4EF6\u4E3A\u6709\u6548\u7684 JSON \u683C\u5F0F'
-        var previewEl = document.getElementById('pua-regex-import-preview')
+        var previewEl = modal ? modal.querySelector('#pua-regex-import-preview') : null
         if (previewEl) previewEl.style.display = 'block'
       }
     }
@@ -5327,14 +5324,14 @@
 
     // 保存滚动位置
     var self = this
-    var visualEl = document.querySelector('.asm-visual')
+    var visualEl = this._contentEl ? this._contentEl.querySelector('.asm-visual') : null
     var savedScroll = visualEl ? visualEl.scrollTop : 0
 
     this._render()
 
     // 下一帧恢复滚动位置
     setTimeout(function() {
-      var newVisualEl = document.querySelector('.asm-visual')
+      var newVisualEl = self._contentEl ? self._contentEl.querySelector('.asm-visual') : null
       if (newVisualEl && savedScroll > 0) {
         newVisualEl.scrollTop = savedScroll
       }
@@ -5678,7 +5675,7 @@
     contentEl.innerHTML = h
 
     // Bind branch selector
-    var branchSelect = document.getElementById('asm-branch-select')
+    var branchSelect = contentEl.querySelector('#asm-branch-select')
     if (branchSelect) {
       branchSelect.addEventListener('change', function() {
         self.asmBranchId = this.value
@@ -5692,7 +5689,7 @@
     }
 
     // Bind config input events
-    var depthInput = document.getElementById('asm-depth')
+    var depthInput = contentEl.querySelector('#asm-depth')
     if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
 
     // Bind drag events for all blocks
@@ -5817,7 +5814,7 @@
   /* ── 绑定所有块拖拽排序+点击详情 ── */
   P._bindAsmDragEvents = function() {
     var self = this
-    var blocks = document.querySelectorAll('.asm-block')
+    var blocks = this._contentEl ? this._contentEl.querySelectorAll('.asm-block') : []
     for (var i = 0; i < blocks.length; i++) {
       (function(block) {
         var card = block.querySelector('.asm-card')
@@ -6042,13 +6039,14 @@
 
     // Bind preset edit save button
     if (type === 'preset') {
-      var saveBtn = document.querySelector('.asm-edit-save')
+      var saveBtn = this._modalOverlay ? this._modalOverlay.querySelector('.asm-edit-save') : null
       if (saveBtn) {
         saveBtn.addEventListener('click', function() {
           var pid = this.getAttribute('data-id')
-          var titleInput = document.querySelector('.asm-edit-title[data-id="' + pid + '"]')
-          var roleSelect = document.querySelector('.asm-edit-role[data-id="' + pid + '"]')
-          var contentTextarea = document.querySelector('.asm-edit-content[data-id="' + pid + '"]')
+          var modal = self._modalOverlay
+          var titleInput = modal ? modal.querySelector('.asm-edit-title[data-id="' + pid + '"]') : null
+          var roleSelect = modal ? modal.querySelector('.asm-edit-role[data-id="' + pid + '"]') : null
+          var contentTextarea = modal ? modal.querySelector('.asm-edit-content[data-id="' + pid + '"]') : null
           for (var si = 0; si < self.presets.length; si++) {
             if (self.presets[si].id === pid) {
               if (titleInput) self.presets[si].title = titleInput.value
@@ -10243,7 +10241,7 @@
     // ===== 事件绑定 =====
 
     // 预设切换
-    var presetSelect = document.getElementById('set-preset-select')
+    var presetSelect = contentEl.querySelector('#set-preset-select')
     if (presetSelect) {
       presetSelect.addEventListener('change', function() {
         settings.activePresetId = this.value
@@ -10253,7 +10251,7 @@
     }
 
     // 新建预设
-    var presetAddBtn = document.getElementById('set-preset-add')
+    var presetAddBtn = contentEl.querySelector('#set-preset-add')
     if (presetAddBtn) {
       presetAddBtn.addEventListener('click', function() {
         var name = prompt('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0', '\u65B0\u9884\u8BBE')
@@ -10273,7 +10271,7 @@
     }
 
     // 重命名预设
-    var presetRenameBtn = document.getElementById('set-preset-rename')
+    var presetRenameBtn = contentEl.querySelector('#set-preset-rename')
     if (presetRenameBtn) {
       presetRenameBtn.addEventListener('click', function() {
         var cur = settings.activePresetId
@@ -10291,7 +10289,7 @@
     }
 
     // 删除预设
-    var presetDeleteBtn = document.getElementById('set-preset-delete')
+    var presetDeleteBtn = contentEl.querySelector('#set-preset-delete')
     if (presetDeleteBtn) {
       presetDeleteBtn.addEventListener('click', function() {
         if (settings.presets.length <= 1) { self._toast('\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u9884\u8BBE'); return }
@@ -10309,18 +10307,18 @@
     }
 
     // 刷新主API模型
-    var mainRefreshBtn = document.getElementById('set-main-refresh')
+    var mainRefreshBtn = contentEl.querySelector('#set-main-refresh')
     if (mainRefreshBtn) {
       mainRefreshBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-main-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-main-key') || {}).value || ''
+        var endpoint = (contentEl.querySelector('#set-main-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-main-key') || {}).value || ''
         if (!endpoint || !apiKey) { self._toast('\u8BF7\u5148\u586B\u5199\u63A5\u53E3\u5730\u5740\u548C API Key'); return }
-        var statusEl = document.getElementById('set-main-status')
+        var statusEl = contentEl.querySelector('#set-main-status')
         if (statusEl) statusEl.textContent = '\u5237\u65B0\u4E2D...'
         var url = endpoint.replace(/\/+$/, '') + '/models'
         fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey } }).then(function(r) { return r.json() }).then(function(data) {
           var models = data.data || data.models || []
-          var select = document.getElementById('set-main-model-select')
+          var select = contentEl.querySelector('#set-main-model-select')
           if (!select) return
           select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
           for (var mi = 0; mi < models.length; mi++) {
@@ -10335,7 +10333,7 @@
           }
           if (statusEl) statusEl.textContent = '\u627E\u5230 ' + models.length + ' \u4E2A\u6A21\u578B'
           select.addEventListener('change', function() {
-            var modelInput = document.getElementById('set-main-model')
+            var modelInput = contentEl.querySelector('#set-main-model')
             if (modelInput) modelInput.value = this.value
           })
         }).catch(function(e) {
@@ -10345,13 +10343,13 @@
     }
 
     // 测试主API调用
-    var mainTestBtn = document.getElementById('set-main-test')
+    var mainTestBtn = contentEl.querySelector('#set-main-test')
     if (mainTestBtn) {
       mainTestBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-main-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-main-key') || {}).value || ''
-        var model = (document.getElementById('set-main-model') || {}).value || ''
-        var statusEl = document.getElementById('set-main-status')
+        var endpoint = (contentEl.querySelector('#set-main-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-main-key') || {}).value || ''
+        var model = (contentEl.querySelector('#set-main-model') || {}).value || ''
+        var statusEl = contentEl.querySelector('#set-main-status')
         if (statusEl) statusEl.textContent = '测试中...'
 
         // If no custom config, test with roche.ai.chat
@@ -10392,18 +10390,18 @@
     }
 
     // 刷新副API模型
-    var subRefreshBtn = document.getElementById('set-sub-refresh')
+    var subRefreshBtn = contentEl.querySelector('#set-sub-refresh')
     if (subRefreshBtn) {
       subRefreshBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-sub-key') || {}).value || ''
+        var endpoint = (contentEl.querySelector('#set-sub-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-sub-key') || {}).value || ''
         if (!endpoint || !apiKey) { self._toast('\u8BF7\u5148\u586B\u5199\u63A5\u53E3\u5730\u5740\u548C API Key'); return }
-        var statusEl = document.getElementById('set-sub-status')
+        var statusEl = contentEl.querySelector('#set-sub-status')
         if (statusEl) statusEl.textContent = '\u5237\u65B0\u4E2D...'
         var url = endpoint.replace(/\/+$/, '') + '/models'
         fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey } }).then(function(r) { return r.json() }).then(function(data) {
           var models = data.data || data.models || []
-          var select = document.getElementById('set-sub-model-select')
+          var select = contentEl.querySelector('#set-sub-model-select')
           if (!select) return
           select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
           for (var mi = 0; mi < models.length; mi++) {
@@ -10418,7 +10416,7 @@
           }
           if (statusEl) statusEl.textContent = '\u627E\u5230 ' + models.length + ' \u4E2A\u6A21\u578B'
           select.addEventListener('change', function() {
-            var modelInput = document.getElementById('set-sub-model')
+            var modelInput = contentEl.querySelector('#set-sub-model')
             if (modelInput) modelInput.value = this.value
           })
         }).catch(function(e) {
@@ -10428,14 +10426,14 @@
     }
 
     // 测试副API调用
-    var subTestBtn = document.getElementById('set-sub-test')
+    var subTestBtn = contentEl.querySelector('#set-sub-test')
     if (subTestBtn) {
       subTestBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-sub-key') || {}).value || ''
-        var model = (document.getElementById('set-sub-model') || {}).value || ''
+        var endpoint = (contentEl.querySelector('#set-sub-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-sub-key') || {}).value || ''
+        var model = (contentEl.querySelector('#set-sub-model') || {}).value || ''
         if (!endpoint || !apiKey || !model) { self._toast('\u8BF7\u5148\u586B\u5199\u5B8C\u6574\u914D\u7F6E'); return }
-        var statusEl = document.getElementById('set-sub-status')
+        var statusEl = contentEl.querySelector('#set-sub-status')
         if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u4E2D...'
         var url = endpoint.replace(/\/+$/, '') + '/chat/completions'
         fetch(url, {
@@ -10456,18 +10454,18 @@
     }
 
     // 刷新向量API模型
-    var vecRefreshBtn = document.getElementById('set-vec-refresh')
+    var vecRefreshBtn = contentEl.querySelector('#set-vec-refresh')
     if (vecRefreshBtn) {
       vecRefreshBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-vec-key') || {}).value || ''
+        var endpoint = (contentEl.querySelector('#set-vec-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-vec-key') || {}).value || ''
         if (!endpoint || !apiKey) { self._toast('\u8BF7\u5148\u586B\u5199\u63A5\u53E3\u5730\u5740\u548C API Key'); return }
-        var statusEl = document.getElementById('set-vec-status')
+        var statusEl = contentEl.querySelector('#set-vec-status')
         if (statusEl) statusEl.textContent = '\u5237\u65B0\u4E2D...'
         var url = endpoint.replace(/\/+$/, '') + '/models'
         fetch(url, { headers: { 'Authorization': 'Bearer ' + apiKey } }).then(function(r) { return r.json() }).then(function(data) {
           var models = data.data || data.models || []
-          var select = document.getElementById('set-vec-model-select')
+          var select = contentEl.querySelector('#set-vec-model-select')
           if (!select) return
           select.innerHTML = '<option value="">\u9009\u62E9\u6A21\u578B</option>'
           for (var mi = 0; mi < models.length; mi++) {
@@ -10495,7 +10493,7 @@
           }
           if (statusEl) statusEl.textContent = '\u627E\u5230 ' + models.length + ' \u4E2A\u6A21\u578B'
           select.addEventListener('change', function() {
-            var modelInput = document.getElementById('set-vec-model')
+            var modelInput = contentEl.querySelector('#set-vec-model')
             if (modelInput) modelInput.value = this.value
           })
         }).catch(function(e) {
@@ -10505,14 +10503,14 @@
     }
 
     // 测试向量API调用
-    var vecTestBtn = document.getElementById('set-vec-test')
+    var vecTestBtn = contentEl.querySelector('#set-vec-test')
     if (vecTestBtn) {
       vecTestBtn.addEventListener('click', function() {
-        var endpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
-        var apiKey = (document.getElementById('set-vec-key') || {}).value || ''
-        var model = (document.getElementById('set-vec-model') || {}).value || ''
+        var endpoint = (contentEl.querySelector('#set-vec-endpoint') || {}).value || ''
+        var apiKey = (contentEl.querySelector('#set-vec-key') || {}).value || ''
+        var model = (contentEl.querySelector('#set-vec-model') || {}).value || ''
         if (!endpoint || !apiKey || !model) { self._toast('\u8BF7\u5148\u586B\u5199\u5B8C\u6574\u914D\u7F6E'); return }
-        var statusEl = document.getElementById('set-vec-status')
+        var statusEl = contentEl.querySelector('#set-vec-status')
         if (statusEl) statusEl.textContent = '\u6D4B\u8BD5\u4E2D...'
         var url = endpoint.replace(/\/+$/, '') + '/embeddings'
         fetch(url, {
@@ -10534,7 +10532,7 @@
     }
 
     // 保存设置
-    var saveBtn = document.getElementById('set-save-btn')
+    var saveBtn = contentEl.querySelector('#set-save-btn')
     if (saveBtn) {
       saveBtn.addEventListener('click', function() {
         // 更新当前预设
@@ -10544,22 +10542,22 @@
           if (settings.presets[si2].id === cur) { p = settings.presets[si2]; break }
         }
         if (!p) return
-        p.mainEndpoint = (document.getElementById('set-main-endpoint') || {}).value || ''
-        p.mainApiKey = (document.getElementById('set-main-key') || {}).value || ''
-        p.mainModel = (document.getElementById('set-main-model') || {}).value || ''
-        p.subEndpoint = (document.getElementById('set-sub-endpoint') || {}).value || ''
-        p.subApiKey = (document.getElementById('set-sub-key') || {}).value || ''
-        p.subModel = (document.getElementById('set-sub-model') || {}).value || ''
-        p.vecEndpoint = (document.getElementById('set-vec-endpoint') || {}).value || ''
-        p.vecApiKey = (document.getElementById('set-vec-key') || {}).value || ''
-        p.vecModel = (document.getElementById('set-vec-model') || {}).value || ''
+        p.mainEndpoint = (contentEl.querySelector('#set-main-endpoint') || {}).value || ''
+        p.mainApiKey = (contentEl.querySelector('#set-main-key') || {}).value || ''
+        p.mainModel = (contentEl.querySelector('#set-main-model') || {}).value || ''
+        p.subEndpoint = (contentEl.querySelector('#set-sub-endpoint') || {}).value || ''
+        p.subApiKey = (contentEl.querySelector('#set-sub-key') || {}).value || ''
+        p.subModel = (contentEl.querySelector('#set-sub-model') || {}).value || ''
+        p.vecEndpoint = (contentEl.querySelector('#set-vec-endpoint') || {}).value || ''
+        p.vecApiKey = (contentEl.querySelector('#set-vec-key') || {}).value || ''
+        p.vecModel = (contentEl.querySelector('#set-vec-model') || {}).value || ''
         // 全局参数
-        settings.factSendCount = parseInt((document.getElementById('set-mem-fact-send') || {}).value) || 10
-        settings.summarizeInterval = parseInt((document.getElementById('set-mem-summarize-interval') || {}).value) || 30
-        settings.coreCharLimit = parseInt((document.getElementById('set-mem-core-limit') || {}).value) || 2000
-        settings.eventsCharLimit = parseInt((document.getElementById('set-mem-events-limit') || {}).value) || 1000
-        settings.recallMaxCount = parseInt((document.getElementById('set-mem-recall-max') || {}).value) || 8
-        settings.recallMode = (document.getElementById('set-mem-recall-mode') || {}).value || 'vector'
+        settings.factSendCount = parseInt((contentEl.querySelector('#set-mem-fact-send') || {}).value) || 10
+        settings.summarizeInterval = parseInt((contentEl.querySelector('#set-mem-summarize-interval') || {}).value) || 30
+        settings.coreCharLimit = parseInt((contentEl.querySelector('#set-mem-core-limit') || {}).value) || 2000
+        settings.eventsCharLimit = parseInt((contentEl.querySelector('#set-mem-events-limit') || {}).value) || 1000
+        settings.recallMaxCount = parseInt((contentEl.querySelector('#set-mem-recall-max') || {}).value) || 8
+        settings.recallMode = (contentEl.querySelector('#set-mem-recall-mode') || {}).value || 'vector'
         self._saveSettings(settings)
         self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
       })
@@ -10884,9 +10882,9 @@
     saveBtn.className = 'pua-btn pua-btn-gold'
     saveBtn.textContent = '\u4FDD\u5B58'
     saveBtn.addEventListener('click', function() {
-      var text = (document.getElementById('fact-text') || {}).value || ''
-      var summary = (document.getElementById('fact-summary') || {}).value || ''
-      var keywords = (document.getElementById('fact-keywords') || {}).value || ''
+      var text = (modal.querySelector('#fact-text') || {}).value || ''
+      var summary = (modal.querySelector('#fact-summary') || {}).value || ''
+      var keywords = (modal.querySelector('#fact-keywords') || {}).value || ''
       if (!text) { self._toast('\u8BF7\u8F93\u5165\u4E8B\u5B9E\u5185\u5BB9'); return }
       if (!memData.facts) memData.facts = []
       memData.facts.push({
@@ -10966,9 +10964,9 @@
     saveBtn.className = 'pua-btn pua-btn-gold'
     saveBtn.textContent = '\u4FDD\u5B58'
     saveBtn.addEventListener('click', function() {
-      fact.text = (document.getElementById('fact-detail-text') || {}).value || fact.text
-      fact.summary = (document.getElementById('fact-detail-summary') || {}).value || fact.summary
-      fact.keywords = (document.getElementById('fact-detail-keywords') || {}).value || fact.keywords
+      fact.text = (modal.querySelector('#fact-detail-text') || {}).value || fact.text
+      fact.summary = (modal.querySelector('#fact-detail-summary') || {}).value || fact.summary
+      fact.keywords = (modal.querySelector('#fact-detail-keywords') || {}).value || fact.keywords
       self._saveMemData(memData, branchId)
       self._closeModal()
       self._toast('\u4E8B\u5B9E\u8BB0\u5FC6\u5DF2\u66F4\u65B0')
