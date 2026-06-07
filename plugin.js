@@ -96,11 +96,15 @@
     '  border-bottom:1px solid var(--pua-border); display:flex; align-items:center;',
     '  justify-content:space-between; padding:0 20px; }',
     '.pua-topbar-title { font-size:13px; font-weight:600; letter-spacing:0.3px; }',
-    '.pua-topbar-actions { display:flex; gap:6px; align-items:center; }',
+    '.pua-topbar-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }',
     '.pua-back-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--pua-border);',
     '  background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; font-size:14px;',
     '  display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); margin-right:4px; }',
     '.pua-back-btn:hover { border-color:var(--pua-border-active); color:var(--pua-text); }',
+    '.pua-theme-topbar-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--pua-border);',
+    '  background:var(--pua-bg-card); cursor:pointer; font-size:14px;',
+    '  display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); margin-left:4px; }',
+    '.pua-theme-topbar-btn:hover { border-color:var(--pua-border-active); }',
 
     '.pua-content { flex:1; overflow-y:auto; padding:16px 20px; }',
     '.pua-content::-webkit-scrollbar { width:4px; }',
@@ -205,7 +209,7 @@
     '.pua-char-group-count { font-size:10px; color:var(--pua-text-dim); margin-left:auto; }',
 
     '/* ── 创建分支对话框 ── */',
-    '.pua-modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.7);',
+    '.pua-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7);',
     '  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);',
     '  z-index:100; display:none; align-items:center;',
     '  justify-content:center; }',
@@ -525,6 +529,12 @@
     '.asm-visual { min-height:300px; }',
     '.pua-mem-layout { flex-direction:column; }',
     '.pua-mem-sidebar { width:100%; min-width:100%; }',
+    '.pua-topbar { height:auto; min-height:52px; flex-wrap:wrap; padding:8px 12px; }',
+    '.pua-topbar-actions { flex-wrap:wrap; gap:4px; }',
+    '.pua-btn { min-height:32px; padding:4px 10px; font-size:11px; }',
+    '.pua-btn-gold { min-height:36px; }',
+    '.pua-conv-topbar { flex-wrap:wrap; gap:4px; }',
+    '.pua-conv-input-btns { flex-wrap:wrap; }',
     '}',
     '@media (min-width:768px) {',
     '.pua-sidebar-open-btn { display:none; }',
@@ -725,7 +735,7 @@
     '.pua-conv-typing::before { content:""; display:inline-block; width:12px; height:12px; border:2px solid var(--pua-accent); border-top-color:transparent; border-radius:50%; animation:pua-spin 0.8s linear infinite; }',
 
     '/* ── 悬浮球 ── */',
-    '.pua-fab { position:absolute; bottom:20px; right:20px; z-index:200; }',
+    '.pua-fab { position:fixed; bottom:20px; right:20px; z-index:200; }',
     '.pua-fab-btn { width:40px; height:40px; border-radius:50%; border:none; background:linear-gradient(135deg,var(--pua-accent-dim),var(--pua-accent)); color:#121216; font-size:16px; cursor:pointer; box-shadow:0 4px 20px var(--pua-accent-glow); display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); animation:pua-fab-pulse 2s ease-in-out infinite; }',
     '.pua-fab-btn:hover { transform:scale(1.1); }',
     '@keyframes pua-fab-pulse { 0%,100%{ box-shadow:0 4px 20px var(--pua-accent-glow); } 50%{ box-shadow:0 4px 30px rgba(197,160,89,0.4); } }',
@@ -834,6 +844,8 @@
     this._msgSinceLastSummary = 0
     // 悬浮球状态
     this._fabExpanded = false
+    this._fabPos = null
+    try { var _fp = localStorage.getItem('pua_fab_pos'); if (_fp) this._fabPos = JSON.parse(_fp) } catch(e) {}
   }
 
   var P = ParallelUniverse.prototype
@@ -1355,6 +1367,18 @@
     var actions = document.createElement('div')
     actions.className = 'pua-topbar-actions'
     topbar.appendChild(actions)
+
+    // Theme toggle in topbar (always visible, even on mobile)
+    var themeBtn = document.createElement('button')
+    themeBtn.className = 'pua-theme-topbar-btn'
+    themeBtn.title = '切换日夜模式'
+    themeBtn.textContent = this.theme === 'dark' ? '☀️' : '🌙'
+    themeBtn.addEventListener('click', function() {
+      self.theme = self.theme === 'dark' ? 'light' : 'dark'
+      themeBtn.textContent = self.theme === 'dark' ? '☀️' : '🌙'
+      self._render()
+    })
+    topbar.appendChild(themeBtn)
 
     return topbar
   }
@@ -2834,13 +2858,17 @@
       var p = this._importParsed[i]
 
       // 将消息转为统一格式
-      var charMatchName = p.charSenderName || p.charName || ''
+      var charMatchName = p.charSenderName || p.charName || selectedCharName || ''
       var msgs = p.messages.map(function(m) {
-        var msgType = 'unknown'
+        var msgType = 'user'
         if (charMatchName && m.senderName === charMatchName) {
           msgType = 'assistant'
-        } else if (charMatchName) {
-          msgType = 'user'
+        } else if (!charMatchName) {
+          // No char name to match: try heuristics - if senderName looks like a char name (not user/you), treat as assistant
+          var sn = (m.senderName || '').toLowerCase()
+          if (sn !== 'user' && sn !== '用户' && sn !== '你' && sn !== 'me' && sn !== '我') {
+            msgType = 'assistant'
+          }
         }
         return {
           type: msgType,
@@ -7681,6 +7709,7 @@
       branchSelect.addEventListener('change', function() {
         self._convBranchId = this.value
         self._convMessages = []
+        self._lastAsmContext = '' // Clear cached context when switching branch
         var selBranch = null
         for (var sbi = 0; sbi < self.branches.length; sbi++) {
           if (self.branches[sbi].id === self._convBranchId) { selBranch = self.branches[sbi]; break }
@@ -7953,9 +7982,12 @@
       var raw = localStorage.getItem(key)
       if (raw) {
         this._convMessages = JSON.parse(raw)
-        // Re-assign floor numbers
+        // Re-assign floor numbers and re-render assistant messages
         for (var i = 0; i < this._convMessages.length; i++) {
           this._convMessages[i].floorNumber = i + 1
+          if (this._convMessages[i].role === 'assistant') {
+            this._convMessages[i].rendered = this._applyConvRegexRender(this._convMessages[i].content)
+          }
         }
         return
       }
@@ -7972,6 +8004,10 @@
         var msg = this._createMessage(role, m.text || m.content || '', branch.source === 'offline' ? 'offline' : 'online')
         msg.floorNumber = mi + 1
         if (m.timestamp) msg.timestamp = m.timestamp
+        // Apply render regex for assistant messages
+        if (role === 'assistant') {
+          msg.rendered = this._applyConvRegexRender(msg.content)
+        }
         msgs.push(msg)
       }
       this._convMessages = msgs
@@ -8642,6 +8678,76 @@
       menu.classList.toggle('show', self._fabExpanded)
     })
     fab.appendChild(btn)
+
+    // ── Free drag (no snap) ──
+    var isDragging = false
+    var dragStartX = 0, dragStartY = 0
+    var fabStartX = 0, fabStartY = 0
+    var hasMoved = false
+
+    // Restore saved position
+    var savedPos = this._fabPos || null
+    if (savedPos) {
+      fab.style.left = savedPos.x + 'px'
+      fab.style.top = savedPos.y + 'px'
+      fab.style.right = 'auto'
+      fab.style.bottom = 'auto'
+    }
+
+    btn.addEventListener('mousedown', function(e) {
+      isDragging = true
+      hasMoved = false
+      dragStartX = e.clientX
+      dragStartY = e.clientY
+      var rect = fab.getBoundingClientRect()
+      fabStartX = rect.left
+      fabStartY = rect.top
+      e.preventDefault()
+    })
+    btn.addEventListener('touchstart', function(e) {
+      if (e.touches.length !== 1) return
+      isDragging = true
+      hasMoved = false
+      dragStartX = e.touches[0].clientX
+      dragStartY = e.touches[0].clientY
+      var rect = fab.getBoundingClientRect()
+      fabStartX = rect.left
+      fabStartY = rect.top
+    }, { passive: true })
+
+    function onMove(cx, cy) {
+      var dx = cx - dragStartX
+      var dy = cy - dragStartY
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true
+      var newX = fabStartX + dx
+      var newY = fabStartY + dy
+      fab.style.left = newX + 'px'
+      fab.style.top = newY + 'px'
+      fab.style.right = 'auto'
+      fab.style.bottom = 'auto'
+    }
+    function onEnd() {
+      if (!isDragging) return
+      isDragging = false
+      // Save position
+      var rect = fab.getBoundingClientRect()
+      self._fabPos = { x: rect.left, y: rect.top }
+      try { localStorage.setItem('pua_fab_pos', JSON.stringify(self._fabPos)) } catch(e) {}
+    }
+
+    document.addEventListener('mousemove', function(e) { if (isDragging) onMove(e.clientX, e.clientY) })
+    document.addEventListener('mouseup', onEnd)
+    document.addEventListener('touchmove', function(e) { if (isDragging && e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY) }, { passive: true })
+    document.addEventListener('touchend', onEnd)
+
+    // Override click to prevent menu toggle when dragging
+    btn.removeEventListener('click', btn._clickHandler)
+    btn.addEventListener('click', function(e) {
+      if (hasMoved) { e.stopPropagation(); return }
+      e.stopPropagation()
+      self._fabExpanded = !self._fabExpanded
+      menu.classList.toggle('show', self._fabExpanded)
+    })
 
     var menu = document.createElement('div')
     menu.className = 'pua-fab-menu' + (this._fabExpanded ? ' show' : '')
