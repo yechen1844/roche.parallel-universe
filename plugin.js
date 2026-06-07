@@ -31,9 +31,9 @@
     '.pua-root {',
     '  font-family:"LXGW WenKai Lite",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;',
     '  color:var(--pua-text); background:var(--pua-bg); height:100%; width:100%;',
-    '  position:relative; overflow:hidden;',
-    '  --pua-bg:rgba(18,18,22,0.92); --pua-bg-solid:#121216;',
-    '  --pua-bg-card:rgba(28,28,36,0.75); --pua-bg-card-hover:rgba(36,36,48,0.8);',
+  '  position:relative; overflow:visible;',
+    '  --pua-bg:rgba(18,18,22,0.96); --pua-bg-solid:#121216;',
+    '  --pua-bg-card:rgba(28,28,36,0.88); --pua-bg-card-hover:rgba(36,36,48,0.92);',
     '  --pua-bg-input:rgba(0,0,0,0.25); --pua-glass:blur(24px) saturate(120%);',
     '  --pua-border:rgba(255,255,255,0.07); --pua-border-active:rgba(197,160,89,0.35);',
     '  --pua-accent:#C5A059; --pua-accent-dim:#957330; --pua-accent-glow:rgba(197,160,89,0.2);',
@@ -47,8 +47,8 @@
     '  --pua-transition:0.3s cubic-bezier(0.4,0,0.2,1);',
     '}',
     '.pua-root.pua-light {',
-    '  --pua-bg:rgba(248,248,250,0.92); --pua-bg-solid:#f8f8fa;',
-    '  --pua-bg-card:rgba(255,255,255,0.85); --pua-bg-card-hover:rgba(255,255,255,0.95);',
+    '  --pua-bg:rgba(248,248,250,0.96); --pua-bg-solid:#f8f8fa;',
+    '  --pua-bg-card:rgba(255,255,255,0.92); --pua-bg-card-hover:rgba(255,255,255,0.97);',
     '  --pua-bg-input:rgba(0,0,0,0.05); --pua-border:rgba(0,0,0,0.12);',
     '  --pua-border-active:rgba(149,115,48,0.5); --pua-accent:#957330; --pua-accent-dim:#7a5f28;',
     '  --pua-accent-glow:rgba(149,115,48,0.15); --pua-text:#1A1A1E; --pua-text-sub:#45454A;',
@@ -899,13 +899,16 @@
     // 异步加载分支，完成后渲染
     this._loadBranches()
 
-    // Handle page visibility - re-render when coming back
+    // Handle page visibility - refresh streaming display when coming back
     var self = this
     if (!this._visHandler) {
       this._visHandler = function() {
-        if (!document.hidden && self._convSending) {
-          // Page became visible while streaming - re-render to show current state
-          self._renderPage()
+        if (!document.hidden && self._convSending && self._convStreamingMsg) {
+          // Page became visible while streaming - just update the streaming message display
+          var contentEl = self._contentEl
+          if (contentEl) {
+            self._updateStreamingMessage(contentEl, self._escHtml(self._convStreamingMsg.content || ''), true)
+          }
         }
       }
       document.addEventListener('visibilitychange', this._visHandler)
@@ -1060,8 +1063,8 @@
           }
           if (!found) self.selRegex = self.regexes.length > 0 ? self.regexes[0].id : ''
         }
-        // Re-render if on conversation page to apply render regexes
-        if (self._currentPage === 'conversation') {
+        // Re-render if on conversation page to apply render regexes (but not during streaming)
+        if (self._currentPage === 'conversation' && !self._convSending) {
           self._renderPage()
         }
       }
@@ -1208,8 +1211,7 @@
     overlay.innerHTML = '<div class="pua-modal"><div class="pua-modal-header"><div class="pua-modal-title"></div><button class="pua-modal-close">&times;</button></div><div class="pua-modal-body"></div></div>'
     overlay.querySelector('.pua-modal-close').addEventListener('click', function() { self._closeModal() })
     overlay.addEventListener('click', function(e) { if (e.target === overlay) self._closeModal() })
-    // Append to document.body for proper fixed positioning (shadow DOM can break fixed)
-    document.body.appendChild(overlay)
+    root.appendChild(overlay)
 
     // Toast
     var toast = document.createElement('div')
@@ -2203,9 +2205,11 @@
     toAsmBtn.textContent = '\u53D1\u9001\u5230\u4E0A\u4E0B\u6587\u7EC4\u88C5'
     toAsmBtn.setAttribute('data-id', branch.id)
     toAsmBtn.addEventListener('click', function() {
+      self._closeModal()
       self.asmBranchId = branch.id
       self._currentMemBranchId = branch.id
       self.currentPage = 'assembly'
+      self._render()
       self._fetchAsmData()
       if (branch.memoryConvIds && branch.memoryConvIds.length > 0) {
         self._loadMemFromBranches(branch.memoryConvIds, branch.id)
@@ -5260,9 +5264,12 @@
       }
       self.asmLoading = false
       if (!silent) self._render()
-    }).catch(function() {
+    }).catch(function(err) {
       self.asmLoading = false
-      if (!silent) self._render()
+      if (!silent) {
+        self._render()
+        self._toast('数据加载失败: ' + (err && err.message ? err.message : '未知错误'))
+      }
     })
   }
 
@@ -8177,8 +8184,9 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
 
-      // Full re-render to ensure correct state
-      self._renderPage()
+      // Re-render conversation messages only (not the whole page)
+      var contentEl = self._contentEl
+      if (contentEl) self._renderConvMessages(contentEl)
 
       // Memory summarization trigger
       self._msgSinceLastSummary = (self._msgSinceLastSummary || 0) + 1
@@ -8193,7 +8201,8 @@
       self._convSending = false
       self._convStreamingMsg = null
       self._saveConvMessages()
-      self._renderPage()
+      var contentEl = self._contentEl
+      if (contentEl) self._renderConvMessages(contentEl)
       self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
     })
   }
@@ -8522,14 +8531,16 @@
       self._convSending = false
       self._convStreamingMsg = null
       self._saveConvMessages()
-      self._renderPage()
+      var contentEl = self._contentEl
+      if (contentEl) self._renderConvMessages(contentEl)
     }).catch(function(err) {
       msg.content = '[\u9519\u8BEF] ' + (err.message || err)
       msg.rendered = self._escHtml(msg.content)
       self._convSending = false
       self._convStreamingMsg = null
       self._saveConvMessages()
-      self._renderPage()
+      var contentEl = self._contentEl
+      if (contentEl) self._renderConvMessages(contentEl)
       self._toast('\u91CD\u65B0\u751F\u6210\u5931\u8D25: ' + (err.message || err))
     })
   }
