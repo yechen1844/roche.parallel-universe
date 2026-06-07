@@ -843,7 +843,6 @@
     this._convSending = false
     this._convStreamingMsg = null
     this._editingMsgId = null
-    this._editToggleLock = false // Prevent rapid toggle from touch+click chain
     this._convRenderLimit = 10
     this._convContextDepth = 30
     this._convAutoScroll = false
@@ -8645,20 +8644,48 @@
   }
 
   P._toggleEditMode = function(msgId) {
-    if (this._editToggleLock) return
     if (this._editingMsgId === msgId) {
       this._editingMsgId = null
     } else {
       this._editingMsgId = msgId
     }
-    // Lock to prevent rapid toggle from touch+click chain, then rebuild DOM
-    this._editToggleLock = true
-    var self = this
-    setTimeout(function() {
-      self._editToggleLock = false
-      var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
-    }, 300)
+    // Local update: only modify the target message's content area, no full rebuild
+    var contentEl = this._contentEl
+    if (!contentEl) return
+    var msgEl = contentEl.querySelector('[data-msg-id="' + msgId + '"]')
+    if (!msgEl) return
+    var contentDiv = msgEl.querySelector('.pua-conv-msg-content')
+    if (!contentDiv) return
+
+    // Find the message object
+    var msg = null
+    for (var i = 0; i < this._convMessages.length; i++) {
+      if (this._convMessages[i].id === msgId) { msg = this._convMessages[i]; break }
+    }
+    if (!msg) return
+
+    if (this._editingMsgId === msgId) {
+      // Enter edit mode: show raw content
+      contentDiv.className = 'pua-conv-msg-content pua-conv-edit-mode'
+      contentDiv.innerHTML = this._escHtml(msg.content || '')
+    } else {
+      // Exit edit mode: restore rendered view
+      contentDiv.className = 'pua-conv-msg-content'
+      var c = msg.content || ''
+      if (msg.role === 'assistant') {
+        var altIdx = msg.activeAltIndex || 0
+        if (msg.alternatives && msg.alternatives.length > 0 && altIdx > 0 && msg.alternatives[altIdx - 1]) {
+          c = msg.alternatives[altIdx - 1]
+        }
+        contentDiv.innerHTML = msg.rendered || this._escHtml(c)
+      } else {
+        contentDiv.innerHTML = this._escHtml(c)
+      }
+    }
+
+    // Update toggle button text
+    var toggleBtn = msgEl.querySelector('[data-action="toggleEdit"]')
+    if (toggleBtn) toggleBtn.textContent = this._editingMsgId ? '预览' : '源码'
   }
 
   /* ── Switch alternative version ── */
