@@ -4583,30 +4583,45 @@
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
-      // Roche 格式：根据字段映射到正确的type
-      // Roche: substituteRegex=替换输出→render, scanRegex=过滤输入→filter
+      // Roche 预设格式：outputRegex=输出过滤(排除), inputRegex=输入过滤(包含)
+      // 两者都映射为filter类型，区别在于语义：output=踢出去, input=只留它
+      // 字段: categories[].presets[] (不是 entries!)
+      // 每条预设可同时有 outputRegex 和 inputRegex，拆成两条独立规则
       for (var ci = 0; ci < data.categories.length; ci++) {
         var cat = data.categories[ci]
         var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
-        var entries = cat.entries || []
-        for (var ei = 0; ei < entries.length; ei++) {
-          var src = entries[ei]
-          // Determine type from Roche fields
-          var regType = 'render'
-          if (src.substituteRegex) regType = 'render'  // 替换输出 = 前端渲染
-          if (src.scanRegex) regType = 'filter'         // 过滤输入 = 后端过滤
-          if (src.scanRegex && src.substituteRegex) regType = 'replace' // 两者都有 = 后端替换
-          this.regexes.push({
-            id: 'r' + Date.now() + '_' + count,
-            name: '[' + catName + '] ' + (src.name || '\u672A\u547D\u540D'),
-            regex: src.substituteRegex || src.scanRegex || src.regex || '',
-            html: src.substituteHtml || src.html || '',
-            type: regType,
-            on: true,
-            dMin: 0,
-            dMax: Infinity
-          })
-          count++
+        var presets = cat.presets || []
+        for (var pi = 0; pi < presets.length; pi++) {
+          var src = presets[pi]
+          var baseName = '[' + catName + '] ' + (src.title || src.name || '\u672A\u547D\u540D')
+          // outputRegex → 输出过滤（排除式，匹配到的隐藏/限深）
+          if (src.isOutputRegexEnabled && src.outputRegex) {
+            this.regexes.push({
+              id: 'r' + Date.now() + '_' + count,
+              name: baseName + ' [\u8F93\u51FA\u8FC7\u6EE4]',
+              regex: src.outputRegex,
+              html: '',
+              type: 'filter',
+              on: true,
+              dMin: 0,
+              dMax: Infinity
+            })
+            count++
+          }
+          // inputRegex → 输入过滤（包含式，只有匹配到的才进上下文）
+          if (src.isInputRegexEnabled && src.inputRegex) {
+            this.regexes.push({
+              id: 'r' + Date.now() + '_' + count,
+              name: baseName + ' [\u8F93\u5165\u8FC7\u6EE4]',
+              regex: src.inputRegex,
+              html: '',
+              type: 'filter',
+              on: true,
+              dMin: 0,
+              dMax: Infinity
+            })
+            count++
+          }
         }
       }
     }
