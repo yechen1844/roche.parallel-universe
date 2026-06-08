@@ -6822,7 +6822,7 @@
             var endIdx = convMsgs.length
             if (upToMsgId) {
               for (var uei = 0; uei < convMsgs.length; uei++) {
-                if (convMsgs[uei].id === upToMsgId) { endIdx = uei; break }
+                if (convMsgs[uei].id === upToMsgId) { endIdx = uei + 1; break } // +1 to include the upToMsgId message itself
               }
             }
             var cStart = Math.max(0, endIdx - depth)
@@ -12638,7 +12638,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.23.0',
+    version: '0.23.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
