@@ -6816,18 +6816,16 @@
 
   P._viewContext = function(messageId) {
     var self = this
-    var contextStr = this._lastAsmContext || ''
 
-    // 如果没有缓存的上下文，尝试构建
-    if (!contextStr) {
-      var messages = this._buildMessages()
-      var parts = []
-      for (var i = 0; i < messages.length; i++) {
-        parts.push('[' + messages[i].role.toUpperCase() + ']\n' + (messages[i].content || ''))
-      }
-      contextStr = parts.join('\n\n---\n\n')
-      this._lastAsmContext = contextStr
+    // Always build fresh context using _buildConvContext (same as _sendMessage)
+    // This ensures the preview matches what's actually sent to the model
+    var messages = this._buildConvContext(messageId)
+    var contextParts = []
+    for (var i = 0; i < messages.length; i++) {
+      contextParts.push('[' + messages[i].role.toUpperCase() + ']\n' + (messages[i].content || ''))
     }
+    var contextStr = contextParts.join('\n\n---\n\n')
+    this._lastAsmContext = contextStr
 
     var h = '<div style="font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow-y:auto;background:var(--pua-bg-input);border-radius:6px;padding:12px;margin-bottom:12px">'
     h += this._escHtml(contextStr)
