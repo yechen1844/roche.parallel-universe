@@ -9335,9 +9335,6 @@
     this._convSending = true
     this._convStreamingMsg = astMsg
 
-    // Re-render to show user message + typing indicator (keep scroll position)
-    this._renderConvMessages(contentEl, true)
-
     // Build context (only includes messages up to the user message we just added)
     var messages = this._buildConvContext(userMsg.id)
     console.log('[PUA] _sendMessage: final messages count=' + messages.length)
@@ -9345,9 +9342,22 @@
       console.log('[PUA] _sendMessage msg[' + di + '] role=' + messages[di].role + ' content=' + (messages[di].content||'').substring(0, 80))
     }
 
-    // Now add the assistant message to _convMessages
+    // Now add the assistant message to _convMessages BEFORE rendering,
+    // so it renders below the user message in correct order
     astMsg.floorNumber = this._convMessages.length + 1
     this._convMessages.push(astMsg)
+
+    // Re-render to show user message + assistant placeholder + typing indicator
+    this._renderConvMessages(contentEl, true)
+
+    // Scroll to the user message position so user can see their message and the reply below
+    var chatEl = contentEl.querySelector('#conv-chat')
+    if (chatEl) {
+      var userMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
+      if (userMsgEl) {
+        chatEl.scrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
+      }
+    }
 
     // Stream chat
     this._streamChat(messages).then(function(fullContent) {
@@ -9362,9 +9372,9 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
 
-      // Re-render conversation messages only (not the whole page)
+      // Re-render conversation messages only (not the whole page), keep position
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
 
       // Memory summarization trigger
       self._msgSinceLastSummary = (self._msgSinceLastSummary || 0) + 1
@@ -9380,7 +9390,7 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
       self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
     })
   }
@@ -9720,10 +9730,7 @@
       var savedFontSize = parseInt(localStorage.getItem('pua_conv_font_size')) || 0
       if (savedFontSize > 0) contentDiv.style.fontSize = savedFontSize + 'px'
     }
-    // Auto-scroll to bottom during streaming so user can see new content
-    if (isStreaming) {
-      chatEl.scrollTop = chatEl.scrollHeight
-    }
+    // No auto-scroll during streaming - user controls scroll position
   }
 
   P._renderConvMessages = function(contentEl, keepPosition) {
@@ -9793,10 +9800,8 @@
       // Keep relative position: adjust for height changes
       var newScrollHeight = chatEl.scrollHeight
       chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
-    } else if (wasAtBottom || this._convAutoScroll) {
-      chatEl.scrollTop = chatEl.scrollHeight
     } else {
-      // Keep relative position: adjust for height changes
+      // Default: keep relative position to prevent unexpected jumps
       var newScrollHeight2 = chatEl.scrollHeight
       chatEl.scrollTop = savedScrollTop + (newScrollHeight2 - savedScrollHeight)
     }
@@ -9867,7 +9872,7 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
     }).catch(function(err) {
       // Restore from alternatives on error
       if (astMsg.alternatives && astMsg.alternatives.length > 0) {
@@ -9881,7 +9886,7 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
       self._toast('\u91CD\u65B0\u751F\u6210\u5931\u8D25: ' + (err.message || err))
     })
   }
@@ -9933,7 +9938,7 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
     }).catch(function(err) {
       // Restore from alternatives on error
       if (msg.alternatives.length > 0) {
@@ -9947,7 +9952,7 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl)
+      if (contentEl) self._renderConvMessages(contentEl, true)
       self._toast('\u91CD\u65B0\u751F\u6210\u5931\u8D25: ' + (err.message || err))
     })
   }
@@ -10100,7 +10105,7 @@
     }
     this._saveConvMessages()
     var contentEl = this._contentEl
-    if (contentEl) this._renderConvMessages(contentEl)
+    if (contentEl) this._renderConvMessages(contentEl, true)
   }
 
   /* ── Toggle favorite ── */
@@ -12698,7 +12703,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.24.0',
+    version: '0.24.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
