@@ -6015,6 +6015,40 @@
     }
     h += '</div>'
 
+    // Config section: \u9884\u8BBE\u5206\u7C7B\u9009\u62E9
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u9884\u8BBE\u5206\u7C7B</div>'
+    var ppData = this._promptPresetData
+    if (ppData && ppData.presets && ppData.presets.length > 0) {
+      h += '<select class="pua-field-input" id="asm-preset-group-select" style="width:100%">'
+      for (var pgi = 0; pgi < ppData.presets.length; pgi++) {
+        var ppg = ppData.presets[pgi]
+        var ppSel = ppg.id === ppData.activePresetId ? ' selected' : ''
+        h += '<option value="' + ppg.id + '"' + ppSel + '>' + this._escHtml(ppg.name || '\u672A\u547D\u540D') + ' (' + (ppg.items ? ppg.items.length : 0) + ')</option>'
+      }
+      h += '</select>'
+    } else {
+      h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u9884\u8BBE\u5206\u7C7B</span>'
+    }
+    h += '</div>'
+
+    // Config section: \u6B63\u5219\u5206\u7C7B\u9009\u62E9
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u6B63\u5219\u5206\u7C7B</div>'
+    var rpData = this._regexPresetData
+    if (rpData && rpData.presets && rpData.presets.length > 0) {
+      h += '<select class="pua-field-input" id="asm-regex-group-select" style="width:100%">'
+      for (var rgi = 0; rgi < rpData.presets.length; rgi++) {
+        var rpg = rpData.presets[rgi]
+        var rpSel = rpg.id === rpData.activePresetId ? ' selected' : ''
+        h += '<option value="' + rpg.id + '"' + rpSel + '>' + this._escHtml(rpg.name || '\u672A\u547D\u540D') + ' (' + (rpg.regexes ? rpg.regexes.length : 0) + ')</option>'
+      }
+      h += '</select>'
+    } else {
+      h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u6B63\u5219\u5206\u7C7B</span>'
+    }
+    h += '</div>'
+
     h += '</div>' // end asm-config
     h += '</div>' // end asm-layout
 
@@ -6037,6 +6071,62 @@
     // Bind config input events
     var depthInput = contentEl.querySelector('#asm-depth')
     if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
+
+    // Bind preset group selector
+    var asmPpSelect = contentEl.querySelector('#asm-preset-group-select')
+    if (asmPpSelect) {
+      asmPpSelect.addEventListener('change', function() {
+        if (!self._promptPresetData) return
+        // \u4FDD\u5B58\u5F53\u524D\u5DE5\u4F5C\u533A
+        var oldId = self._promptPresetData.activePresetId
+        var oldPs = self._promptPresetData.presets || []
+        for (var ok = 0; ok < oldPs.length; ok++) {
+          if (oldPs[ok].id === oldId) { oldPs[ok].items = self.presets.slice(); break }
+        }
+        self._promptPresetData.activePresetId = this.value
+        var target = null
+        var ps = self._promptPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === this.value) { target = ps[k]; break }
+        }
+        if (target && target.items) {
+          self.presets = target.items
+          self.selPreset = self.presets.length > 0 ? self.presets[0].id : ''
+          self._savePresets()
+        }
+        self.asmOrder = self._defaultAsmOrder()
+        self._saveAsmOrder()
+        self._savePromptPresets()
+        self._render()
+      })
+    }
+
+    // Bind regex group selector
+    var asmRpSelect = contentEl.querySelector('#asm-regex-group-select')
+    if (asmRpSelect) {
+      asmRpSelect.addEventListener('change', function() {
+        if (!self._regexPresetData) return
+        // \u4FDD\u5B58\u5F53\u524D\u5DE5\u4F5C\u533A
+        var oldId = self._regexPresetData.activePresetId
+        var oldPs = self._regexPresetData.presets || []
+        for (var ok = 0; ok < oldPs.length; ok++) {
+          if (oldPs[ok].id === oldId) { oldPs[ok].regexes = self.regexes.slice(); break }
+        }
+        self._regexPresetData.activePresetId = this.value
+        var target = null
+        var ps = self._regexPresetData.presets || []
+        for (var k = 0; k < ps.length; k++) {
+          if (ps[k].id === this.value) { target = ps[k]; break }
+        }
+        if (target && target.regexes) {
+          self.regexes = target.regexes
+          self.selRegex = self.regexes.length > 0 ? self.regexes[0].id : ''
+          self._saveRegexes()
+        }
+        self._saveRegexPresets()
+        self._render()
+      })
+    }
 
     // Bind drag events for all blocks
     this._bindAsmDragEvents()
@@ -6161,6 +6251,28 @@
   P._bindAsmDragEvents = function() {
     var self = this
     var blocks = this._contentEl ? this._contentEl.querySelectorAll('.asm-block') : []
+    // \u62D6\u62FD\u81EA\u52A8\u6EDA\u52A8
+    var dragScrollTimer = null
+    var dragScrollContainer = null
+
+    function startDragScroll() {
+      stopDragScroll()
+      dragScrollContainer = self._contentEl ? self._contentEl.querySelector('.asm-visual') : null
+      if (!dragScrollContainer) return
+      dragScrollTimer = setInterval(function() {
+        if (!dragScrollContainer) return
+        var rect = dragScrollContainer.getBoundingClientRect()
+        // \u83B7\u53D6\u5F53\u524D\u9F20\u6807\u4F4D\u7F6E\uFF08\u901A\u8FC7\u62D6\u62FD\u4E8B\u4EF6\u65E0\u6CD5\u76F4\u63A5\u83B7\u53D6\uFF0C\u4F7F\u7528\u6700\u540E\u5DF2\u77E5\u4F4D\u7F6E\uFF09
+        // \u4F7F\u7528 dragover \u4E8B\u4EF6\u7684 clientY
+      }, 50)
+    }
+    function stopDragScroll() {
+      if (dragScrollTimer) { clearInterval(dragScrollTimer); dragScrollTimer = null }
+    }
+
+    // \u8DDF\u8E2A\u62D6\u62FD\u65F6\u7684\u9F20\u6807 Y \u4F4D\u7F6E
+    var lastDragClientY = 0
+
     for (var i = 0; i < blocks.length; i++) {
       (function(block) {
         var card = block.querySelector('.asm-card')
@@ -6172,13 +6284,27 @@
         card.addEventListener('dragstart', function(e) {
           block.classList.add('dragging')
           e.dataTransfer.setData('text/plain', bType + '|' + bId)
+          startDragScroll()
         })
         card.addEventListener('dragend', function() {
           block.classList.remove('dragging')
+          stopDragScroll()
         })
         block.addEventListener('dragover', function(e) {
           e.preventDefault()
           block.classList.add('drag-over')
+          lastDragClientY = e.clientY
+          // \u81EA\u52A8\u6EDA\u52A8\uFF1A\u5F53\u9F20\u6807\u63A5\u8FD1\u5BB9\u5668\u8FB9\u7F18\u65F6\u6EDA\u52A8
+          var container = self._contentEl ? self._contentEl.querySelector('.asm-visual') : null
+          if (container) {
+            var rect = container.getBoundingClientRect()
+            var edgeZone = 60
+            if (e.clientY < rect.top + edgeZone) {
+              container.scrollTop -= 8
+            } else if (e.clientY > rect.bottom - edgeZone) {
+              container.scrollTop += 8
+            }
+          }
         })
         block.addEventListener('dragleave', function() {
           block.classList.remove('drag-over')
@@ -6186,6 +6312,7 @@
         block.addEventListener('drop', function(e) {
           e.preventDefault()
           block.classList.remove('drag-over')
+          stopDragScroll()
           var parts = e.dataTransfer.getData('text/plain').split('|')
           if (parts.length === 2) {
             self._reorderAsm(parts[0], parts[1], bType, bId)
@@ -6456,15 +6583,27 @@
       this.asmOrder = order
       this._saveAsmOrder()
     }
-    // \u5146\u5E95\u6821\u9A8C\uFF1A\u5982\u679C asmOrder \u4E2D\u7684\u9884\u8BBE ID \u4E0E this.presets \u4E0D\u5339\u914D\uFF0C\u76F4\u63A5\u91CD\u5EFA
+    // \u5146\u5E95\u6821\u9A8C\uFF1A\u53CC\u5411\u68C0\u67E5 asmOrder \u4E0E this.presets \u7684\u5339\u914D
     var presetIds = {}
     for (var vi = 0; vi < this.presets.length; vi++) { presetIds[this.presets[vi].id] = true }
-    var needRebuild = false
+    var asmPresetIds = {}
+    var asmPresetCount = 0
     for (var vj = 0; vj < order.length; vj++) {
-      if (order[vj].type === 'preset' && !presetIds[order[vj].id]) { needRebuild = true; break }
+      if (order[vj].type === 'preset') { asmPresetIds[order[vj].id] = true; asmPresetCount++ }
+    }
+    var needRebuild = false
+    // \u68C0\u67E51\uFF1AasmOrder \u4E2D\u6709\u9884\u8BBE ID \u4E0D\u5B58\u5728\u4E8E this.presets
+    for (var vk = 0; vk < order.length; vk++) {
+      if (order[vk].type === 'preset' && !presetIds[order[vk].id]) { needRebuild = true; break }
+    }
+    // \u68C0\u67E52\uFF1Athis.presets \u4E2D\u6709\u542F\u7528\u7684\u9884\u8BBE\u4E0D\u5728 asmOrder \u4E2D
+    if (!needRebuild) {
+      for (var vl = 0; vl < this.presets.length; vl++) {
+        if (this.presets[vl].on && !asmPresetIds[this.presets[vl].id]) { needRebuild = true; break }
+      }
     }
     if (needRebuild) {
-      console.log('[PUA] _buildMessages: asmOrder preset IDs mismatch, rebuilding')
+      console.log('[PUA] _buildMessages: asmOrder preset mismatch (asmOrder has ' + asmPresetCount + ' presets, this.presets has ' + this.presets.length + ' enabled), rebuilding')
       order = this._defaultAsmOrder()
       this.asmOrder = order
       this._saveAsmOrder()
