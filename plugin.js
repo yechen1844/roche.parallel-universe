@@ -5065,67 +5065,84 @@
       return
     }
     var data = this._parsedRegexData
+    console.log('[PUA] _doImportRegex data type=' + data.type + ' has categories=' + !!(data.categories) + ' has regexes=' + !!(data.regexes))
     var count = 0
-    var rImportName = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'numeric',hour:'2-digit',minute:'2-digit'}))
+    var rImportName = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))
 
     // 构建导入条目数组（不直接操作 this.regexes）
     var newRItems = []
 
-    if (data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
-      for (var ri = 0; ri < data.regexes.length; ri++) {
-        var src0 = data.regexes[ri]
-        newRItems.push({
-          id: 'r' + Date.now() + '_' + count,
-          name: (src0.name || '\u672A\u547D\u540D') + ' [' + rImportName + ']',
-          regex: src0.regex || '',
-          html: src0.html || '',
-          type: src0.type || 'render',
-          on: src0.on !== undefined ? src0.on : true,
-          dMin: src0.dMin || 0,
-          dMax: src0.dMax || Infinity,
-          group: '\u9ED8\u8BA4'
-        })
-        count++
-      }
-    } else if (data.categories && Array.isArray(data.categories)) {
-      for (var ci = 0; ci < data.categories.length; ci++) {
-        var cat = data.categories[ci]
-        var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
-        var presets = cat.presets || []
-        for (var pi = 0; pi < presets.length; pi++) {
-          var src = presets[pi]
-          var baseName = (src.title || src.name || '\u672A\u547D\u540D') + ' [' + catName + ']'
-          if (src.isOutputRegexEnabled && src.outputRegex) {
-            newRItems.push({
-              id: 'r' + Date.now() + '_' + count,
-              name: baseName + ' [\u8F93\u51FA\u8FC7\u6EE4]',
-              regex: src.outputRegex,
-              html: '',
-              type: 'filter',
-              on: true,
-              dMin: 0,
-              dMax: Infinity,
-              group: catName
-            })
-            count++
-          }
-          if (src.isInputRegexEnabled && src.inputRegex) {
-            newRItems.push({
-              id: 'r' + Date.now() + '_' + count,
-              name: baseName + ' [\u8F93\u5165\u8FC7\u6EE4]',
-              regex: src.inputRegex,
-              html: '',
-              type: 'filter',
-              on: true,
-              dMin: 0,
-              dMax: Infinity,
-              group: catName
-            })
-            count++
+    try {
+      if (data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
+        console.log('[PUA] _doImportRegex: plugin format, regexes count=' + data.regexes.length)
+        for (var ri = 0; ri < data.regexes.length; ri++) {
+          var src0 = data.regexes[ri]
+          newRItems.push({
+            id: 'r' + Date.now() + '_' + count,
+            name: (src0.name || '\u672A\u547D\u540D') + ' [' + rImportName + ']',
+            regex: src0.regex || '',
+            html: src0.html || '',
+            type: src0.type || 'render',
+            on: src0.on !== undefined ? src0.on : true,
+            dMin: src0.dMin || 0,
+            dMax: src0.dMax || Infinity,
+            group: '\u9ED8\u8BA4'
+          })
+          count++
+        }
+      } else if (data.categories && Array.isArray(data.categories)) {
+        console.log('[PUA] _doImportRegex: roche format, categories count=' + data.categories.length)
+        for (var ci = 0; ci < data.categories.length; ci++) {
+          var cat = data.categories[ci]
+          var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
+          var presets = cat.presets || []
+          console.log('[PUA] _doImportRegex category[' + ci + '] name=' + catName + ' presets count=' + presets.length)
+          for (var pi = 0; pi < presets.length; pi++) {
+            var src = presets[pi]
+            var baseName = (src.title || src.name || '\u672A\u547D\u540D') + ' [' + catName + ']'
+            console.log('[PUA] _doImportRegex preset[' + pi + '] title=' + (src.title||'') + ' outEn=' + !!src.isOutputRegexEnabled + ' outRx=' + !!src.outputRegex + ' inEn=' + !!src.isInputRegexEnabled + ' inRx=' + !!src.inputRegex)
+            if (src.isOutputRegexEnabled && src.outputRegex) {
+              newRItems.push({
+                id: 'r' + Date.now() + '_' + count,
+                name: baseName + ' [\u8F93\u51FA\u8FC7\u6EE4]',
+                regex: src.outputRegex,
+                html: '',
+                type: 'filter',
+                on: true,
+                dMin: 0,
+                dMax: Infinity,
+                group: catName
+              })
+              count++
+              console.log('[PUA] _doImportRegex: added output filter for ' + baseName)
+            }
+            if (src.isInputRegexEnabled && src.inputRegex) {
+              newRItems.push({
+                id: 'r' + Date.now() + '_' + count,
+                name: baseName + ' [\u8F93\u5165\u8FC7\u6EE4]',
+                regex: src.inputRegex,
+                html: '',
+                type: 'filter',
+                on: true,
+                dMin: 0,
+                dMax: Infinity,
+                group: catName
+              })
+              count++
+              console.log('[PUA] _doImportRegex: added input filter for ' + baseName)
+            }
           }
         }
+      } else {
+        console.warn('[PUA] _doImportRegex: no matching format, type=' + data.type)
       }
+    } catch(loopErr) {
+      console.error('[PUA] _doImportRegex loop error:', loopErr.message, loopErr.stack)
+      this._toast('\u5BFC\u5165\u8FC7\u7A0B\u51FA\u9519: ' + loopErr.message)
+      return
     }
+
+    console.log('[PUA] _doImportRegex: newRItems length=' + newRItems.length + ' count=' + count)
 
     if (newRItems.length === 0) {
       this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6B63\u5219\u6761\u76EE')
@@ -5133,6 +5150,7 @@
     }
 
     // 在 _regexPresetData 中新建一个预设工作区
+    console.log('[PUA] _doImportRegex: creating workspace, _regexPresetData exists=' + !!this._regexPresetData)
     if (!this._regexPresetData) {
       this._regexPresetData = { presets: [], activePresetId: '' }
     }
@@ -5150,6 +5168,8 @@
     this._selRegexIds = []
 
     this._parsedRegexData = null
+
+    console.log('[PUA] _doImportRegex: saving, _saveRegexes exists=' + typeof this._saveRegexes + ' _saveRegexPresets exists=' + typeof this._saveRegexPresets)
     this._saveRegexes()
     this._saveRegexPresets()
     this._closeModal()
