@@ -1458,12 +1458,9 @@
     this._renderPage()
 
     // Restore scroll positions after DOM rebuild
-    if (this._convScrollAnchor !== undefined) {
+    if (savedScrolls.convChat !== undefined) {
       var newChatEl = this._contentEl ? this._contentEl.querySelector('#conv-chat') : null
-      if (newChatEl) newChatEl.scrollTop = this._convScrollAnchor
-    } else if (savedScrolls.convChat !== undefined) {
-      var newChatEl2 = this._contentEl ? this._contentEl.querySelector('#conv-chat') : null
-      if (newChatEl2) newChatEl2.scrollTop = savedScrolls.convChat
+      if (newChatEl) newChatEl.scrollTop = savedScrolls.convChat
     }
     if (savedScrolls.presetList !== undefined) {
       var newPresetList = this._contentEl ? this._contentEl.querySelector('#pua-preset-list') : null
@@ -9470,8 +9467,6 @@
         var targetScrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
         if (targetScrollTop < 0) targetScrollTop = 0
         chatEl.scrollTop = targetScrollTop
-        // Also save this as the "anchor" position for future scroll restoration
-        this._convScrollAnchor = targetScrollTop
       }
     }
 
@@ -9491,18 +9486,18 @@
       // Re-render conversation messages, preserving scroll position
       var contentEl = self._contentEl
       if (contentEl) {
-        // Save the current scroll position before re-render
+        // Save the user's current scroll position BEFORE re-render
         var chatEl = contentEl.querySelector('#conv-chat')
-        var currentScrollTop = chatEl ? chatEl.scrollTop : 0
+        var userScrollTop = chatEl ? chatEl.scrollTop : 0
+        var userScrollHeight = chatEl ? chatEl.scrollHeight : 0
         self._renderConvMessages(contentEl, true)
-        // After re-render, ensure scroll position is preserved (not jumped)
-        if (chatEl && self._convScrollAnchor !== undefined) {
-          chatEl.scrollTop = self._convScrollAnchor
+        // After re-render, restore the user's actual scroll position (not the old anchor)
+        if (chatEl) {
+          var newScrollHeight = chatEl.scrollHeight
+          // Adjust for height changes caused by re-render (e.g., render regexes applied)
+          chatEl.scrollTop = userScrollTop + (newScrollHeight - userScrollHeight)
         }
       }
-      // Clear scroll anchor after rendering is complete
-      delete self._convScrollAnchor
-
       // Memory summarization trigger
       self._msgSinceLastSummary = (self._msgSinceLastSummary || 0) + 1
       var settings = self._loadSettings()
@@ -9517,7 +9512,15 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl, true)
+      if (contentEl) {
+        var chatEl = contentEl.querySelector('#conv-chat')
+        var errScrollTop = chatEl ? chatEl.scrollTop : 0
+        var errScrollHeight = chatEl ? chatEl.scrollHeight : 0
+        self._renderConvMessages(contentEl, true)
+        if (chatEl) {
+          chatEl.scrollTop = errScrollTop + (chatEl.scrollHeight - errScrollHeight)
+        }
+      }
       self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
     })
   }
@@ -9965,19 +9968,10 @@
     var countEl = contentEl.querySelector('#conv-msg-count')
     if (countEl) countEl.textContent = msgs.length + ' \u6761'
 
-    // Restore scroll position
-    if (this._convScrollAnchor !== undefined) {
-      // Use the saved anchor position (set when user sent a message)
-      chatEl.scrollTop = this._convScrollAnchor
-    } else if (keepPosition) {
-      // Keep relative position: adjust for height changes
-      var newScrollHeight = chatEl.scrollHeight
-      chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
-    } else {
-      // Default: keep relative position to prevent unexpected jumps
-      var newScrollHeight2 = chatEl.scrollHeight
-      chatEl.scrollTop = savedScrollTop + (newScrollHeight2 - savedScrollHeight)
-    }
+    // Restore scroll position - always use relative position adjustment
+    // This preserves the user's current view regardless of content changes
+    var newScrollHeight = chatEl.scrollHeight
+    chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
 
     // Apply saved font size to conversation messages
     var savedFontSize = parseInt(localStorage.getItem('pua_conv_font_size')) || 0
@@ -12876,7 +12870,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.27.0',
+    version: '0.27.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
