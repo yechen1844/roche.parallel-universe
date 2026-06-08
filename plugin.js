@@ -1111,6 +1111,82 @@
     })
   }
 
+  P._rebuildAsmOrder = function() {
+    // Rebuild asmOrder from current presets and regexes
+    var order = []
+    for (var i = 0; i < this.presets.length; i++) {
+      if (this.presets[i].on) {
+        order.push({ type: 'preset', id: this.presets[i].id })
+      }
+    }
+    for (var j = 0; j < this.regexes.length; j++) {
+      if (this.regexes[j].on) {
+        order.push({ type: 'regex', id: this.regexes[j].id })
+      }
+    }
+    // Always include char, persona, worldbook, memory, chat
+    var baseTypes = ['character', 'persona', 'worldbook', 'memory', 'chat']
+    for (var k = 0; k < baseTypes.length; k++) {
+      var exists = false
+      for (var l = 0; l < order.length; l++) {
+        if (order[l].type === baseTypes[k]) { exists = true; break }
+      }
+      if (!exists) order.push({ type: baseTypes[k] })
+    }
+    this.asmOrder = order
+    this._saveAsmOrder()
+    console.log('[PUA] _rebuildAsmOrder: rebuilt order length=' + order.length)
+  }
+
+  P._doSummarizeCore = function() {
+    var self = this
+    var preset = this._getActivePreset()
+    if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
+      this._toast('\u8BF7\u5148\u914D\u7F6E\u526F API')
+      return
+    }
+    var memData = this._loadMemData(this.asmBranchId)
+    if (!memData || !memData.facts || memData.facts.length === 0) {
+      this._toast('\u65E0\u4E8B\u5B9E\u8BB0\u5FC6\u53EF\u603B\u7ED3')
+      return
+    }
+    this._toast('\u5F00\u59CB\u603B\u7ED3\u6838\u5FC3\u8BB0\u5FC6...')
+    var allFacts = ''
+    for (var i = 0; i < memData.facts.length; i++) {
+      var f = memData.facts[i]
+      allFacts += (i + 1) + '. ' + (f.summary || f.summaryText || f.text) + '\n'
+    }
+    var settings = this._loadSettings()
+    var charLimit = settings.coreCharLimit || 2000
+    var prompt = '\u8BF7\u5C06\u4EE5\u4E0B\u4E8B\u5B9E\u8BB0\u5FC6\u6574\u5408\u4E3A\u4E00\u6BB5\u6838\u5FC3\u8BB0\u5FC6\u6982\u8FF0\uFF0C\u4FDD\u7559\u6700\u91CD\u8981\u7684\u4FE1\u606F\uFF0C\u5B57\u6570\u4E0D\u8D85\u8FC7' + charLimit + '\u5B57\u3002\n\n' + allFacts
+    var url = preset.subEndpoint.replace(/\/+$/, '') + '/chat/completions'
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.subApiKey },
+      body: JSON.stringify({
+        model: preset.subModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: charLimit
+      })
+    }).then(function(r) { return r.json() }).then(function(data) {
+      if (data.choices && data.choices[0]) {
+        var result = (data.choices[0].message || {}).content || ''
+        if (result) {
+          memData.coreMemory = result
+          self._saveMemData(memData, self.asmBranchId)
+          self._toast('\u6838\u5FC3\u8BB0\u5FC6\u603B\u7ED3\u5B8C\u6210')
+        } else {
+          self._toast('\u6838\u5FC3\u8BB0\u5FC6\u603B\u7ED3\u5931\u8D25\uFF1A\u65E0\u8FD4\u56DE\u5185\u5BB9')
+        }
+      } else {
+        self._toast('\u6838\u5FC3\u8BB0\u5FC6\u603B\u7ED3\u5931\u8D25')
+      }
+    }).catch(function(e) {
+      self._toast('\u6838\u5FC3\u8BB0\u5FC6\u603B\u7ED3\u51FA\u9519: ' + (e.message || ''))
+    })
+  }
+
   /* ── 正则预设管理 ── */
   P._loadRegexPresets = function() {
     var self = this
@@ -9581,6 +9657,15 @@
       var newScrollHeight = chatEl.scrollHeight
       chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
     }
+
+    // Apply saved font size to conversation messages
+    var savedFontSize = parseInt(localStorage.getItem('pua_conv_font_size')) || 0
+    if (savedFontSize > 0) {
+      var msgContents = chatEl.querySelectorAll('.pua-conv-msg-content')
+      for (var fi = 0; fi < msgContents.length; fi++) {
+        msgContents[fi].style.fontSize = savedFontSize + 'px'
+      }
+    }
   }
 
   /* ── Regenerate message ── */
@@ -9950,19 +10035,28 @@
     btn.textContent = '\u26A1'
     fab.appendChild(btn)
 
-    // ── Free drag (no snap) ──
+    // ── Free drag with boundary clamping ──
     var isDragging = false
     var dragStartX = 0, dragStartY = 0
     var fabStartX = 0, fabStartY = 0
     var hasMoved = false
 
-    // Restore saved position
+    // Restore saved position (clamped to screen)
     var savedPos = this._fabPos || null
     if (savedPos) {
-      fab.style.left = savedPos.x + 'px'
-      fab.style.top = savedPos.y + 'px'
+      var clampX = Math.max(0, Math.min(window.innerWidth - 44, savedPos.x))
+      var clampY = Math.max(0, Math.min(window.innerHeight - 44, savedPos.y))
+      fab.style.left = clampX + 'px'
+      fab.style.top = clampY + 'px'
       fab.style.right = 'auto'
       fab.style.bottom = 'auto'
+    }
+
+    function clampPos(x, y) {
+      return {
+        x: Math.max(0, Math.min(window.innerWidth - 44, x)),
+        y: Math.max(0, Math.min(window.innerHeight - 44, y))
+      }
     }
 
     btn.addEventListener('mousedown', function(e) {
@@ -9990,19 +10084,18 @@
       var dx = cx - dragStartX
       var dy = cy - dragStartY
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true
-      var newX = fabStartX + dx
-      var newY = fabStartY + dy
-      fab.style.left = newX + 'px'
-      fab.style.top = newY + 'px'
+      var cp = clampPos(fabStartX + dx, fabStartY + dy)
+      fab.style.left = cp.x + 'px'
+      fab.style.top = cp.y + 'px'
       fab.style.right = 'auto'
       fab.style.bottom = 'auto'
     }
     function onEnd() {
       if (!isDragging) return
       isDragging = false
-      // Save position
       var rect = fab.getBoundingClientRect()
-      self._fabPos = { x: rect.left, y: rect.top }
+      var cp = clampPos(rect.left, rect.top)
+      self._fabPos = { x: cp.x, y: cp.y }
       try { localStorage.setItem('pua_fab_pos', JSON.stringify(self._fabPos)) } catch(e) {}
     }
 
@@ -10019,108 +10112,226 @@
       menu.classList.toggle('show', self._fabExpanded)
     })
 
+    // ── Menu ──
     var menu = document.createElement('div')
     menu.className = 'pua-fab-menu' + (this._fabExpanded ? ' show' : '')
+    menu.style.width = '260px'
+    menu.style.maxHeight = '70vh'
+    menu.style.overflowY = 'auto'
 
-    // Quick navigation
-    var navItems = [
-      { id: 'branches', icon: '\u2606', label: '\u5206\u652F\u5B58\u6863' },
-      { id: 'chat', icon: '\uD83D\uDCAC', label: '\u5BF9\u8BDD' },
-      { id: 'favorites', icon: '\u2B50', label: '\u6536\u85CF' },
-      { id: 'memory', icon: '\u263D', label: '\u8BB0\u5FC6\u7CFB\u7EDF' },
-      { id: 'settings', icon: '\u2691', label: '\u8BBE\u7F6E' }
+    // === Tab buttons: 预设 / 正则 / 记忆 ===
+    var tabRow = document.createElement('div')
+    tabRow.style.cssText = 'display:flex;gap:4px;margin-bottom:8px'
+    var tabs = [
+      { id: 'presets', label: '\u9884\u8BBE' },
+      { id: 'regex', label: '\u6B63\u5219' },
+      { id: 'memory', label: '\u53EC\u56DE\u8BB0\u5FC6' }
     ]
+    var activeTab = 'presets'
+    var tabBtns = {}
 
-    var navTitle = document.createElement('div')
-    navTitle.className = 'pua-fab-menu-title'
-    navTitle.textContent = '\u5FEB\u6377\u5BFC\u822A'
-    menu.appendChild(navTitle)
-
-    for (var ni = 0; ni < navItems.length; ni++) {
-      (function(item) {
-        var el = document.createElement('div')
-        el.className = 'pua-fab-menu-item'
-        el.innerHTML = '<span class="pua-fab-menu-item-icon">' + item.icon + '</span>' + item.label
-        el.addEventListener('click', function() {
-          self.currentPage = item.id
-          self._fabExpanded = false
-          self._render()
+    for (var ti = 0; ti < tabs.length; ti++) {
+      (function(tab) {
+        var tb = document.createElement('button')
+        tb.className = 'pua-btn pua-btn-sm' + (tab.id === activeTab ? ' pua-btn-gold' : '')
+        tb.textContent = tab.label
+        tb.style.flex = '1'
+        tb.addEventListener('click', function() {
+          activeTab = tab.id
+          for (var k in tabBtns) {
+            tabBtns[k].className = 'pua-btn pua-btn-sm' + (k === activeTab ? ' pua-btn-gold' : '')
+          }
+          renderTabContent()
         })
-        menu.appendChild(el)
-      })(navItems[ni])
+        tabBtns[tab.id] = tb
+        tabRow.appendChild(tb)
+      })(tabs[ti])
+    }
+    menu.appendChild(tabRow)
+
+    // Tab content container
+    var tabContent = document.createElement('div')
+    menu.appendChild(tabContent)
+
+    function renderTabContent() {
+      tabContent.innerHTML = ''
+      if (activeTab === 'presets') renderPresetsTab()
+      else if (activeTab === 'regex') renderRegexTab()
+      else if (activeTab === 'memory') renderMemoryTab()
     }
 
-    // Quick toggles
-    var toggleTitle = document.createElement('div')
-    toggleTitle.className = 'pua-fab-menu-title'
-    toggleTitle.style.marginTop = '8px'
-    toggleTitle.textContent = '\u5FEB\u6377\u5F00\u5173'
-    menu.appendChild(toggleTitle)
-
-    var toggles = [
-      { key: 'regexOn', label: '\u6B63\u5219', getValue: function() { return self.regexes.length > 0 && self.regexes[0].on } },
-      { key: 'presetOn', label: '\u9884\u8BBE', getValue: function() { return self.presets.length > 0 && self.presets[0].on } }
-    ]
-
-    for (var ti = 0; ti < toggles.length; ti++) {
-      (function(toggle) {
-        var row = document.createElement('div')
-        row.className = 'pua-fab-toggle-row'
-        var label = document.createElement('span')
-        label.textContent = toggle.label
-        var toggleBtn = document.createElement('button')
-        toggleBtn.className = 'pua-toggle-item' + (toggle.getValue() ? ' on' : '')
-        toggleBtn.addEventListener('click', function() {
-          toggleBtn.classList.toggle('on')
-        })
-        row.appendChild(label)
-        row.appendChild(toggleBtn)
-        menu.appendChild(row)
-      })(toggles[ti])
+    // === Presets Tab ===
+    function renderPresetsTab() {
+      var presets = self.presets || []
+      if (presets.length === 0) {
+        tabContent.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);padding:8px">\u65E0\u9884\u8BBE</div>'
+        return
+      }
+      for (var i = 0; i < presets.length; i++) {
+        (function(idx) {
+          var p = presets[idx]
+          var row = document.createElement('div')
+          row.className = 'pua-fab-toggle-row'
+          row.style.cssText = 'padding:5px 4px;border-bottom:1px solid var(--pua-border)'
+          var label = document.createElement('span')
+          label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px'
+          label.textContent = p.title || p.name || ('\u9884\u8BBE' + (idx + 1))
+          label.title = label.textContent
+          var toggleBtn = document.createElement('button')
+          toggleBtn.className = 'pua-toggle-item' + (p.on ? ' on' : '')
+          toggleBtn.addEventListener('click', function() {
+            p.on = !p.on
+            toggleBtn.classList.toggle('on', p.on)
+            self._savePresets()
+            // Rebuild asmOrder if needed
+            self._rebuildAsmOrder()
+          })
+          row.appendChild(label)
+          row.appendChild(toggleBtn)
+          tabContent.appendChild(row)
+        })(i)
+      }
     }
 
-    // Memory config
-    var memTitle = document.createElement('div')
-    memTitle.className = 'pua-fab-menu-title'
-    memTitle.style.marginTop = '8px'
-    memTitle.textContent = '\u8BB0\u5FC6\u914D\u7F6E'
-    menu.appendChild(memTitle)
+    // === Regex Tab ===
+    function renderRegexTab() {
+      var regexes = self.regexes || []
+      if (regexes.length === 0) {
+        tabContent.innerHTML = '<div style="font-size:10px;color:var(--pua-text-dim);padding:8px">\u65E0\u6B63\u5219</div>'
+        return
+      }
+      for (var i = 0; i < regexes.length; i++) {
+        (function(idx) {
+          var rx = regexes[idx]
+          var row = document.createElement('div')
+          row.className = 'pua-fab-toggle-row'
+          row.style.cssText = 'padding:5px 4px;border-bottom:1px solid var(--pua-border)'
+          var label = document.createElement('span')
+          label.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px'
+          label.textContent = rx.name || ('\u6B63\u5219' + (idx + 1))
+          label.title = label.textContent
+          var typeTag = document.createElement('span')
+          typeTag.style.cssText = 'font-size:8px;padding:1px 4px;border-radius:3px;margin-left:4px;background:var(--pua-bg-input);color:var(--pua-text-dim)'
+          typeTag.textContent = rx.type || '?'
+          var toggleBtn = document.createElement('button')
+          toggleBtn.className = 'pua-toggle-item' + (rx.on ? ' on' : '')
+          toggleBtn.addEventListener('click', function() {
+            rx.on = !rx.on
+            toggleBtn.classList.toggle('on', rx.on)
+            self._saveRegexes()
+          })
+          row.appendChild(label)
+          row.appendChild(typeTag)
+          row.appendChild(toggleBtn)
+          tabContent.appendChild(row)
+        })(i)
+      }
+    }
 
-    var settings = this._loadSettings()
-    var recallRow = document.createElement('div')
-    recallRow.className = 'pua-fab-slider-row'
-    recallRow.innerHTML = '<span>\u53EC\u56DE\u6570</span><input type="range" class="pua-fab-slider" min="1" max="20" value="' + (settings.recallMaxCount || 8) + '"><span id="fab-recall-val">' + (settings.recallMaxCount || 8) + '</span>'
-    menu.appendChild(recallRow)
+    // === Memory Tab ===
+    function renderMemoryTab() {
+      var settings = self._loadSettings()
+      var memData = self._loadMemData(self.asmBranchId)
 
-    var sliderEl = recallRow.querySelector('.pua-fab-slider')
-    var sliderVal = recallRow.querySelector('#fab-recall-val')
-    if (sliderEl) {
-      sliderEl.addEventListener('input', function() {
-        if (sliderVal) sliderVal.textContent = this.value
+      // Recall count slider
+      var recallSection = document.createElement('div')
+      recallSection.style.cssText = 'margin-bottom:8px'
+      var recallTitle = document.createElement('div')
+      recallTitle.style.cssText = 'font-size:9px;color:var(--pua-text-dim);margin-bottom:4px;font-weight:600'
+      recallTitle.textContent = '\u53EC\u56DE\u8BB0\u5FC6\u6570\u91CF'
+      recallSection.appendChild(recallTitle)
+      var recallRow = document.createElement('div')
+      recallRow.className = 'pua-fab-slider-row'
+      var recallVal = settings.recallMaxCount || 8
+      recallRow.innerHTML = '<input type="range" class="pua-fab-slider" min="1" max="20" value="' + recallVal + '" style="flex:1"><span style="min-width:20px;text-align:center">' + recallVal + '</span>'
+      recallSection.appendChild(recallRow)
+      tabContent.appendChild(recallSection)
+
+      var sliderEl = recallRow.querySelector('.pua-fab-slider')
+      var sliderValEl = recallRow.querySelector('span')
+      if (sliderEl) {
+        sliderEl.addEventListener('input', function() {
+          sliderValEl.textContent = this.value
+          settings.recallMaxCount = parseInt(this.value)
+          self._saveSettings(settings)
+        })
+      }
+
+      // Memory stats
+      var factCount = (memData && memData.facts) ? memData.facts.length : 0
+      var coreCount = (memData && memData.coreMemory) ? memData.coreMemory.length : 0
+      var statsDiv = document.createElement('div')
+      statsDiv.style.cssText = 'font-size:9px;color:var(--pua-text-dim);padding:4px 8px;margin-bottom:6px;background:var(--pua-bg-input);border-radius:4px'
+      statsDiv.textContent = '\u4E8B\u5B9E\u8BB0\u5FC6: ' + factCount + ' \u6761 | \u6838\u5FC3\u8BB0\u5FC6: ' + coreCount + ' \u5B57'
+      tabContent.appendChild(statsDiv)
+
+      // Manual summarize buttons
+      var sumTitle = document.createElement('div')
+      sumTitle.style.cssText = 'font-size:9px;color:var(--pua-text-dim);margin-bottom:4px;font-weight:600'
+      sumTitle.textContent = '\u624B\u52A8\u603B\u7ED3'
+      tabContent.appendChild(sumTitle)
+
+      var btnRow = document.createElement('div')
+      btnRow.style.cssText = 'display:flex;gap:4px'
+
+      var sumFactBtn = document.createElement('button')
+      sumFactBtn.className = 'pua-btn pua-btn-sm'
+      sumFactBtn.textContent = '\u603B\u7ED3\u4E8B\u5B9E'
+      sumFactBtn.style.flex = '1'
+      sumFactBtn.addEventListener('click', function() {
+        self._fabExpanded = false
+        menu.classList.remove('show')
+        var md = self._loadMemData(self.asmBranchId)
+        self._summarizeFacts(md, self.asmBranchId, 10, false)
       })
+      btnRow.appendChild(sumFactBtn)
+
+      var sumCoreBtn = document.createElement('button')
+      sumCoreBtn.className = 'pua-btn pua-btn-sm'
+      sumCoreBtn.textContent = '\u603B\u7ED3\u6838\u5FC3'
+      sumCoreBtn.style.flex = '1'
+      sumCoreBtn.addEventListener('click', function() {
+        self._fabExpanded = false
+        menu.classList.remove('show')
+        self._doSummarizeCore()
+      })
+      btnRow.appendChild(sumCoreBtn)
+
+      tabContent.appendChild(btnRow)
+
+      // Font size adjustment
+      var fontTitle = document.createElement('div')
+      fontTitle.style.cssText = 'font-size:9px;color:var(--pua-text-dim);margin:8px 0 4px;font-weight:600'
+      fontTitle.textContent = '\u5BF9\u8BDD\u5B57\u4F53\u5927\u5C0F'
+      tabContent.appendChild(fontTitle)
+
+      var fontRow = document.createElement('div')
+      fontRow.className = 'pua-fab-slider-row'
+      var savedFontSize = parseInt(localStorage.getItem('pua_conv_font_size')) || 14
+      fontRow.innerHTML = '<input type="range" class="pua-fab-slider" min="10" max="24" value="' + savedFontSize + '" style="flex:1"><span style="min-width:28px;text-align:center">' + savedFontSize + 'px</span>'
+      tabContent.appendChild(fontRow)
+
+      var fontSlider = fontRow.querySelector('.pua-fab-slider')
+      var fontValEl = fontRow.querySelector('span')
+      if (fontSlider) {
+        fontSlider.addEventListener('input', function() {
+          var size = parseInt(this.value)
+          fontValEl.textContent = size + 'px'
+          localStorage.setItem('pua_conv_font_size', size)
+          // Apply immediately to conversation messages
+          var contentEl = self._contentEl
+          if (contentEl) {
+            var msgContents = contentEl.querySelectorAll('.pua-conv-msg-content')
+            for (var mi = 0; mi < msgContents.length; mi++) {
+              msgContents[mi].style.fontSize = size + 'px'
+            }
+          }
+        })
+      }
     }
 
-    // Action buttons
-    var actionTitle = document.createElement('div')
-    actionTitle.className = 'pua-fab-menu-title'
-    actionTitle.style.marginTop = '8px'
-    actionTitle.textContent = '\u64CD\u4F5C'
-    menu.appendChild(actionTitle)
-
-    var actions = [
-      { icon: '\uD83D\uDCCD', label: '\u8DF3\u8F6C\u697C\u5C42', action: function() { self.currentPage = 'chat'; self._convShowJump = true; self._fabExpanded = false; self._render() } },
-      { icon: '\u2B07', label: '\u8DF3\u5230\u5E95\u90E8', action: function() { var chatEl = self._contentEl.querySelector('#conv-chat'); if (chatEl) chatEl.scrollTop = chatEl.scrollHeight; self._fabExpanded = false; menu.classList.remove('show') } }
-    ]
-
-    for (var ai = 0; ai < actions.length; ai++) {
-      (function(act) {
-        var el = document.createElement('div')
-        el.className = 'pua-fab-menu-item'
-        el.innerHTML = '<span class="pua-fab-menu-item-icon">' + act.icon + '</span>' + act.label
-        el.addEventListener('click', function() { act.action() })
-        menu.appendChild(el)
-      })(actions[ai])
-    }
+    // Initial render
+    renderTabContent()
 
     fab.appendChild(menu)
 
@@ -10923,7 +11134,14 @@
     h += '</select></div>'
     h += '</div>'
 
-    // 保存按钮
+    // 悬浮球设置
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 \u60AC\u6D6E\u7403</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u60AC\u6D6E\u7403\u4F4D\u7F6E</span>'
+    h += '<button class="pua-btn pua-btn-sm" id="set-fab-reset">\u91CD\u7F6E\u4F4D\u7F6E</button></div>'
+    h += '</div>'
+
+    // \u4FDD\u5B58\u6309\u94AE
     h += '<div style="text-align:right;margin-top:6px">'
     h += '<button class="pua-btn pua-btn-gold" id="set-save-btn">\u4FDD\u5B58\u8BBE\u7F6E</button>'
     h += '</div>'
@@ -11253,6 +11471,16 @@
         settings.recallMode = (contentEl.querySelector('#set-mem-recall-mode') || {}).value || 'vector'
         self._saveSettings(settings)
         self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
+      })
+    }
+
+    // Reset floating ball position
+    var fabResetBtn = contentEl.querySelector('#set-fab-reset')
+    if (fabResetBtn) {
+      fabResetBtn.addEventListener('click', function() {
+        self._fabPos = null
+        try { localStorage.removeItem('pua_fab_pos') } catch(e) {}
+        self._toast('\u60AC\u6D6E\u7403\u4F4D\u7F6E\u5DF2\u91CD\u7F6E\uFF0C\u5237\u65B0\u540E\u751F\u6548')
       })
     }
   }
