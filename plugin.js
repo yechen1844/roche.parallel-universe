@@ -6898,7 +6898,17 @@
               var iIdx = chatAssistantIndices[iai]
               var iMatches = []
               var im
-              while ((im = ire.exec(messages[iIdx].content)) !== null) { iMatches.push(im[0]) }
+              var lastIdx = 0
+              while ((im = ire.exec(messages[iIdx].content)) !== null) {
+                // Prevent infinite loop: if match is empty and lastIndex didn't advance, skip forward
+                if (im[0].length === 0 && ire.lastIndex <= lastIdx) {
+                  ire.lastIndex = lastIdx + 1
+                }
+                lastIdx = ire.lastIndex
+                iMatches.push(im[0])
+                // Safety: limit matches to prevent runaway
+                if (iMatches.length > 10000) break
+              }
               if (iMatches.length > 0) {
                 messages[iIdx].content = iMatches.join('')
               }
@@ -9405,7 +9415,17 @@
             var iRe = new RegExp(pr.inRegex, 'g')
             var iM = []
             var im2
-            while ((im2 = iRe.exec(text)) !== null) { iM.push(im2[0]) }
+            var lastIdx2 = 0
+            while ((im2 = iRe.exec(text)) !== null) {
+              // Prevent infinite loop: if match is empty and lastIndex didn't advance, skip forward
+              if (im2[0].length === 0 && iRe.lastIndex <= lastIdx2) {
+                iRe.lastIndex = lastIdx2 + 1
+              }
+              lastIdx2 = iRe.lastIndex
+              iM.push(im2[0])
+              // Safety: limit matches to prevent runaway
+              if (iM.length > 10000) break
+            }
             if (iM.length > 0) {
               // \u6709\u5339\u914D\uFF1A\u53EA\u4FDD\u7559\u5339\u914D\u5230\u7684\u5185\u5BB9
               text = iM.join('')
@@ -12662,7 +12682,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.23.3',
+    version: '0.23.4',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
