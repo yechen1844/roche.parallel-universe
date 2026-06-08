@@ -6832,6 +6832,15 @@
             for (var lui = cStart; lui < endIdx; lui++) {
               if (convMsgs[lui].role === 'user' && !convMsgs[lui].dimmed) lastUserIdx = lui
             }
+            // Calculate assistant message depth (0 = most recent assistant msg)
+            var assistantDepthMap = {}
+            var assistantCount = 0
+            for (var adi = endIdx - 1; adi >= cStart; adi--) {
+              if (convMsgs[adi].role === 'assistant' && !convMsgs[adi].dimmed) {
+                assistantDepthMap[adi] = assistantCount
+                assistantCount++
+              }
+            }
             var latestPromptTpl = (this._loadSettings().latestUserPrompt || '').trim()
             for (var cmi = cStart; cmi < endIdx; cmi++) {
               var cm = convMsgs[cmi]
@@ -6840,7 +6849,8 @@
               if (cm.alternatives && cm.alternatives.length > 0 && cm.activeAltIndex > 0) {
                 cContent = cm.alternatives[cm.activeAltIndex - 1] || cContent
               }
-              cContent = this._applyConvFilterRegex(cContent, cm.role)
+              var msgDepth = cm.role === 'assistant' ? (assistantDepthMap[cmi] !== undefined ? assistantDepthMap[cmi] : 0) : -1
+              cContent = this._applyConvFilterRegex(cContent, cm.role, msgDepth)
               if (cContent) {
                 // If this is the last user message and template is set, wrap with template
                 if (cmi === lastUserIdx && latestPromptTpl) {
@@ -6878,29 +6888,40 @@
     // Apply filter/replace regexes: only on chat assistant messages
     // Skip if convMsgs was provided (filtering already done via _applyConvFilterRegex)
     if (!convMsgs) {
+      var totalAssistantsFR = chatAssistantIndices.length
       for (var ri = 0; ri < this.regexes.length; ri++) {
         var rx = this.regexes[ri]
         if (!rx.on) continue
         if (rx.type !== 'filter' && rx.type !== 'replace') continue
         if (!rx.regex) continue
+        var rxMinD = rx.dMin || 0
+        var rxMaxD = (rx.dMax !== undefined && rx.dMax !== null && rx.dMax !== Infinity) ? rx.dMax : Infinity
         try {
           var re = new RegExp(rx.regex, 'g')
           for (var cai = 0; cai < chatAssistantIndices.length; cai++) {
             var msgIdx = chatAssistantIndices[cai]
+            var frDepth = totalAssistantsFR - 1 - cai
+            if (frDepth < rxMinD || frDepth > rxMaxD) continue
             messages[msgIdx].content = messages[msgIdx].content.replace(re, rx.html || '')
           }
         } catch(e) {}
       }
 
-      // Apply preset outRegex/inRegex: only on chat assistant messages
+      // Apply preset outRegex/inRegex: only on chat assistant messages (with depth check)
+      // chatAssistantIndices is ordered from oldest to newest, so depth = chatAssistantIndices.length - 1 - index
+      var totalAssistants = chatAssistantIndices.length
       // First pass: apply all outRegex (blacklist) sequentially
       for (var pri = 0; pri < this.presets.length; pri++) {
         var pr = this.presets[pri]
         if (pr.outRegex && pr.outRegexOn) {
+          var prMin = pr.dMin || 0
+          var prMax = (pr.dMax !== undefined && pr.dMax !== null && pr.dMax !== Infinity) ? pr.dMax : Infinity
           try {
             var ore = new RegExp(pr.outRegex, 'g')
             for (var oai = 0; oai < chatAssistantIndices.length; oai++) {
               var oIdx = chatAssistantIndices[oai]
+              var oDepth = totalAssistants - 1 - oai
+              if (oDepth < prMin || oDepth > prMax) continue
               messages[oIdx].content = messages[oIdx].content.replace(ore, '')
             }
           } catch(e) {}
@@ -6914,10 +6935,14 @@
       if (hasInRegex2) {
         for (var iai2 = 0; iai2 < chatAssistantIndices.length; iai2++) {
           var iIdx2 = chatAssistantIndices[iai2]
+          var iDepth2 = totalAssistants - 1 - iai2
           var allMatches = []
           for (var pi3 = 0; pi3 < this.presets.length; pi3++) {
             var pr3 = this.presets[pi3]
             if (pr3.inRegex && pr3.inRegexOn) {
+              var pr3Min = pr3.dMin || 0
+              var pr3Max = (pr3.dMax !== undefined && pr3.dMax !== null && pr3.dMax !== Infinity) ? pr3.dMax : Infinity
+              if (iDepth2 < pr3Min || iDepth2 > pr3Max) continue
               try {
                 var ire = new RegExp(pr3.inRegex, 'g')
                 var iMatches = []
@@ -9425,34 +9450,46 @@
     return messages
   }
 
-  P._applyConvFilterRegex = function(text, role) {
-    console.log('[PUA] _applyConvFilterRegex called, role=' + role + ' textLen=' + (text ? text.length : 0))
+  P._applyConvFilterRegex = function(text, role, msgDepth) {
+    console.log('[PUA] _applyConvFilterRegex called, role=' + role + ' textLen=' + (text ? text.length : 0) + ' msgDepth=' + msgDepth)
     if (!text) return text
-    // Apply filter and replace type regexes
+    // Apply filter and replace type regexes (with depth check)
     for (var ri = 0; ri < this.regexes.length; ri++) {
       var rx = this.regexes[ri]
       if (!rx.on) continue
       if (rx.type === 'filter' || rx.type === 'replace') {
+        // Check depth: only apply if msgDepth is within [dMin, dMax]
+        if (role === 'assistant' && msgDepth >= 0) {
+          var rxMin = rx.dMin || 0
+          var rxMax = (rx.dMax !== undefined && rx.dMax !== null && rx.dMax !== Infinity) ? rx.dMax : Infinity
+          if (msgDepth < rxMin || msgDepth > rxMax) continue
+        }
         try {
           var re = new RegExp(rx.regex, 'g')
           var b1 = text.length
           text = text.replace(re, rx.html || '')
           if (text.length !== b1) {
-            console.log('[PUA] _applyConvFilterRegex: rx[' + ri + '] ' + rx.type + ' len ' + b1 + '->' + text.length + ' n=' + (rx.name||'?'))
+            console.log('[PUA] _applyConvFilterRegex: rx[' + ri + '] ' + rx.type + ' len ' + b1 + '->' + text.length + ' n=' + (rx.name||'?') + ' depth=' + msgDepth)
           }
         } catch(e) {}
       }
     }
-    // Apply preset outRegex/inRegex for assistant messages
+    // Apply preset outRegex/inRegex for assistant messages (with depth check)
     if (role === 'assistant') {
       // First pass: apply all outRegex (blacklist) sequentially
       for (var pi = 0; pi < this.presets.length; pi++) {
         var pr = this.presets[pi]
         if (pr.outRegex && pr.outRegexOn) {
+          // Check depth
+          if (msgDepth >= 0) {
+            var prMin = pr.dMin || 0
+            var prMax = (pr.dMax !== undefined && pr.dMax !== null && pr.dMax !== Infinity) ? pr.dMax : Infinity
+            if (msgDepth < prMin || msgDepth > prMax) continue
+          }
           try {
             var b2 = text.length
             text = text.replace(new RegExp(pr.outRegex, 'g'), '')
-            if (text.length !== b2) console.log('[PUA] _applyConvFilterRegex: pr[' + pi + '] outRx len ' + b2 + '->' + text.length + ' t=' + (pr.title||'?'))
+            if (text.length !== b2) console.log('[PUA] _applyConvFilterRegex: pr[' + pi + '] outRx len ' + b2 + '->' + text.length + ' t=' + (pr.title||'?') + ' depth=' + msgDepth)
           } catch(e) {}
         }
       }
@@ -9460,7 +9497,16 @@
       // Multiple inRegex rules should work together: keep content matching ANY of them
       var hasInRegex = false
       for (var ci = 0; ci < this.presets.length; ci++) {
-        if (this.presets[ci].inRegex && this.presets[ci].inRegexOn) { hasInRegex = true; break }
+        if (this.presets[ci].inRegex && this.presets[ci].inRegexOn) {
+          // Check depth for this preset
+          if (msgDepth >= 0) {
+            var ciMin = this.presets[ci].dMin || 0
+            var ciMax = (this.presets[ci].dMax !== undefined && this.presets[ci].dMax !== null && this.presets[ci].dMax !== Infinity) ? this.presets[ci].dMax : Infinity
+            if (msgDepth >= ciMin && msgDepth <= ciMax) { hasInRegex = true; break }
+          } else {
+            hasInRegex = true; break
+          }
+        }
       }
       if (hasInRegex) {
         // Apply outRegex first to get the filtered text, then apply inRegex on that
@@ -9469,6 +9515,12 @@
         for (var pi2 = 0; pi2 < this.presets.length; pi2++) {
           var pr2 = this.presets[pi2]
           if (pr2.inRegex && pr2.inRegexOn) {
+            // Check depth for this preset's inRegex
+            if (msgDepth >= 0) {
+              var pr2Min = pr2.dMin || 0
+              var pr2Max = (pr2.dMax !== undefined && pr2.dMax !== null && pr2.dMax !== Infinity) ? pr2.dMax : Infinity
+              if (msgDepth < pr2Min || msgDepth > pr2Max) continue
+            }
             try {
               var iRe = new RegExp(pr2.inRegex, 'g')
               var iM = []
@@ -9483,7 +9535,7 @@
                 if (iM.length > 10000) break
               }
               if (iM.length > 0) {
-                console.log('[PUA] _applyConvFilterRegex: pr[' + pi2 + '] inRx matched ' + iM.length + ' t=' + (pr2.title||'?'))
+                console.log('[PUA] _applyConvFilterRegex: pr[' + pi2 + '] inRx matched ' + iM.length + ' t=' + (pr2.title||'?') + ' depth=' + msgDepth)
                 allInMatches = allInMatches.concat(iM)
               }
             } catch(e) {}
@@ -9493,7 +9545,7 @@
         if (allInMatches.length > 0) {
           var b4 = text.length
           text = allInMatches.join('')
-          if (text.length !== b4) console.log('[PUA] _applyConvFilterRegex: inRegex union len ' + b4 + '->' + text.length + ' total=' + allInMatches.length)
+          if (text.length !== b4) console.log('[PUA] _applyConvFilterRegex: inRegex union len ' + b4 + '->' + text.length + ' total=' + allInMatches.length + ' depth=' + msgDepth)
         }
         // If no inRegex matched at all, keep the outRegex-filtered text as-is
       }
@@ -12738,7 +12790,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.25.0',
+    version: '0.25.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
