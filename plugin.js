@@ -6756,10 +6756,12 @@
       }
     }
 
-    // Apply prompt regexes: only on chat assistant messages
+    // Apply filter/replace regexes: only on chat assistant messages
     for (var ri = 0; ri < this.regexes.length; ri++) {
       var rx = this.regexes[ri]
-      if (!rx.on || rx.type !== 'prompt' || !rx.regex) continue
+      if (!rx.on) continue
+      if (rx.type !== 'filter' && rx.type !== 'replace') continue
+      if (!rx.regex) continue
       try {
         var re = new RegExp(rx.regex, 'g')
         for (var cai = 0; cai < chatAssistantIndices.length; cai++) {
@@ -6790,7 +6792,9 @@
             var iMatches = []
             var im
             while ((im = ire.exec(messages[iIdx].content)) !== null) { iMatches.push(im[0]) }
-            messages[iIdx].content = iMatches.join('')
+            if (iMatches.length > 0) {
+              messages[iIdx].content = iMatches.join('')
+            }
           }
         } catch(e) {}
       }
@@ -9184,16 +9188,23 @@
     var messages = []
     var depth = this._convContextDepth || 30
 
-    // Use _buildMessages for system context (presets, char, worldbook, memory) - skip chat
-    var systemCtx = this._buildMessages(true)
+    // Use _buildMessages for system context + chat from asmData.shortTerm
+    var systemCtx = this._buildMessages()
     console.log('[PUA] _buildConvContext: systemCtx length=' + systemCtx.length)
 
-    // Add all system-level messages from _buildMessages
+    // Add all messages from _buildMessages
     for (var i = 0; i < systemCtx.length; i++) {
       messages.push({ role: systemCtx[i].role, content: systemCtx[i].content })
     }
 
-    // Add conversation messages (limited by depth, optionally truncated up to a message)
+    // Collect existing chat message content for dedup
+    var existingChatContent = {}
+    for (var xi = 0; xi < messages.length; xi++) {
+      var key = messages[xi].role + ':' + (messages[xi].content || '').substring(0, 200)
+      existingChatContent[key] = true
+    }
+
+    // Add conversation messages from _convMessages (skip duplicates from asmData.shortTerm)
     var convMsgs = this._convMessages
     var endIdx = convMsgs.length
     if (upToMsgId) {
@@ -9202,6 +9213,8 @@
       }
     }
     var start = Math.max(0, endIdx - depth)
+    var addedFromConv = 0
+    var skippedDup = 0
     console.log('[PUA] _buildConvContext: convMsgs length=' + convMsgs.length + ' start=' + start + ' endIdx=' + endIdx)
     for (var mi = start; mi < endIdx; mi++) {
       var m = convMsgs[mi]
@@ -9218,13 +9231,20 @@
         console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' filtered, before=' + (beforeFilter||'').substring(0,50) + ' after=' + (content||'').substring(0,50))
       }
       if (content) {
+        // Dedup: skip if same role+content already exists from asmData.shortTerm
+        var dedupKey = m.role + ':' + (content || '').substring(0, 200)
+        if (existingChatContent[dedupKey]) {
+          skippedDup++
+          continue
+        }
         messages.push({ role: m.role, content: content })
+        addedFromConv++
       } else {
         console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' was filtered to empty, skipping')
       }
     }
 
-    console.log('[PUA] _buildConvContext: total messages=' + messages.length)
+    console.log('[PUA] _buildConvContext: total messages=' + messages.length + ' addedFromConv=' + addedFromConv + ' skippedDup=' + skippedDup)
     return messages
   }
 
@@ -9261,11 +9281,14 @@
           try {
             var b3 = text.length
             var iRe = new RegExp(pr.inRegex, 'g')
-            // \u4FDD\u7559\u8FC7\u6EE4\uFF08\u767D\u540D\u5355\uFF09\uFF1A\u53ea\u4FDD\u7559\u5339\u914D\u5230\u7684\u5185\u5BB9
             var iM = []
             var im2
             while ((im2 = iRe.exec(text)) !== null) { iM.push(im2[0]) }
-            text = iM.join('')
+            if (iM.length > 0) {
+              // \u6709\u5339\u914D\uFF1A\u53EA\u4FDD\u7559\u5339\u914D\u5230\u7684\u5185\u5BB9
+              text = iM.join('')
+            }
+            // \u65E0\u5339\u914D\uFF1A\u4FDD\u7559\u539F\u6D88\u606F\u4E0D\u53D8\uFF08\u4E0D\u8FC7\u6EE4\u4E3A\u7A7A\uFF09
             if (text.length !== b3) console.log('[PUA] _applyConvFilterRegex: pr[' + pi + '] inRx len ' + b3 + '->' + text.length + ' m=' + iM.length + ' t=' + (pr.title||'?'))
           } catch(e) {}
         }
