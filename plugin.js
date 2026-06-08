@@ -3934,18 +3934,17 @@
     var data = this._parsedPresetData
     console.log('[PUA] _doImportPreset data type=' + data.type + ' has categories=' + !!(data.categories) + ' has presets=' + !!(data.presets))
     var count = 0
-    // 每次导入创建新的分组名，避免追加到现有预设
-    var importGroup = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'numeric',hour:'2-digit',minute:'2-digit'}))
-    var firstImportedId = null
+    var importName = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'numeric',hour:'2-digit',minute:'2-digit'}))
+
+    // 构建导入条目数组（不直接操作 this.presets）
+    var newItems = []
 
     if (data.type === 'pua_plugin_presets' && data.presets && Array.isArray(data.presets)) {
-      // 插件格式：直接导入完整预设对象，使用新的导入分组
       for (var pi0 = 0; pi0 < data.presets.length; pi0++) {
         var src0 = data.presets[pi0]
-        var newId0 = 'p' + Date.now() + '_' + count
-        var newP = {
-          id: newId0,
-          title: (src0.title || '\u672A\u547D\u540D') + ' [' + importGroup + ']',
+        newItems.push({
+          id: 'p' + Date.now() + '_' + count,
+          title: (src0.title || '\u672A\u547D\u540D') + ' [' + importName + ']',
           role: src0.role || 'system',
           on: src0.on !== undefined ? src0.on : true,
           content: src0.content || '',
@@ -3955,23 +3954,19 @@
           inRegexOn: src0.inRegexOn || false,
           dMin: src0.dMin || 0,
           dMax: src0.dMax || Infinity,
-          group: importGroup
-        }
-        this.presets.push(newP)
-        if (!firstImportedId) firstImportedId = newId0
+          group: '\u9ED8\u8BA4'
+        })
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
-      // Roche 格式：每个分类的预设作为一组导入，统一使用导入分组
       for (var ci = 0; ci < data.categories.length; ci++) {
         var cat = data.categories[ci]
         var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
         var presets = cat.presets || []
         for (var pi = 0; pi < presets.length; pi++) {
           var src = presets[pi]
-          var newId1 = 'p' + Date.now() + '_' + count
-          this.presets.push({
-            id: newId1,
+          newItems.push({
+            id: 'p' + Date.now() + '_' + count,
             title: (src.title || '\u672A\u547D\u540D') + ' [' + catName + ']',
             role: 'system',
             on: true,
@@ -3982,19 +3977,17 @@
             inRegexOn: src.isInputRegexEnabled || false,
             dMin: 0,
             dMax: Infinity,
-            group: importGroup
+            group: catName
           })
-          if (!firstImportedId) firstImportedId = newId1
           count++
         }
       }
     } else if (data.presets && Array.isArray(data.presets)) {
       for (var pi2 = 0; pi2 < data.presets.length; pi2++) {
         var src2 = data.presets[pi2]
-        var newId2 = 'p' + Date.now() + '_' + pi2
-        this.presets.push({
-          id: newId2,
-          title: (src2.title || '\u672A\u547D\u540D') + ' [' + importGroup + ']',
+        newItems.push({
+          id: 'p' + Date.now() + '_' + pi2,
+          title: (src2.title || '\u672A\u547D\u540D') + ' [' + importName + ']',
           role: 'system',
           on: true,
           content: src2.content || '',
@@ -4004,19 +3997,39 @@
           inRegexOn: src2.isInputRegexEnabled || false,
           dMin: 0,
           dMax: Infinity,
-          group: importGroup
+          group: '\u9ED8\u8BA4'
         })
-        if (!firstImportedId) firstImportedId = newId2
         count++
       }
     }
 
-    // 选中导入的第一个条目
-    this.selPreset = firstImportedId || (this.presets.length > 0 ? this.presets[0].id : '')
+    if (newItems.length === 0) {
+      this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6761\u76EE')
+      return
+    }
+
+    // 在 _promptPresetData 中新建一个预设工作区
+    if (!this._promptPresetData) {
+      this._promptPresetData = { presets: [], activePresetId: '' }
+    }
+    var newWorkspace = {
+      id: 'ppreset-' + Date.now(),
+      name: importName,
+      items: newItems
+    }
+    this._promptPresetData.presets.push(newWorkspace)
+    this._promptPresetData.activePresetId = newWorkspace.id
+
+    // 切换到新工作区
+    this.presets = newItems
+    this.selPreset = newItems.length > 0 ? newItems[0].id : ''
+    this._selPresetIds = []
+
     this._parsedPresetData = null
     this._savePresets()
+    this._savePromptPresets()
     this._closeModal()
-    this._toast('\u5DF2\u5BFC\u5165 ' + count + ' \u4E2A\u9884\u8BBE\u6761\u76EE \u2192 [' + importGroup + ']')
+    this._toast('\u5DF2\u5BFC\u5165 ' + count + ' \u4E2A\u9884\u8BBE\u6761\u76EE \u2192 [' + importName + ']')
     this._render()
   }
 
@@ -5053,34 +5066,28 @@
     }
     var data = this._parsedRegexData
     var count = 0
-    // 每次导入创建新的分组名，避免追加到现有正则
-    var rImportGroup = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'numeric',hour:'2-digit',minute:'2-digit'}))
-    var firstImportedRegexId = null
+    var rImportName = data.groupName || ('\u5BFC\u5165-' + new Date().toLocaleString('zh-CN', {month:'2-digit',day:'numeric',hour:'2-digit',minute:'2-digit'}))
+
+    // 构建导入条目数组（不直接操作 this.regexes）
+    var newRItems = []
 
     if (data.type === 'pua_plugin_regexes' && data.regexes && Array.isArray(data.regexes)) {
-      // 插件格式：直接导入完整正则对象，使用新的导入分组
       for (var ri = 0; ri < data.regexes.length; ri++) {
         var src0 = data.regexes[ri]
-        var newRId0 = 'r' + Date.now() + '_' + count
-        this.regexes.push({
-          id: newRId0,
-          name: (src0.name || '\u672A\u547D\u540D') + ' [' + rImportGroup + ']',
+        newRItems.push({
+          id: 'r' + Date.now() + '_' + count,
+          name: (src0.name || '\u672A\u547D\u540D') + ' [' + rImportName + ']',
           regex: src0.regex || '',
           html: src0.html || '',
           type: src0.type || 'render',
           on: src0.on !== undefined ? src0.on : true,
           dMin: src0.dMin || 0,
           dMax: src0.dMax || Infinity,
-          group: rImportGroup
+          group: '\u9ED8\u8BA4'
         })
-        if (!firstImportedRegexId) firstImportedRegexId = newRId0
         count++
       }
     } else if (data.categories && Array.isArray(data.categories)) {
-      // Roche 预设格式：outputRegex=输出过滤(排除), inputRegex=输入过滤(包含)
-      // 两者都映射为filter类型，区别在于语义：output=踢出去, input=只留它
-      // 字段: categories[].presets[] (不是 entries!)
-      // 每条预设可同时有 outputRegex 和 inputRegex，拆成两条独立规则
       for (var ci = 0; ci < data.categories.length; ci++) {
         var cat = data.categories[ci]
         var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
@@ -5088,11 +5095,9 @@
         for (var pi = 0; pi < presets.length; pi++) {
           var src = presets[pi]
           var baseName = (src.title || src.name || '\u672A\u547D\u540D') + ' [' + catName + ']'
-          // outputRegex → 输出过滤（排除式，匹配到的隐藏/限深）
           if (src.isOutputRegexEnabled && src.outputRegex) {
-            var newRId1 = 'r' + Date.now() + '_' + count
-            this.regexes.push({
-              id: newRId1,
+            newRItems.push({
+              id: 'r' + Date.now() + '_' + count,
               name: baseName + ' [\u8F93\u51FA\u8FC7\u6EE4]',
               regex: src.outputRegex,
               html: '',
@@ -5100,16 +5105,13 @@
               on: true,
               dMin: 0,
               dMax: Infinity,
-              group: rImportGroup
+              group: catName
             })
-            if (!firstImportedRegexId) firstImportedRegexId = newRId1
             count++
           }
-          // inputRegex → 输入过滤（包含式，只有匹配到的才进上下文）
           if (src.isInputRegexEnabled && src.inputRegex) {
-            var newRId2 = 'r' + Date.now() + '_' + count
-            this.regexes.push({
-              id: newRId2,
+            newRItems.push({
+              id: 'r' + Date.now() + '_' + count,
               name: baseName + ' [\u8F93\u5165\u8FC7\u6EE4]',
               regex: src.inputRegex,
               html: '',
@@ -5117,21 +5119,41 @@
               on: true,
               dMin: 0,
               dMax: Infinity,
-              group: rImportGroup
+              group: catName
             })
-            if (!firstImportedRegexId) firstImportedRegexId = newRId2
             count++
           }
         }
       }
     }
 
-    // 选中导入的第一个条目
-    this.selRegex = firstImportedRegexId || (this.regexes.length > 0 ? this.regexes[0].id : '')
+    if (newRItems.length === 0) {
+      this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6B63\u5219\u6761\u76EE')
+      return
+    }
+
+    // 在 _regexPresetData 中新建一个预设工作区
+    if (!this._regexPresetData) {
+      this._regexPresetData = { presets: [], activePresetId: '' }
+    }
+    var newRWorkspace = {
+      id: 'rpreset-' + Date.now(),
+      name: rImportName,
+      regexes: newRItems
+    }
+    this._regexPresetData.presets.push(newRWorkspace)
+    this._regexPresetData.activePresetId = newRWorkspace.id
+
+    // 切换到新工作区
+    this.regexes = newRItems
+    this.selRegex = newRItems.length > 0 ? newRItems[0].id : ''
+    this._selRegexIds = []
+
     this._parsedRegexData = null
     this._saveRegexes()
+    this._saveRegexPresets()
     this._closeModal()
-    this._toast('\u5DF2\u5BFC\u5165 ' + count + ' \u4E2A\u6B63\u5219\u6761\u76EE \u2192 [' + rImportGroup + ']')
+    this._toast('\u5DF2\u5BFC\u5165 ' + count + ' \u4E2A\u6B63\u5219\u6761\u76EE \u2192 [' + rImportName + ']')
     this._render()
   }
 
