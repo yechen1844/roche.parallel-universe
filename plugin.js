@@ -5095,41 +5095,61 @@
         for (var ci = 0; ci < data.categories.length; ci++) {
           var cat = data.categories[ci]
           var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
-          var presets = cat.presets || cat.entries || []
-          console.log('[PUA] _doImportRegex category[' + ci + '] name=' + catName + ' presets count=' + presets.length)
-          for (var pi = 0; pi < presets.length; pi++) {
-            var src = presets[pi]
-            var baseName = (src.title || src.name || '\u672A\u547D\u540D') + ' [' + catName + ']'
-            console.log('[PUA] _doImportRegex preset[' + pi + '] title=' + (src.title||'') + ' outEn=' + !!src.isOutputRegexEnabled + ' outRx=' + !!src.outputRegex + ' inEn=' + !!src.isInputRegexEnabled + ' inRx=' + !!src.inputRegex)
-            if (src.isOutputRegexEnabled && src.outputRegex) {
+          var entries = cat.presets || cat.entries || []
+          console.log('[PUA] _doImportRegex category[' + ci + '] name=' + catName + ' entries count=' + entries.length)
+          for (var pi = 0; pi < entries.length; pi++) {
+            var src = entries[pi]
+            // \u5224\u65AD\u662F\u6B63\u5219\u6761\u76EE\uFF08\u6709regex+html\uFF09\u8FD8\u662F\u9884\u8BBE\u6761\u76EE\uFF08\u6709outputRegex/inputRegex\uFF09
+            if (src.regex) {
+              // Roche\u6B63\u5219\u683C\u5F0F\uFF1A\u6709name+regex+html\uFF0C\u662F\u6E32\u67D3/\u66FF\u6362\u89C4\u5219
+              var rType = 'render'
+              if (src.html === '' || src.html === ' ' || src.html === '$0') {
+                rType = 'replace'
+              }
               newRItems.push({
                 id: 'r' + Date.now() + '_' + count,
-                name: baseName + ' [\u6392\u9664\u8FC7\u6EE4]',
-                regex: src.outputRegex,
-                html: '',
-                type: 'filter',
+                name: (src.name || '\u672A\u547D\u540D') + ' [' + catName + ']',
+                regex: src.regex,
+                html: src.html || '',
+                type: rType,
                 on: true,
                 dMin: 0,
                 dMax: Infinity,
                 group: catName
               })
               count++
-              console.log('[PUA] _doImportRegex: added output filter for ' + baseName)
-            }
-            if (src.isInputRegexEnabled && src.inputRegex) {
-              newRItems.push({
-                id: 'r' + Date.now() + '_' + count,
-                name: baseName + ' [\u4FDD\u7559\u8FC7\u6EE4]',
-                regex: src.inputRegex,
-                html: '',
-                type: 'filter',
-                on: true,
-                dMin: 0,
-                dMax: Infinity,
-                group: catName
-              })
-              count++
-              console.log('[PUA] _doImportRegex: added input filter for ' + baseName)
+              console.log('[PUA] _doImportRegex: added regex entry ' + (src.name||'') + ' type=' + rType)
+            } else if (src.outputRegex || src.inputRegex) {
+              // Roche\u9884\u8BBE\u683C\u5F0F\uFF1A\u6709outputRegex/inputRegex\uFF0C\u662F\u8FC7\u6EE4\u89C4\u5219
+              var baseName = (src.title || src.name || '\u672A\u547D\u540D') + ' [' + catName + ']'
+              if (src.isOutputRegexEnabled && src.outputRegex) {
+                newRItems.push({
+                  id: 'r' + Date.now() + '_' + count,
+                  name: baseName + ' [\u6392\u9664\u8FC7\u6EE4]',
+                  regex: src.outputRegex,
+                  html: '',
+                  type: 'filter',
+                  on: true,
+                  dMin: 0,
+                  dMax: Infinity,
+                  group: catName
+                })
+                count++
+              }
+              if (src.isInputRegexEnabled && src.inputRegex) {
+                newRItems.push({
+                  id: 'r' + Date.now() + '_' + count,
+                  name: baseName + ' [\u4FDD\u7559\u8FC7\u6EE4]',
+                  regex: src.inputRegex,
+                  html: '',
+                  type: 'filter',
+                  on: true,
+                  dMin: 0,
+                  dMax: Infinity,
+                  group: catName
+                })
+                count++
+              }
             }
           }
         }
