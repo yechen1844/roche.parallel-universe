@@ -6826,6 +6826,12 @@
               }
             }
             var cStart = Math.max(0, endIdx - depth)
+            // Find the last user message index in the range for latestUserPrompt
+            var lastUserIdx = -1
+            for (var lui = cStart; lui < endIdx; lui++) {
+              if (convMsgs[lui].role === 'user' && !convMsgs[lui].dimmed) lastUserIdx = lui
+            }
+            var latestPromptTpl = (this._loadSettings().latestUserPrompt || '').trim()
             for (var cmi = cStart; cmi < endIdx; cmi++) {
               var cm = convMsgs[cmi]
               if (cm.dimmed) continue
@@ -6835,9 +6841,15 @@
               }
               cContent = this._applyConvFilterRegex(cContent, cm.role)
               if (cContent) {
-                var cIdx = messages.length
-                messages.push({ role: cm.role, content: cContent })
-                if (cm.role === 'assistant') chatAssistantIndices.push(cIdx)
+                // If this is the last user message and template is set, wrap with template
+                if (cmi === lastUserIdx && latestPromptTpl) {
+                  var wrappedContent = latestPromptTpl.split('{content}').join(cContent)
+                  messages.push({ role: 'user', content: wrappedContent })
+                } else {
+                  var cIdx = messages.length
+                  messages.push({ role: cm.role, content: cContent })
+                  if (cm.role === 'assistant') chatAssistantIndices.push(cIdx)
+                }
               }
             }
           } else {
@@ -8755,6 +8767,7 @@
     h += '<div class="pua-conv-settings-row"><span class="pua-conv-settings-label">\u6E32\u67D3\u9650\u5236</span><input class="pua-conv-settings-input" id="conv-set-renderlimit" type="number" value="' + this._convRenderLimit + '" min="1" max="100"></div>'
     h += '<div class="pua-conv-settings-row"><span class="pua-conv-settings-label">\u4E0A\u4E0B\u6587\u6DF1\u5EA6</span><input class="pua-conv-settings-input" id="conv-set-contextdepth" type="number" value="' + this._convContextDepth + '" min="1" max="200"></div>'
     h += '<div class="pua-conv-settings-row"><span class="pua-conv-settings-label">\u81EA\u52A8\u6EDA\u52A8</span><button class="pua-toggle-item' + (this._convAutoScroll ? ' on' : '') + '" id="conv-set-autoscroll"></button></div>'
+    h += '<div class="pua-conv-settings-row" style="flex-direction:column;align-items:stretch"><span class="pua-conv-settings-label" style="margin-bottom:4px">\u6700\u65B0\u8F93\u5165\u63D0\u793A\u8BCD <span style="font-size:9px;opacity:0.6">({content}=\u7528\u6237\u8F93\u5165)</span></span><textarea class="pua-conv-settings-textarea" id="conv-set-latestprompt" style="width:100%;min-height:60px;font-size:11px;resize:vertical;background:var(--pua-bg-input);color:var(--pua-text);border:1px solid var(--pua-border);border-radius:4px;padding:6px">' + this._escHtml(settings.latestUserPrompt || '') + '</textarea></div>'
     h += '<div style="margin-top:8px;display:flex;gap:6px"><button class="pua-btn pua-btn-sm pua-btn-gold" id="conv-set-save">\u4FDD\u5B58</button></div>'
     h += '</div>'
 
@@ -8887,6 +8900,7 @@
         var rl = parseInt(contentEl.querySelector('#conv-set-renderlimit').value) || 10
         var cd = parseInt(contentEl.querySelector('#conv-set-contextdepth').value) || 30
         var as = contentEl.querySelector('#conv-set-autoscroll').classList.contains('on')
+        var lp = (contentEl.querySelector('#conv-set-latestprompt') || {}).value || ''
         self._convRenderLimit = rl
         self._convContextDepth = cd
         self._convAutoScroll = as
@@ -8894,6 +8908,7 @@
         s.renderLimit = rl
         s.contextDepth = cd
         s.autoScroll = as
+        s.latestUserPrompt = lp
         self._saveSettings(s)
         self._convShowSettings = false
         self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
@@ -11716,7 +11731,8 @@
       activePresetId: 'preset-default',
       factSendCount: 10, summarizeInterval: 30,
       coreCharLimit: 2000, eventsCharLimit: 1000, recallMaxCount: 8, recallMode: 'vector',
-      renderLimit: 10, contextDepth: 30, autoScroll: false
+      renderLimit: 10, contextDepth: 30, autoScroll: false,
+      latestUserPrompt: '这是user的最新输入: {content}\n请只回复user最新输入，之前的user输入为既定发生过的事实，不需要考虑。请依照格式规范要求输出思维链正文及内联思维链以及状态栏日记和小剧场。'
     }
     return this._settingsCache
   }
@@ -12682,7 +12698,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.23.4',
+    version: '0.24.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
