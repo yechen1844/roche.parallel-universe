@@ -4206,13 +4206,7 @@
         data = { version: 1, type: 'pua_plugin_presets', presets: self.presets }
         filename = 'parallel-universe-presets-plugin-' + Date.now() + '.json'
       }
-      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      var url = URL.createObjectURL(blob)
-      var a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
+      self._downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
       self._toast('\u9884\u8BBE\u5DF2\u5BFC\u51FA: ' + filename)
       self._closeModal()
     })
@@ -5379,13 +5373,7 @@
         data = { version: 1, type: 'pua_plugin_regexes', regexes: self.regexes }
         filename = 'parallel-universe-regexes-plugin-' + Date.now() + '.json'
       }
-      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      var url = URL.createObjectURL(blob)
-      var a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
+      self._downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
       self._toast('\u6B63\u5219\u5DF2\u5BFC\u51FA: ' + filename)
       self._closeModal()
     })
@@ -5602,13 +5590,7 @@
     var d = ('0' + now.getDate()).slice(-2)
     var filename = 'pua-bundle-' + y + m + d + '.json'
 
-    var blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    this._downloadFile(JSON.stringify(bundle, null, 2), filename, 'application/json')
 
     this._closeModal()
     this._toast('\u7ED1\u5B9A\u5BFC\u51FA\u5B8C\u6210')
@@ -7214,13 +7196,8 @@
       var downloadBtn = modal.querySelector('#ctx-download-btn')
       if (downloadBtn) {
         downloadBtn.addEventListener('click', function() {
-          var blob = new Blob([contextStr], { type: 'text/plain;charset=utf-8' })
-          var url = URL.createObjectURL(blob)
-          var a = document.createElement('a')
-          a.href = url
-          a.download = 'context_' + new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + '.txt'
-          a.click()
-          URL.revokeObjectURL(url)
+          var ctxFilename = 'context_' + new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + '.txt'
+          self._downloadFile(contextStr, ctxFilename, 'text/plain;charset=utf-8')
           self._toast('已下载')
         })
       }
@@ -7230,6 +7207,19 @@
   /* ════════════════════════════════════════════════════════════
      工具方法
      ════════════════════════════════════════════════════════════ */
+
+  P._downloadFile = function(data, filename, mimeType) {
+    var blob = (data instanceof Blob) ? data : new Blob([data], { type: mimeType || 'application/octet-stream' })
+    var url = URL.createObjectURL(blob)
+    var a = document.createElement('a')
+    a.href = url
+    a.download = filename || 'download'
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(function() { URL.revokeObjectURL(url) }, 5000)
+  }
 
   P._escHtml = function(s) {
     if (!s) return ''
@@ -7704,13 +7694,7 @@
         var br = self._getActiveBranch()
         if (!br) return
         var json = JSON.stringify(br, null, 2)
-        var blob = new Blob([json], { type: 'application/json' })
-        var url = URL.createObjectURL(blob)
-        var a = document.createElement('a')
-        a.href = url
-        a.download = 'pua-assistant-branch-' + br.name + '.json'
-        a.click()
-        URL.revokeObjectURL(url)
+        self._downloadFile(json, 'pua-assistant-branch-' + br.name + '.json', 'application/json')
         self._toast('\u5DF2\u5BFC\u51FA\u5206\u652F: ' + br.name)
       })
     }
@@ -8897,13 +8881,7 @@
       var e = this._logBuffer[i]
       text += '[' + e.time + '] [' + e.level + '] ' + e.text + '\n'
     }
-    var blob = new Blob([text], { type: 'text/plain' })
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = 'pua-logs-' + Date.now() + '.txt'
-    a.click()
-    URL.revokeObjectURL(url)
+    this._downloadFile(text, 'pua-logs-' + Date.now() + '.txt', 'text/plain')
     this._toast('\u65E5\u5FD7\u5DF2\u5BFC\u51FA')
   }
 
@@ -11191,13 +11169,8 @@
 
     // Download
     var ext = format === 'txt' ? '.txt' : '.json'
-    var blob = new Blob([data], { type: 'text/plain;charset=utf-8' })
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a')
-    a.href = url
-    a.download = 'chat_' + (this._convBranchId || 'export') + '_' + new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + ext
-    a.click()
-    URL.revokeObjectURL(url)
+    var chatFilename = 'chat_' + (this._convBranchId || 'export') + '_' + new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + ext
+    this._downloadFile(data, chatFilename, 'text/plain;charset=utf-8')
     this._toast('\u5BFC\u51FA\u6210\u529F')
   }
 
@@ -11582,13 +11555,7 @@
         }
         if (!themeObj) return
         var json = JSON.stringify(themeObj, null, 2)
-        var blob = new Blob([json], { type: 'application/json' })
-        var url = URL.createObjectURL(blob)
-        var a = document.createElement('a')
-        a.href = url
-        a.download = (themeObj.name || 'theme') + '.json'
-        a.click()
-        URL.revokeObjectURL(url)
+        self._downloadFile(json, (themeObj.name || 'theme') + '.json', 'application/json')
         self._toast('\u4E3B\u9898\u5DF2\u5BFC\u51FA')
       })
     }
@@ -13092,7 +13059,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.30.0',
+    version: '0.31.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
