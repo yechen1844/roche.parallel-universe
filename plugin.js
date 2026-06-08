@@ -6574,7 +6574,7 @@
   }
 
   /* ── 构建最终的 messages 数组 ── */
-  P._buildMessages = function() {
+  P._buildMessages = function(skipChat) {
     var messages = []
     var self = this
     var order = this.asmOrder
@@ -6736,6 +6736,7 @@
           }
           break
         case 'chat':
+          if (skipChat) break
           var msgs = this.asmData.shortTerm || []
           var depth = this.asmConfig.contextDepth || 40
           var start = Math.max(0, msgs.length - depth)
@@ -9141,6 +9142,10 @@
 
     // Build context
     var messages = this._buildConvContext()
+    console.log('[PUA] _sendMessage: final messages count=' + messages.length)
+    for (var di = 0; di < messages.length; di++) {
+      console.log('[PUA] _sendMessage msg[' + di + '] role=' + messages[di].role + ' content=' + (messages[di].content||'').substring(0, 80))
+    }
 
     // Stream chat
     this._streamChat(messages).then(function(fullContent) {
@@ -9179,8 +9184,8 @@
     var messages = []
     var depth = this._convContextDepth || 30
 
-    // Use _buildMessages for system context (presets, char, worldbook, memory)
-    var systemCtx = this._buildMessages()
+    // Use _buildMessages for system context (presets, char, worldbook, memory) - skip chat
+    var systemCtx = this._buildMessages(true)
     console.log('[PUA] _buildConvContext: systemCtx length=' + systemCtx.length)
 
     // Add all system-level messages from _buildMessages
@@ -9224,7 +9229,7 @@
   }
 
   P._applyConvFilterRegex = function(text, role) {
-    console.log('[PUA] _applyConvFilterRegex called, role=' + role)
+    console.log('[PUA] _applyConvFilterRegex called, role=' + role + ' textLen=' + (text ? text.length : 0))
     if (!text) return text
     // Apply filter and replace type regexes
     for (var ri = 0; ri < this.regexes.length; ri++) {
@@ -9233,7 +9238,11 @@
       if (rx.type === 'filter' || rx.type === 'replace') {
         try {
           var re = new RegExp(rx.regex, 'g')
+          var b1 = text.length
           text = text.replace(re, rx.html || '')
+          if (text.length !== b1) {
+            console.log('[PUA] _applyConvFilterRegex: rx[' + ri + '] ' + rx.type + ' len ' + b1 + '->' + text.length + ' n=' + (rx.name||'?'))
+          }
         } catch(e) {}
       }
     }
@@ -9242,16 +9251,22 @@
       for (var pi = 0; pi < this.presets.length; pi++) {
         var pr = this.presets[pi]
         if (pr.outRegex && pr.outRegexOn) {
-          try { text = text.replace(new RegExp(pr.outRegex, 'g'), '') } catch(e) {}
+          try {
+            var b2 = text.length
+            text = text.replace(new RegExp(pr.outRegex, 'g'), '')
+            if (text.length !== b2) console.log('[PUA] _applyConvFilterRegex: pr[' + pi + '] outRx len ' + b2 + '->' + text.length + ' t=' + (pr.title||'?'))
+          } catch(e) {}
         }
         if (pr.inRegex && pr.inRegexOn) {
           try {
+            var b3 = text.length
             var iRe = new RegExp(pr.inRegex, 'g')
             // \u4FDD\u7559\u8FC7\u6EE4\uFF08\u767D\u540D\u5355\uFF09\uFF1A\u53ea\u4FDD\u7559\u5339\u914D\u5230\u7684\u5185\u5BB9
             var iM = []
             var im2
             while ((im2 = iRe.exec(text)) !== null) { iM.push(im2[0]) }
             text = iM.join('')
+            if (text.length !== b3) console.log('[PUA] _applyConvFilterRegex: pr[' + pi + '] inRx len ' + b3 + '->' + text.length + ' m=' + iM.length + ' t=' + (pr.title||'?'))
           } catch(e) {}
         }
       }
