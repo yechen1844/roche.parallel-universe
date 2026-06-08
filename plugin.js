@@ -8837,6 +8837,12 @@
 
     contentEl.innerHTML = h
 
+    // If streaming is in progress, restore the streaming message display
+    if (this._convSending && this._convStreamingMsg) {
+      var streamHtml = this._convStreamingMsg.rendered || this._escHtml(this._convStreamingMsg.content || '')
+      this._updateStreamingMessage(contentEl, streamHtml, true)
+    }
+
     // Bind events
     var chatEl = contentEl.querySelector('#conv-chat')
     var inputEl = contentEl.querySelector('#conv-input')
@@ -9568,7 +9574,6 @@
 
   P._streamChatViaRoche = function(messages) {
     var self = this
-    var contentEl = self._contentEl
 
     return this.roche.ai.chat({
       messages: messages,
@@ -9581,17 +9586,17 @@
       // Priority 1: Check if result.body is a ReadableStream
       if (result && result.body && typeof result.body.getReader === 'function') {
         console.log('[PUA] _streamChatViaRoche: using result.body ReadableStream')
-        return self._processStream(result.body, contentEl)
+        return self._processStream(result.body)
       }
       // Priority 2: Check if result itself is a ReadableStream
       if (result && typeof result.getReader === 'function') {
         console.log('[PUA] _streamChatViaRoche: using ReadableStream')
-        return self._processStream(result, contentEl)
+        return self._processStream(result)
       }
       // Priority 3: Check if result.text is a ReadableStream
       if (result && result.text && typeof result.text.getReader === 'function') {
         console.log('[PUA] _streamChatViaRoche: using result.text ReadableStream')
-        return self._processStream(result.text, contentEl)
+        return self._processStream(result.text)
       }
       // Priority 4: Non-streaming result with string text
       var text = ''
@@ -9604,7 +9609,7 @@
       if (text && self._convStreamingMsg) {
         self._convStreamingMsg.content = text
         self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
-        self._updateStreamingMessage(contentEl, self._convStreamingMsg.rendered, false)
+        self._updateStreamingMessage(self._contentEl, self._convStreamingMsg.rendered, false)
       }
       return text
     }).catch(function(e) {
@@ -9619,7 +9624,7 @@
           text = result.text
         } else if (result && result.text && typeof result.text.getReader === 'function') {
           // result.text is a ReadableStream in non-stream mode too
-          return self._processStream(result.text, contentEl)
+          return self._processStream(result.text)
         } else if (typeof result === 'string') {
           text = result
         }
@@ -9627,7 +9632,7 @@
         if (text && self._convStreamingMsg) {
           self._convStreamingMsg.content = text
           self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
-          self._updateStreamingMessage(contentEl, self._convStreamingMsg.rendered, false)
+          self._updateStreamingMessage(self._contentEl, self._convStreamingMsg.rendered, false)
         }
         return text
       }).catch(function(e2) {
@@ -9643,7 +9648,7 @@
     })
   }
 
-  P._processStream = function(readableStream, contentEl) {
+  P._processStream = function(readableStream) {
     var self = this
     console.log('[PUA] _processStream called')
     var reader = readableStream.getReader()
@@ -9664,7 +9669,7 @@
             self._convStreamingMsg.content = fullContent
             self._convStreamingMsg.rendered = self._applyConvRegexRender(fullContent)
           }
-          self._updateStreamingMessage(contentEl, self._convStreamingMsg ? self._convStreamingMsg.rendered : self._escHtml(fullContent), false)
+          self._updateStreamingMessage(self._contentEl, self._convStreamingMsg ? self._convStreamingMsg.rendered : self._escHtml(fullContent), false)
           return fullContent
         }
         chunkCount++
@@ -9688,10 +9693,10 @@
               if (now - lastRenderTime >= renderInterval) {
                 lastRenderTime = now
                 var rendered = self._applyConvRegexRender(fullContent)
-                self._updateStreamingMessage(contentEl, rendered, true)
+                self._updateStreamingMessage(self._contentEl, rendered, true)
               } else {
                 // Between throttled renders, just show escaped text for responsiveness
-                self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
+                self._updateStreamingMessage(self._contentEl, self._escHtml(fullContent), true)
               }
             }
           } catch(e) {
@@ -9714,7 +9719,6 @@
   P._streamChatViaFetch = function(messages, endpoint, apiKey, model) {
     var self = this
     var url = endpoint + '/v1/chat/completions'
-    var contentEl = self._contentEl
     console.log('[PUA] _streamChatViaFetch: url=' + url + ' model=' + model + ' msgs=' + messages.length)
 
     return fetch(url, {
@@ -9736,7 +9740,7 @@
           throw new Error('HTTP ' + response.status + ': ' + errText.substring(0, 100))
         })
       }
-      return self._processStream(response.body, contentEl)
+      return self._processStream(response.body)
     }).catch(function(e) {
       console.error('[PUA] _streamChatViaFetch failed: ' + (e.message || e))
       throw e
@@ -12734,7 +12738,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.24.2',
+    version: '0.25.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
