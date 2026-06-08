@@ -1458,9 +1458,12 @@
     this._renderPage()
 
     // Restore scroll positions after DOM rebuild
-    if (savedScrolls.convChat !== undefined) {
+    if (this._convScrollAnchor !== undefined) {
       var newChatEl = this._contentEl ? this._contentEl.querySelector('#conv-chat') : null
-      if (newChatEl) newChatEl.scrollTop = savedScrolls.convChat
+      if (newChatEl) newChatEl.scrollTop = this._convScrollAnchor
+    } else if (savedScrolls.convChat !== undefined) {
+      var newChatEl2 = this._contentEl ? this._contentEl.querySelector('#conv-chat') : null
+      if (newChatEl2) newChatEl2.scrollTop = savedScrolls.convChat
     }
     if (savedScrolls.presetList !== undefined) {
       var newPresetList = this._contentEl ? this._contentEl.querySelector('#pua-preset-list') : null
@@ -8864,8 +8867,15 @@
 
     // If streaming is in progress, restore the streaming message display
     if (this._convSending && this._convStreamingMsg) {
+      // Update rendered content from memory (may have changed while on another page)
+      if (this._convStreamingMsg.content && !this._convStreamingMsg.rendered) {
+        this._convStreamingMsg.rendered = this._applyConvRegexRender(this._convStreamingMsg.content)
+      }
       var streamHtml = this._convStreamingMsg.rendered || this._escHtml(this._convStreamingMsg.content || '')
       this._updateStreamingMessage(contentEl, streamHtml, true)
+      // Remove the extra typing indicator since streaming message already shows content
+      var typingEl = contentEl.querySelector('#conv-chat .pua-conv-typing')
+      if (typingEl && this._convStreamingMsg.content) typingEl.remove()
     }
 
     // Bind events
@@ -9392,7 +9402,7 @@
     astMsg.floorNumber = this._convMessages.length + 1
     this._convMessages.push(astMsg)
 
-    // Re-render to show user message + assistant placeholder + typing indicator
+    // Re-render to show user message + assistant placeholder
     this._renderConvMessages(contentEl, true)
 
     // Scroll to the user message position so user can see their message and the reply below
@@ -9400,7 +9410,12 @@
     if (chatEl) {
       var userMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
       if (userMsgEl) {
-        chatEl.scrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
+        // Use setTimeout to ensure DOM is fully rendered before scrolling
+        var targetScrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
+        if (targetScrollTop < 0) targetScrollTop = 0
+        chatEl.scrollTop = targetScrollTop
+        // Also save this as the "anchor" position for future scroll restoration
+        this._convScrollAnchor = targetScrollTop
       }
     }
 
@@ -9417,9 +9432,20 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
 
-      // Re-render conversation messages only (not the whole page), keep position
+      // Re-render conversation messages, preserving scroll position
       var contentEl = self._contentEl
-      if (contentEl) self._renderConvMessages(contentEl, true)
+      if (contentEl) {
+        // Save the current scroll position before re-render
+        var chatEl = contentEl.querySelector('#conv-chat')
+        var currentScrollTop = chatEl ? chatEl.scrollTop : 0
+        self._renderConvMessages(contentEl, true)
+        // After re-render, ensure scroll position is preserved (not jumped)
+        if (chatEl && self._convScrollAnchor !== undefined) {
+          chatEl.scrollTop = self._convScrollAnchor
+        }
+      }
+      // Clear scroll anchor after rendering is complete
+      delete self._convScrollAnchor
 
       // Memory summarization trigger
       self._msgSinceLastSummary = (self._msgSinceLastSummary || 0) + 1
@@ -9745,6 +9771,7 @@
               if (now - lastRenderTime >= renderInterval) {
                 lastRenderTime = now
                 var rendered = self._applyConvRegexRender(fullContent)
+                if (self._convStreamingMsg) self._convStreamingMsg.rendered = rendered
                 self._updateStreamingMessage(self._contentEl, rendered, true)
               } else {
                 // Between throttled renders, just show escaped text for responsiveness
@@ -9883,7 +9910,10 @@
     if (countEl) countEl.textContent = msgs.length + ' \u6761'
 
     // Restore scroll position
-    if (keepPosition) {
+    if (this._convScrollAnchor !== undefined) {
+      // Use the saved anchor position (set when user sent a message)
+      chatEl.scrollTop = this._convScrollAnchor
+    } else if (keepPosition) {
       // Keep relative position: adjust for height changes
       var newScrollHeight = chatEl.scrollHeight
       chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
@@ -12790,7 +12820,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.25.1',
+    version: '0.26.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
