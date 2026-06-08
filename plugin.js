@@ -3887,7 +3887,7 @@
           var html = ''
           for (var ci = 0; ci < data.categories.length; ci++) {
             var cat = data.categories[ci]
-            var presets = cat.presets || []
+            var presets = cat.presets || cat.entries || []
             html += '<div style="margin-bottom:6px;padding:6px;border:1px solid var(--pua-border);border-radius:4px">'
             html += '<div style="font-weight:600;color:var(--pua-accent-text)">' + self._escHtml(cat.name || '\u672A\u547D\u540D\u5206\u7C7B') + '</div>'
             html += '<div style="font-size:9px;color:var(--pua-text-dim)">' + presets.length + ' \u4E2A\u6761\u76EE</div>'
@@ -3962,7 +3962,7 @@
       for (var ci = 0; ci < data.categories.length; ci++) {
         var cat = data.categories[ci]
         var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
-        var presets = cat.presets || []
+        var presets = cat.presets || cat.entries || []
         for (var pi = 0; pi < presets.length; pi++) {
           var src = presets[pi]
           newItems.push({
@@ -5095,7 +5095,7 @@
         for (var ci = 0; ci < data.categories.length; ci++) {
           var cat = data.categories[ci]
           var catName = cat.name || '\u672A\u547D\u540D\u5206\u7C7B'
-          var presets = cat.presets || []
+          var presets = cat.presets || cat.entries || []
           console.log('[PUA] _doImportRegex category[' + ci + '] name=' + catName + ' presets count=' + presets.length)
           for (var pi = 0; pi < presets.length; pi++) {
             var src = presets[pi]
