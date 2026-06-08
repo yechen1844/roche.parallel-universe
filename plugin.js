@@ -10201,15 +10201,30 @@
       this._editingMsgId = msgId
     }
     console.log('[PUA] _toggleEditMode result, editingMsgId=' + this._editingMsgId)
-    // Re-render messages (preserves scroll position)
+    // Re-render messages, preserving scroll position relative to the message
     var contentEl = this._contentEl
-    if (contentEl) this._renderConvMessages(contentEl, true)
+    if (contentEl) {
+      var chatEl = contentEl.querySelector('#conv-chat')
+      var msgEl = chatEl ? chatEl.querySelector('[data-msg-id="' + msgId + '"]') : null
+      var msgOffsetTop = msgEl ? msgEl.offsetTop : 0
+      var scrollOffset = chatEl ? (chatEl.scrollTop - msgOffsetTop) : 0
+      this._renderConvMessages(contentEl, true)
+      if (chatEl) {
+        var newMsgEl = chatEl.querySelector('[data-msg-id="' + msgId + '"]')
+        if (newMsgEl) chatEl.scrollTop = newMsgEl.offsetTop + scrollOffset
+      }
+    }
   }
 
   P._handleEditAction = function(action, msgId) {
     var contentEl = this._contentEl
     if (!contentEl) return
     var self = this
+    // Save scroll position relative to this message element before any action
+    var chatEl = contentEl.querySelector('#conv-chat')
+    var msgEl = chatEl ? chatEl.querySelector('[data-msg-id="' + msgId + '"]') : null
+    var msgOffsetTop = msgEl ? msgEl.offsetTop : 0
+    var scrollOffset = chatEl ? (chatEl.scrollTop - msgOffsetTop) : 0
 
     if (action === 'saveEdit') {
       var ta = contentEl.querySelector('#edit-ta-' + msgId)
@@ -10235,10 +10250,20 @@
       this._saveConvMessages()
       this._editingMsgId = null
       this._renderConvMessages(contentEl, true)
+      // Restore scroll position relative to the message element
+      if (chatEl) {
+        var newMsgEl = chatEl.querySelector('[data-msg-id="' + msgId + '"]')
+        if (newMsgEl) chatEl.scrollTop = newMsgEl.offsetTop + scrollOffset
+      }
       this._toast('\u5DF2\u4FDD\u5B58')
     } else if (action === 'cancelEdit') {
       this._editingMsgId = null
       this._renderConvMessages(contentEl, true)
+      // Restore scroll position relative to the message element
+      if (chatEl) {
+        var newMsgEl2 = chatEl.querySelector('[data-msg-id="' + msgId + '"]')
+        if (newMsgEl2) chatEl.scrollTop = newMsgEl2.offsetTop + scrollOffset
+      }
     } else if (action === 'copyEdit') {
       var ta2 = contentEl.querySelector('#edit-ta-' + msgId)
       if (!ta2) return
@@ -10255,6 +10280,13 @@
 
   P._switchAltVersion = function(msgId, altIdx) {
     console.log('[PUA] _switchAltVersion called, msgId=' + msgId + ' altIdx=' + altIdx)
+    // Save the scroll position relative to this message element before switching
+    var contentEl = this._contentEl
+    var chatEl = contentEl ? contentEl.querySelector('#conv-chat') : null
+    var msgEl = chatEl ? chatEl.querySelector('[data-msg-id="' + msgId + '"]') : null
+    var msgOffsetTop = msgEl ? msgEl.offsetTop : 0
+    var scrollOffset = chatEl ? (chatEl.scrollTop - msgOffsetTop) : 0
+
     for (var i = 0; i < this._convMessages.length; i++) {
       if (this._convMessages[i].id === msgId) {
         var msg = this._convMessages[i]
@@ -10271,8 +10303,16 @@
       }
     }
     this._saveConvMessages()
-    var contentEl = this._contentEl
-    if (contentEl) this._renderConvMessages(contentEl, true)
+    if (contentEl) {
+      this._renderConvMessages(contentEl, true)
+      // Restore scroll position relative to the message element
+      if (chatEl) {
+        var newMsgEl = chatEl.querySelector('[data-msg-id="' + msgId + '"]')
+        if (newMsgEl) {
+          chatEl.scrollTop = newMsgEl.offsetTop + scrollOffset
+        }
+      }
+    }
   }
 
   /* ── Toggle favorite ── */
@@ -12870,7 +12910,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.27.1',
+    version: '0.27.2',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
