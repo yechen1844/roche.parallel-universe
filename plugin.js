@@ -8578,6 +8578,14 @@
 
   P._renderConversation = function(titleEl, actionsEl, contentEl) {
     var self = this
+
+    // Save scroll position from existing chat element before rebuild
+    var oldChatEl = contentEl.querySelector('#conv-chat')
+    var savedScrollTop = oldChatEl ? oldChatEl.scrollTop : 0
+    var savedScrollHeight = oldChatEl ? oldChatEl.scrollHeight : 0
+    var savedClientHeight = oldChatEl ? oldChatEl.clientHeight : 0
+    var wasAtBottom = oldChatEl ? (savedScrollTop + savedClientHeight >= savedScrollHeight - 50) : true
+
     // Reduce padding for conversation page to maximize message width
     contentEl.style.padding = '0'
     titleEl.textContent = '\u5BF9\u8BDD'
@@ -8817,9 +8825,15 @@
     // Bind message action buttons
     this._bindConvMessageActions(contentEl)
 
-    // Scroll to bottom if autoScroll
-    if (chatEl && this._convAutoScroll) {
-      chatEl.scrollTop = chatEl.scrollHeight
+    // Restore scroll position: if was at bottom or autoScroll, scroll to bottom; otherwise keep position
+    if (chatEl) {
+      if (wasAtBottom || this._convAutoScroll) {
+        chatEl.scrollTop = chatEl.scrollHeight
+      } else {
+        // Adjust for height changes to maintain visual position
+        var newScrollHeight = chatEl.scrollHeight
+        chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
+      }
     }
 
     // Close settings panel on outside click
@@ -9188,23 +9202,17 @@
     var messages = []
     var depth = this._convContextDepth || 30
 
-    // Use _buildMessages for system context + chat from asmData.shortTerm
-    var systemCtx = this._buildMessages()
+    // Use _buildMessages(skipChat=true) for system context ONLY (presets, char, persona, worldbook, memory)
+    // Chat messages come exclusively from _convMessages below
+    var systemCtx = this._buildMessages(true)
     console.log('[PUA] _buildConvContext: systemCtx length=' + systemCtx.length)
 
-    // Add all messages from _buildMessages
+    // Add all system-level messages from _buildMessages
     for (var i = 0; i < systemCtx.length; i++) {
       messages.push({ role: systemCtx[i].role, content: systemCtx[i].content })
     }
 
-    // Collect existing chat message content for dedup
-    var existingChatContent = {}
-    for (var xi = 0; xi < messages.length; xi++) {
-      var key = messages[xi].role + ':' + (messages[xi].content || '').substring(0, 200)
-      existingChatContent[key] = true
-    }
-
-    // Add conversation messages from _convMessages (skip duplicates from asmData.shortTerm)
+    // Add conversation messages from _convMessages (the ONLY chat source)
     var convMsgs = this._convMessages
     var endIdx = convMsgs.length
     if (upToMsgId) {
@@ -9214,7 +9222,7 @@
     }
     var start = Math.max(0, endIdx - depth)
     var addedFromConv = 0
-    var skippedDup = 0
+    var filteredEmpty = 0
     console.log('[PUA] _buildConvContext: convMsgs length=' + convMsgs.length + ' start=' + start + ' endIdx=' + endIdx)
     for (var mi = start; mi < endIdx; mi++) {
       var m = convMsgs[mi]
@@ -9224,27 +9232,18 @@
       if (m.role === 'assistant' && m.alternatives && m.alternatives.length > 0 && m.activeAltIndex > 0) {
         content = m.alternatives[m.activeAltIndex - 1] || content
       }
-      // Apply filter/replace regexes
-      var beforeFilter = content
+      // Apply filter/replace regexes and preset outRegex/inRegex
       content = this._applyConvFilterRegex(content, m.role)
-      if (content !== beforeFilter) {
-        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' filtered, before=' + (beforeFilter||'').substring(0,50) + ' after=' + (content||'').substring(0,50))
-      }
       if (content) {
-        // Dedup: skip if same role+content already exists from asmData.shortTerm
-        var dedupKey = m.role + ':' + (content || '').substring(0, 200)
-        if (existingChatContent[dedupKey]) {
-          skippedDup++
-          continue
-        }
         messages.push({ role: m.role, content: content })
         addedFromConv++
       } else {
-        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' was filtered to empty, skipping')
+        filteredEmpty++
+        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' filtered to empty, skipping')
       }
     }
 
-    console.log('[PUA] _buildConvContext: total messages=' + messages.length + ' addedFromConv=' + addedFromConv + ' skippedDup=' + skippedDup)
+    console.log('[PUA] _buildConvContext: total messages=' + messages.length + ' addedFromConv=' + addedFromConv + ' filteredEmpty=' + filteredEmpty)
     return messages
   }
 
@@ -9657,6 +9656,14 @@
   }
 
   P._doDeleteMessage = function(msgIdx) {
+    // Save scroll position before re-render
+    var contentEl = this._contentEl
+    var chatEl = contentEl ? contentEl.querySelector('#conv-chat') : null
+    var savedScrollTop = chatEl ? chatEl.scrollTop : 0
+    var savedScrollHeight = chatEl ? chatEl.scrollHeight : 0
+    var savedClientHeight = chatEl ? chatEl.clientHeight : 0
+    var wasAtBottom = chatEl ? (savedScrollTop + savedClientHeight >= savedScrollHeight - 50) : false
+
     // Remove from messages array
     this._convMessages.splice(msgIdx, 1)
 
@@ -9668,6 +9675,18 @@
     this._saveConvMessages()
     this._renderPage()
     this._toast('消息已删除')
+
+    // Restore scroll position after re-render
+    if (chatEl) {
+      var newChatEl = contentEl ? contentEl.querySelector('#conv-chat') : null
+      if (newChatEl) {
+        if (wasAtBottom || this._convAutoScroll) {
+          newChatEl.scrollTop = newChatEl.scrollHeight
+        } else {
+          newChatEl.scrollTop = savedScrollTop
+        }
+      }
+    }
   }
 
   P._toggleEditMode = function(msgId) {
@@ -9737,7 +9756,9 @@
       }
     }
     this._saveConvMessages()
-    this._renderPage()
+    // Use _renderConvMessages to preserve scroll position
+    var contentEl = this._contentEl
+    if (contentEl) this._renderConvMessages(contentEl)
   }
 
   /* ── Toggle favorite ── */
@@ -9784,7 +9805,21 @@
 
     this._saveFavorites(favs)
     this._saveConvMessages()
-    this._renderPage()
+
+    // Local DOM update: toggle favorite button without full re-render to preserve scroll
+    var contentEl = this._contentEl
+    if (contentEl) {
+      var favBtn = contentEl.querySelector('[data-action="favorite"][data-msg-id="' + msgId + '"]')
+      if (favBtn) {
+        if (msg.favorited) {
+          favBtn.classList.add('active')
+          favBtn.textContent = '已收藏'
+        } else {
+          favBtn.classList.remove('active')
+          favBtn.textContent = '收藏'
+        }
+      }
+    }
   }
 
   /* ── Scroll to floor ── */
