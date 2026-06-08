@@ -8795,7 +8795,8 @@
       inputEl.addEventListener('focus', function() { this.classList.add('expanded') })
       inputEl.addEventListener('blur', function() { if (!this.value) this.classList.remove('expanded') })
       inputEl.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); self._sendMessage(contentEl) }
+        // Enter just adds newline, Shift+Enter also adds newline
+        // Only the send button sends the message
       })
     }
 
@@ -8945,12 +8946,12 @@
     // Content
     var content = msg.content || ''
     var isEditing = this._editingMsgId === msg.id
+    // Get active version for both user and assistant messages
+    var altIdx = msg.activeAltIndex || 0
+    if (msg.alternatives && msg.alternatives.length > 0 && altIdx > 0 && msg.alternatives[altIdx - 1]) {
+      content = msg.alternatives[altIdx - 1]
+    }
     if (msg.role === 'assistant') {
-      // Get active version
-      var altIdx = msg.activeAltIndex || 0
-      if (msg.alternatives && msg.alternatives.length > 0 && altIdx > 0 && msg.alternatives[altIdx - 1]) {
-        content = msg.alternatives[altIdx - 1]
-      }
       if (isEditing) {
         // Edit mode: editable textarea with action buttons
         h += '<div class="pua-conv-msg-content pua-conv-edit-mode">'
@@ -8990,8 +8991,8 @@
       }
     }
 
-    // Alternative version tabs
-    if (msg.role === 'assistant' && msg.alternatives && msg.alternatives.length > 0) {
+    // Alternative version tabs (for both assistant and user messages)
+    if (msg.alternatives && msg.alternatives.length > 0) {
       h += '<div class="pua-conv-alt-tabs">'
       h += '<span class="pua-conv-alt-tab' + ((msg.activeAltIndex || 0) === 0 ? ' active' : '') + '" data-alt-idx="0" data-msg-id="' + this._escHtml(msg.id) + '">v1</span>'
       for (var ai = 0; ai < msg.alternatives.length; ai++) {
@@ -9329,8 +9330,8 @@
       var m = convMsgs[mi]
       if (m.dimmed) continue
       var content = m.content
-      // Use active alternative version for assistant messages
-      if (m.role === 'assistant' && m.alternatives && m.alternatives.length > 0 && m.activeAltIndex > 0) {
+      // Use active alternative version for both assistant and user messages
+      if (m.alternatives && m.alternatives.length > 0 && m.activeAltIndex > 0) {
         content = m.alternatives[m.activeAltIndex - 1] || content
       }
       // Apply filter/replace regexes and preset outRegex/inRegex
@@ -9681,9 +9682,9 @@
     }
     if (!msg || msg.role !== 'assistant') return
 
-    // Add to alternatives
+    // Add current content to alternatives before regenerating
     if (!msg.alternatives) msg.alternatives = []
-    msg.alternatives.push(msg.content)
+    if (msg.content) msg.alternatives.push(msg.content)
 
     // Create new response
     this._convSending = true
@@ -9691,12 +9692,17 @@
     msg.content = ''
     msg.rendered = null
 
-    // Build context up to this message (exclude it and everything after)
-    var prevMsgId = null
-    for (var pi = 0; pi < msgIdx; pi++) {
-      if (!this._convMessages[pi].dimmed) prevMsgId = this._convMessages[pi].id
+    // Build context up to the user message BEFORE this assistant message
+    // Find the user message just before this assistant message
+    var upToMsgId = null
+    for (var pi = msgIdx - 1; pi >= 0; pi--) {
+      if (this._convMessages[pi].role === 'user' && !this._convMessages[pi].dimmed) {
+        upToMsgId = this._convMessages[pi].id
+        break
+      }
     }
-    var messages = this._buildConvContext(prevMsgId)
+    var messages = this._buildConvContext(upToMsgId)
+    console.log('[PUA] _regenerateMessage: upToMsgId=' + upToMsgId + ' contextLen=' + messages.length)
 
     this._streamChat(messages).then(function(fullContent) {
       msg.content = fullContent
@@ -9708,8 +9714,14 @@
       var contentEl = self._contentEl
       if (contentEl) self._renderConvMessages(contentEl)
     }).catch(function(err) {
-      msg.content = '[\u9519\u8BEF] ' + (err.message || err)
-      msg.rendered = self._escHtml(msg.content)
+      // Restore from alternatives on error
+      if (msg.alternatives.length > 0) {
+        msg.content = msg.alternatives.pop()
+        msg.activeAltIndex = msg.alternatives.length
+      } else {
+        msg.content = '[\u9519\u8BEF] ' + (err.message || err)
+      }
+      msg.rendered = self._applyConvRegexRender(msg.content)
       self._convSending = false
       self._convStreamingMsg = null
       self._saveConvMessages()
@@ -9722,30 +9734,11 @@
   /* ── Edit & Resend ── */
 
   P._editMessage = function(msgId) {
+    // Enter edit mode for user message (same as toggleEditMode)
+    // This just sets _editingMsgId, the textarea + save/cancel buttons are rendered by _renderConvMessage
+    this._editingMsgId = msgId
     var contentEl = this._contentEl
-    if (!contentEl) return
-
-    // Find the message
-    var msg = null
-    for (var i = 0; i < this._convMessages.length; i++) {
-      if (this._convMessages[i].id === msgId) { msg = this._convMessages[i]; break }
-    }
-    if (!msg || msg.role !== 'user') return
-
-    // Put content into input
-    var inputEl = contentEl.querySelector('#conv-input')
-    if (inputEl) {
-      inputEl.value = msg.content
-      inputEl.classList.add('expanded')
-      inputEl.focus()
-    }
-
-    // Dim the original message
-    msg.dimmed = true
-    this._saveConvMessages()
-
-    // Re-render
-    this._renderConvMessages(contentEl)
+    if (contentEl) this._renderConvMessages(contentEl)
   }
 
   P._deleteMessage = function(msgId) {
@@ -9833,17 +9826,25 @@
       var newContent = ta.value
       for (var i = 0; i < this._convMessages.length; i++) {
         if (this._convMessages[i].id === msgId) {
-          this._convMessages[i].content = newContent
-          if (this._convMessages[i].role === 'assistant') {
-            this._convMessages[i].rendered = this._applyConvRegexRender(newContent)
+          var msg = this._convMessages[i]
+          // Save old content as a version (alternative)
+          if (msg.content && msg.content !== newContent) {
+            if (!msg.alternatives) msg.alternatives = []
+            msg.alternatives.push(msg.content)
           }
+          msg.content = newContent
+          if (msg.role === 'assistant') {
+            msg.rendered = this._applyConvRegexRender(newContent)
+          }
+          // Update activeAltIndex to point to current (latest) version
+          msg.activeAltIndex = msg.alternatives ? msg.alternatives.length : 0
           break
         }
       }
       this._saveConvMessages()
       this._editingMsgId = null
       this._renderConvMessages(contentEl)
-      this._toast('已保存')
+      this._toast('\u5DF2\u4FDD\u5B58')
     } else if (action === 'cancelEdit') {
       this._editingMsgId = null
       this._renderConvMessages(contentEl)
@@ -9851,10 +9852,10 @@
       var ta2 = contentEl.querySelector('#edit-ta-' + msgId)
       if (!ta2) return
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(ta2.value).then(function() { self._toast('已复制') })
+        navigator.clipboard.writeText(ta2.value).then(function() { self._toast('\u5DF2\u590D\u5236') })
       } else {
         ta2.select()
-        try { document.execCommand('copy'); self._toast('已复制') } catch(e2) { self._toast('复制失败') }
+        try { document.execCommand('copy'); self._toast('\u5DF2\u590D\u5236') } catch(e2) { self._toast('\u590D\u5236\u5931\u8D25') }
       }
     }
   }
@@ -9865,18 +9866,20 @@
     console.log('[PUA] _switchAltVersion called, msgId=' + msgId + ' altIdx=' + altIdx)
     for (var i = 0; i < this._convMessages.length; i++) {
       if (this._convMessages[i].id === msgId) {
-        this._convMessages[i].activeAltIndex = altIdx
+        var msg = this._convMessages[i]
+        msg.activeAltIndex = altIdx
         // Re-render the displayed content
-        var content = this._convMessages[i].content
-        if (altIdx > 0 && this._convMessages[i].alternatives && this._convMessages[i].alternatives[altIdx - 1]) {
-          content = this._convMessages[i].alternatives[altIdx - 1]
+        var content = msg.content
+        if (altIdx > 0 && msg.alternatives && msg.alternatives[altIdx - 1]) {
+          content = msg.alternatives[altIdx - 1]
         }
-        this._convMessages[i].rendered = this._applyConvRegexRender(content)
+        if (msg.role === 'assistant') {
+          msg.rendered = this._applyConvRegexRender(content)
+        }
         break
       }
     }
     this._saveConvMessages()
-    // Use _renderConvMessages to preserve scroll position
     var contentEl = this._contentEl
     if (contentEl) this._renderConvMessages(contentEl)
   }
