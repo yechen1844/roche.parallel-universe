@@ -852,6 +852,7 @@
       worldEntries: []
     }
     this.asmOrder = []
+    this._asmOrderLoaded = false
     this.asmLoading = false
     // 助手数据
     this._assistantData = null
@@ -5447,7 +5448,10 @@
 
   P._loadAsmOrder = function() {
     var self = this
-    if (!this.roche || !this.roche.storage) return
+    if (!this.roche || !this.roche.storage) {
+      this._asmOrderLoaded = true
+      return
+    }
     this.roche.storage.get('pua_asm_order').then(function(data) {
       if (data && data.order && data.order.length) {
         self.asmOrder = data.order
@@ -5487,10 +5491,13 @@
           }
           if (!hasLUP2) self.asmOrder.push({ type: 'latestUserPrompt', id: 'latestUserPrompt' })
         }
-        // \u6821\u9A8C\uFF1A\u68C0\u67E5 asmOrder \u4E2D\u7684\u9884\u8BBE ID \u662F\u5426\u5B58\u5728\u4E8E this.presets\uFF0C\u4E0D\u5339\u914D\u5219\u91CD\u5EFA
+        // \u6821\u9A8C\uFF1A\u68C0\u67E5 asmOrder \u4E2D\u7684\u9884\u8BBE ID \u662F\u5426\u5B58\u5728\u4E8E this.presets\uFF0C\u4E0D\u5339\u914D\u5219\u91CD\u5EBA
         self._validateAsmOrder()
       }
-    }).catch(function() {})
+      self._asmOrderLoaded = true
+    }).catch(function() {
+      self._asmOrderLoaded = true
+    })
   }
 
   P._validateAsmOrder = function() {
@@ -6806,9 +6813,15 @@
     this._lastUserMsgContent = null
     var order = this.asmOrder
     if (!order || order.length === 0) {
-      order = this._defaultAsmOrder()
-      this.asmOrder = order
-      this._saveAsmOrder()
+      if (this._asmOrderLoaded) {
+        // Only use default and save if async loading is complete
+        order = this._defaultAsmOrder()
+        this.asmOrder = order
+        this._saveAsmOrder()
+      } else {
+        // Still loading, use default temporarily without overwriting saved order
+        order = this._defaultAsmOrder()
+      }
     }
     // \u5146\u5E95\u6821\u9A8C\uFF1A\u53CC\u5411\u68C0\u67E5 asmOrder \u4E0E this.presets \u7684\u5339\u914D
     var presetIds = {}
@@ -9394,10 +9407,18 @@
       (function(msgEl) {
         var longPressTimer = null
         var editTriggered = false
+        var touchStartX = 0
+        var touchStartY = 0
         msgEl.addEventListener('touchstart', function(e) {
           editTriggered = false
+          if (e.touches.length > 0) {
+            touchStartX = e.touches[0].clientX
+            touchStartY = e.touches[0].clientY
+          }
           longPressTimer = setTimeout(function() {
             if (editTriggered) return // Already triggered by contextmenu
+            // Check if msgEl is still in the DOM (not replaced by re-render)
+            if (!msgEl.parentNode) return
             editTriggered = true
             var msgId = msgEl.getAttribute('data-msg-id')
             console.log('[PUA] longpress fired for msgId=' + msgId)
@@ -9408,10 +9429,23 @@
           clearTimeout(longPressTimer)
           if (editTriggered) e.preventDefault()
         })
-        msgEl.addEventListener('touchmove', function() { clearTimeout(longPressTimer) })
+        msgEl.addEventListener('touchmove', function(e) {
+          // Only clear timer if finger moved significantly (prevents accidental cancel on micro-movements)
+          if (e.touches.length > 0) {
+            var dx = Math.abs(e.touches[0].clientX - touchStartX)
+            var dy = Math.abs(e.touches[0].clientY - touchStartY)
+            if (dx > 10 || dy > 10) {
+              clearTimeout(longPressTimer)
+            }
+          } else {
+            clearTimeout(longPressTimer)
+          }
+        })
         msgEl.addEventListener('contextmenu', function(e) {
           e.preventDefault()
           if (editTriggered) return // Already triggered by longpress
+          // Check if msgEl is still in the DOM
+          if (!msgEl.parentNode) return
           editTriggered = true
           clearTimeout(longPressTimer)
           var msgId = msgEl.getAttribute('data-msg-id')
@@ -13058,7 +13092,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.29.0',
+    version: '0.30.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
