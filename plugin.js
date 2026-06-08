@@ -6653,7 +6653,7 @@
   }
 
   /* ── 构建最终的 messages 数组 ── */
-  P._buildMessages = function(skipChat) {
+  P._buildMessages = function(skipChat, convMsgs, upToMsgId) {
     var messages = []
     var self = this
     var order = this.asmOrder
@@ -6816,19 +6816,46 @@
           break
         case 'chat':
           if (skipChat) break
-          var msgs = this.asmData.shortTerm || []
-          var depth = this.asmConfig.contextDepth || 40
-          var start = Math.max(0, msgs.length - depth)
-          for (var mi = start; mi < msgs.length; mi++) {
-            var msg = msgs[mi]
-            var role = 'user'
-            if (msg.type === 'assistant' || msg.type === 'model') role = 'assistant'
-            else if (msg.type === 'system') role = 'system'
-            var text = msg.text || msg.content || ''
-            if (text) {
-              var idx = messages.length
-              messages.push({ role: role, content: text })
-              if (role === 'assistant') chatAssistantIndices.push(idx)
+          // If convMsgs provided (from _buildConvContext), use them with filtering
+          if (convMsgs) {
+            var depth = this._convContextDepth || 30
+            var endIdx = convMsgs.length
+            if (upToMsgId) {
+              for (var uei = 0; uei < convMsgs.length; uei++) {
+                if (convMsgs[uei].id === upToMsgId) { endIdx = uei; break }
+              }
+            }
+            var cStart = Math.max(0, endIdx - depth)
+            for (var cmi = cStart; cmi < endIdx; cmi++) {
+              var cm = convMsgs[cmi]
+              if (cm.dimmed) continue
+              var cContent = cm.content
+              if (cm.alternatives && cm.alternatives.length > 0 && cm.activeAltIndex > 0) {
+                cContent = cm.alternatives[cm.activeAltIndex - 1] || cContent
+              }
+              cContent = this._applyConvFilterRegex(cContent, cm.role)
+              if (cContent) {
+                var cIdx = messages.length
+                messages.push({ role: cm.role, content: cContent })
+                if (cm.role === 'assistant') chatAssistantIndices.push(cIdx)
+              }
+            }
+          } else {
+            // Original behavior: use asmData.shortTerm
+            var msgs = this.asmData.shortTerm || []
+            var depth2 = this.asmConfig.contextDepth || 40
+            var start2 = Math.max(0, msgs.length - depth2)
+            for (var mi = start2; mi < msgs.length; mi++) {
+              var msg = msgs[mi]
+              var role = 'user'
+              if (msg.type === 'assistant' || msg.type === 'model') role = 'assistant'
+              else if (msg.type === 'system') role = 'system'
+              var text = msg.text || msg.content || ''
+              if (text) {
+                var idx = messages.length
+                messages.push({ role: role, content: text })
+                if (role === 'assistant') chatAssistantIndices.push(idx)
+              }
             }
           }
           break
@@ -6836,46 +6863,48 @@
     }
 
     // Apply filter/replace regexes: only on chat assistant messages
-    for (var ri = 0; ri < this.regexes.length; ri++) {
-      var rx = this.regexes[ri]
-      if (!rx.on) continue
-      if (rx.type !== 'filter' && rx.type !== 'replace') continue
-      if (!rx.regex) continue
-      try {
-        var re = new RegExp(rx.regex, 'g')
-        for (var cai = 0; cai < chatAssistantIndices.length; cai++) {
-          var msgIdx = chatAssistantIndices[cai]
-          messages[msgIdx].content = messages[msgIdx].content.replace(re, rx.html || '')
-        }
-      } catch(e) {}
-    }
-
-    // Apply preset outRegex/inRegex: only on chat assistant messages
-    for (var pri = 0; pri < this.presets.length; pri++) {
-      var pr = this.presets[pri]
-      if (pr.outRegex && pr.outRegexOn) {
+    // Skip if convMsgs was provided (filtering already done via _applyConvFilterRegex)
+    if (!convMsgs) {
+      for (var ri = 0; ri < this.regexes.length; ri++) {
+        var rx = this.regexes[ri]
+        if (!rx.on) continue
+        if (rx.type !== 'filter' && rx.type !== 'replace') continue
+        if (!rx.regex) continue
         try {
-          var ore = new RegExp(pr.outRegex, 'g')
-          for (var oai = 0; oai < chatAssistantIndices.length; oai++) {
-            var oIdx = chatAssistantIndices[oai]
-            messages[oIdx].content = messages[oIdx].content.replace(ore, '')
+          var re = new RegExp(rx.regex, 'g')
+          for (var cai = 0; cai < chatAssistantIndices.length; cai++) {
+            var msgIdx = chatAssistantIndices[cai]
+            messages[msgIdx].content = messages[msgIdx].content.replace(re, rx.html || '')
           }
         } catch(e) {}
       }
-      if (pr.inRegex && pr.inRegexOn) {
-        try {
-          var ire = new RegExp(pr.inRegex, 'g')
-          for (var iai = 0; iai < chatAssistantIndices.length; iai++) {
-            var iIdx = chatAssistantIndices[iai]
-            // \u4FDD\u7559\u8FC7\u6EE4\uFF08\u767D\u540D\u5355\uFF09\uFF1A\u53ea\u4FDD\u7559\u5339\u914D\u5230\u7684\u5185\u5BB9
-            var iMatches = []
-            var im
-            while ((im = ire.exec(messages[iIdx].content)) !== null) { iMatches.push(im[0]) }
-            if (iMatches.length > 0) {
-              messages[iIdx].content = iMatches.join('')
+
+      // Apply preset outRegex/inRegex: only on chat assistant messages
+      for (var pri = 0; pri < this.presets.length; pri++) {
+        var pr = this.presets[pri]
+        if (pr.outRegex && pr.outRegexOn) {
+          try {
+            var ore = new RegExp(pr.outRegex, 'g')
+            for (var oai = 0; oai < chatAssistantIndices.length; oai++) {
+              var oIdx = chatAssistantIndices[oai]
+              messages[oIdx].content = messages[oIdx].content.replace(ore, '')
             }
-          }
-        } catch(e) {}
+          } catch(e) {}
+        }
+        if (pr.inRegex && pr.inRegexOn) {
+          try {
+            var ire = new RegExp(pr.inRegex, 'g')
+            for (var iai = 0; iai < chatAssistantIndices.length; iai++) {
+              var iIdx = chatAssistantIndices[iai]
+              var iMatches = []
+              var im
+              while ((im = ire.exec(messages[iIdx].content)) !== null) { iMatches.push(im[0]) }
+              if (iMatches.length > 0) {
+                messages[iIdx].content = iMatches.join('')
+              }
+            }
+          } catch(e) {}
+        }
       }
     }
 
@@ -9333,51 +9362,11 @@
 
   P._buildConvContext = function(upToMsgId) {
     console.log('[PUA] _buildConvContext called, upToMsgId=' + upToMsgId)
-    var messages = []
-    var depth = this._convContextDepth || 30
-
-    // Use _buildMessages(skipChat=true) for system context ONLY (presets, char, persona, worldbook, memory)
-    // Chat messages come exclusively from _convMessages below
-    var systemCtx = this._buildMessages(true)
-    console.log('[PUA] _buildConvContext: systemCtx length=' + systemCtx.length)
-
-    // Add all system-level messages from _buildMessages
-    for (var i = 0; i < systemCtx.length; i++) {
-      messages.push({ role: systemCtx[i].role, content: systemCtx[i].content })
-    }
-
-    // Add conversation messages from _convMessages (the ONLY chat source)
-    var convMsgs = this._convMessages
-    var endIdx = convMsgs.length
-    if (upToMsgId) {
-      for (var ei = 0; ei < convMsgs.length; ei++) {
-        if (convMsgs[ei].id === upToMsgId) { endIdx = ei; break }
-      }
-    }
-    var start = Math.max(0, endIdx - depth)
-    var addedFromConv = 0
-    var filteredEmpty = 0
-    console.log('[PUA] _buildConvContext: convMsgs length=' + convMsgs.length + ' start=' + start + ' endIdx=' + endIdx)
-    for (var mi = start; mi < endIdx; mi++) {
-      var m = convMsgs[mi]
-      if (m.dimmed) continue
-      var content = m.content
-      // Use active alternative version for both assistant and user messages
-      if (m.alternatives && m.alternatives.length > 0 && m.activeAltIndex > 0) {
-        content = m.alternatives[m.activeAltIndex - 1] || content
-      }
-      // Apply filter/replace regexes and preset outRegex/inRegex
-      content = this._applyConvFilterRegex(content, m.role)
-      if (content) {
-        messages.push({ role: m.role, content: content })
-        addedFromConv++
-      } else {
-        filteredEmpty++
-        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' filtered to empty, skipping')
-      }
-    }
-
-    console.log('[PUA] _buildConvContext: total messages=' + messages.length + ' addedFromConv=' + addedFromConv + ' filteredEmpty=' + filteredEmpty)
+    // Use _buildMessages with convMsgs to respect asmOrder for ALL items including chat
+    // This ensures chat messages are inserted at the position specified by asmOrder,
+    // not always at the end
+    var messages = this._buildMessages(false, this._convMessages, upToMsgId)
+    console.log('[PUA] _buildConvContext: total messages=' + messages.length)
     return messages
   }
 
