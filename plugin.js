@@ -9604,19 +9604,21 @@
       self._convStreamingMsg = null
       self._saveConvMessages()
 
-      // Re-render conversation messages, preserving scroll position
+      // Re-render conversation messages, preserving scroll position using message anchor
       var contentEl = self._contentEl
       if (contentEl) {
-        // Save the user's current scroll position BEFORE re-render
         var chatEl = contentEl.querySelector('#conv-chat')
-        var userScrollTop = chatEl ? chatEl.scrollTop : 0
-        var userScrollHeight = chatEl ? chatEl.scrollHeight : 0
+        // Save scroll position relative to the user message element before re-render
+        var anchorMsgEl = chatEl ? chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]') : null
+        var anchorOffsetTop = anchorMsgEl ? anchorMsgEl.offsetTop : 0
+        var scrollOffset = chatEl ? (chatEl.scrollTop - anchorOffsetTop) : 0
         self._renderConvMessages(contentEl, true)
-        // After re-render, restore the user's actual scroll position (not the old anchor)
+        // Restore scroll position relative to the user message element after re-render
         if (chatEl) {
-          var newScrollHeight = chatEl.scrollHeight
-          // Adjust for height changes caused by re-render (e.g., render regexes applied)
-          chatEl.scrollTop = userScrollTop + (newScrollHeight - userScrollHeight)
+          var newAnchorMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
+          if (newAnchorMsgEl) {
+            chatEl.scrollTop = newAnchorMsgEl.offsetTop + scrollOffset
+          }
         }
       }
       // Memory summarization trigger
@@ -9635,11 +9637,16 @@
       var contentEl = self._contentEl
       if (contentEl) {
         var chatEl = contentEl.querySelector('#conv-chat')
-        var errScrollTop = chatEl ? chatEl.scrollTop : 0
-        var errScrollHeight = chatEl ? chatEl.scrollHeight : 0
+        // Save scroll position relative to the user message element before re-render
+        var anchorMsgEl = chatEl ? chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]') : null
+        var anchorOffsetTop = anchorMsgEl ? anchorMsgEl.offsetTop : 0
+        var scrollOffset = chatEl ? (chatEl.scrollTop - anchorOffsetTop) : 0
         self._renderConvMessages(contentEl, true)
         if (chatEl) {
-          chatEl.scrollTop = errScrollTop + (chatEl.scrollHeight - errScrollHeight)
+          var newAnchorMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
+          if (newAnchorMsgEl) {
+            chatEl.scrollTop = newAnchorMsgEl.offsetTop + scrollOffset
+          }
         }
       }
       self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
@@ -10036,7 +10043,6 @@
     // Save current scroll position
     var savedScrollTop = chatEl.scrollTop
     var savedScrollHeight = chatEl.scrollHeight
-    var wasAtBottom = (savedScrollTop + chatEl.clientHeight >= savedScrollHeight - 50)
 
     var h = ''
     var msgs = this._convMessages
@@ -10156,7 +10162,7 @@
         console.error('[PUA] _regenerateFromLastUser: empty content returned!')
       }
       astMsg.content = fullContent
-      astMsg.activeAltIndex = astMsg.alternatives ? astMsg.alternatives.length : 0
+      astMsg.activeAltIndex = 0
       astMsg.rendered = self._applyConvRegexRender(fullContent)
       self._convSending = false
       self._convStreamingMsg = null
@@ -10167,7 +10173,7 @@
       // Restore from alternatives on error
       if (astMsg.alternatives && astMsg.alternatives.length > 0) {
         astMsg.content = astMsg.alternatives.pop()
-        astMsg.activeAltIndex = astMsg.alternatives.length
+        astMsg.activeAltIndex = 0
       } else {
         astMsg.content = '[\u9519\u8BEF] ' + (err.message || err)
       }
@@ -10222,7 +10228,7 @@
         console.error('[PUA] _regenerateMessage: empty content returned!')
       }
       msg.content = fullContent
-      msg.activeAltIndex = msg.alternatives.length
+      msg.activeAltIndex = 0
       msg.rendered = self._applyConvRegexRender(fullContent)
       self._convSending = false
       self._convStreamingMsg = null
@@ -10233,7 +10239,7 @@
       // Restore from alternatives on error
       if (msg.alternatives.length > 0) {
         msg.content = msg.alternatives.pop()
-        msg.activeAltIndex = msg.alternatives.length
+        msg.activeAltIndex = 0
       } else {
         msg.content = '[\u9519\u8BEF] ' + (err.message || err)
       }
@@ -10283,13 +10289,25 @@
   }
 
   P._doDeleteMessage = function(msgIdx) {
-    // Save scroll position before re-render
+    // Find an anchor message near the deleted one for scroll restoration
+    var anchorMsgId = null
+    // Try the message at the same index (which is now the next message), or the previous one
+    if (msgIdx < this._convMessages.length) {
+      anchorMsgId = this._convMessages[msgIdx].id
+    } else if (msgIdx > 0 && msgIdx - 1 < this._convMessages.length) {
+      anchorMsgId = this._convMessages[msgIdx - 1].id
+    }
+
+    // Save scroll position relative to the anchor message before re-render
     var contentEl = this._contentEl
     var chatEl = contentEl ? contentEl.querySelector('#conv-chat') : null
-    var savedScrollTop = chatEl ? chatEl.scrollTop : 0
-    var savedScrollHeight = chatEl ? chatEl.scrollHeight : 0
-    var savedClientHeight = chatEl ? chatEl.clientHeight : 0
-    var wasAtBottom = chatEl ? (savedScrollTop + savedClientHeight >= savedScrollHeight - 50) : false
+    var scrollOffset = 0
+    if (chatEl && anchorMsgId) {
+      var anchorEl = chatEl.querySelector('[data-msg-id="' + anchorMsgId + '"]')
+      if (anchorEl) {
+        scrollOffset = chatEl.scrollTop - anchorEl.offsetTop
+      }
+    }
 
     // Remove from messages array
     this._convMessages.splice(msgIdx, 1)
@@ -10303,14 +10321,14 @@
     this._renderPage()
     this._toast('消息已删除')
 
-    // Restore scroll position after re-render
-    if (chatEl) {
-      var newChatEl = contentEl ? contentEl.querySelector('#conv-chat') : null
+    // Restore scroll position relative to the anchor message after re-render
+    if (anchorMsgId) {
+      var newContentEl = this._contentEl
+      var newChatEl = newContentEl ? newContentEl.querySelector('#conv-chat') : null
       if (newChatEl) {
-        if (wasAtBottom || this._convAutoScroll) {
-          newChatEl.scrollTop = newChatEl.scrollHeight
-        } else {
-          newChatEl.scrollTop = savedScrollTop
+        var newAnchorEl = newChatEl.querySelector('[data-msg-id="' + anchorMsgId + '"]')
+        if (newAnchorEl) {
+          newChatEl.scrollTop = newAnchorEl.offsetTop + scrollOffset
         }
       }
     }
@@ -10366,7 +10384,7 @@
             msg.rendered = this._applyConvRegexRender(newContent)
           }
           // Update activeAltIndex to point to current (latest) version
-          msg.activeAltIndex = msg.alternatives ? msg.alternatives.length : 0
+          msg.activeAltIndex = 0
           break
         }
       }
@@ -13040,7 +13058,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.28.0',
+    version: '0.29.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
