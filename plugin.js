@@ -9493,23 +9493,31 @@
     }).then(function(result) {
       console.log('[PUA] _streamChatViaRoche result type=' + typeof result)
       console.log('[PUA] _streamChatViaRoche result keys=' + (result ? Object.keys(result).join(',') : 'null'))
-      console.log('[PUA] _streamChatViaRoche hasGetReader=' + !!(result && typeof result.getReader === 'function') + ' hasBody=' + !!(result && result.body) + ' hasText=' + !!(result && result.text))
-      if (result && result.text) {
-        console.log('[PUA] _streamChatViaRoche result.text length=' + result.text.length + ' preview=' + result.text.substring(0, 100))
-      }
-      // Check if result is a ReadableStream (streaming response)
-      if (result && typeof result.getReader === 'function') {
-        console.log('[PUA] _streamChatViaRoche: using ReadableStream')
-        return self._processStream(result, contentEl)
-      }
-      // Check if result has body as ReadableStream
+      console.log('[PUA] _streamChatViaRoche hasGetReader=' + !!(result && typeof result.getReader === 'function') + ' hasBody=' + !!(result && result.body && typeof result.body.getReader === 'function') + ' hasText=' + !!(result && result.text) + ' textType=' + (result && result.text ? typeof result.text : 'n/a'))
+
+      // Priority 1: Check if result.body is a ReadableStream
       if (result && result.body && typeof result.body.getReader === 'function') {
         console.log('[PUA] _streamChatViaRoche: using result.body ReadableStream')
         return self._processStream(result.body, contentEl)
       }
-      // Non-streaming result
-      console.log('[PUA] _streamChatViaRoche: non-streaming result, text length=' + ((result && result.text) || '').length)
-      var text = (result && result.text) || ''
+      // Priority 2: Check if result itself is a ReadableStream
+      if (result && typeof result.getReader === 'function') {
+        console.log('[PUA] _streamChatViaRoche: using ReadableStream')
+        return self._processStream(result, contentEl)
+      }
+      // Priority 3: Check if result.text is a ReadableStream
+      if (result && result.text && typeof result.text.getReader === 'function') {
+        console.log('[PUA] _streamChatViaRoche: using result.text ReadableStream')
+        return self._processStream(result.text, contentEl)
+      }
+      // Priority 4: Non-streaming result with string text
+      var text = ''
+      if (result && typeof result.text === 'string') {
+        text = result.text
+      } else if (typeof result === 'string') {
+        text = result
+      }
+      console.log('[PUA] _streamChatViaRoche: non-streaming result, text length=' + text.length)
       if (text && self._convStreamingMsg) {
         self._convStreamingMsg.content = text
         self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
@@ -9522,8 +9530,17 @@
       return self.roche.ai.chat({
         messages: messages
       }).then(function(result) {
-        console.log('[PUA] _streamChatViaRoche non-stream fallback result, text length=' + ((result && result.text) || '').length)
-        var text = (result && result.text) || ''
+        // Handle both string and non-string result.text
+        var text = ''
+        if (result && typeof result.text === 'string') {
+          text = result.text
+        } else if (result && result.text && typeof result.text.getReader === 'function') {
+          // result.text is a ReadableStream in non-stream mode too
+          return self._processStream(result.text, contentEl)
+        } else if (typeof result === 'string') {
+          text = result
+        }
+        console.log('[PUA] _streamChatViaRoche non-stream fallback result, text length=' + text.length)
         if (text && self._convStreamingMsg) {
           self._convStreamingMsg.content = text
           self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
@@ -12638,7 +12655,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.23.1',
+    version: '0.23.2',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
