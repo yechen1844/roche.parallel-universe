@@ -9042,6 +9042,7 @@
 
     // Use _buildMessages for system context (presets, char, worldbook, memory)
     var systemCtx = this._buildMessages()
+    console.log('[PUA] _buildConvContext: systemCtx length=' + systemCtx.length)
 
     // Add all system-level messages from _buildMessages
     for (var i = 0; i < systemCtx.length; i++) {
@@ -9057,6 +9058,7 @@
       }
     }
     var start = Math.max(0, endIdx - depth)
+    console.log('[PUA] _buildConvContext: convMsgs length=' + convMsgs.length + ' start=' + start + ' endIdx=' + endIdx)
     for (var mi = start; mi < endIdx; mi++) {
       var m = convMsgs[mi]
       if (m.dimmed) continue
@@ -9066,12 +9068,19 @@
         content = m.alternatives[m.activeAltIndex - 1] || content
       }
       // Apply filter/replace regexes
+      var beforeFilter = content
       content = this._applyConvFilterRegex(content, m.role)
+      if (content !== beforeFilter) {
+        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' filtered, before=' + (beforeFilter||'').substring(0,50) + ' after=' + (content||'').substring(0,50))
+      }
       if (content) {
         messages.push({ role: m.role, content: content })
+      } else {
+        console.log('[PUA] _buildConvContext: msg[' + mi + '] role=' + m.role + ' was filtered to empty, skipping')
       }
     }
 
+    console.log('[PUA] _buildConvContext: total messages=' + messages.length)
     return messages
   }
 
@@ -9177,21 +9186,26 @@
       messages: messages,
       stream: true
     }).then(function(result) {
+      console.log('[PUA] _streamChatViaRoche result type=' + typeof result + ' hasGetReader=' + !!(result && typeof result.getReader === 'function') + ' hasBody=' + !!(result && result.body) + ' hasText=' + !!(result && result.text))
       // Check if result is a ReadableStream (streaming response)
       if (result && typeof result.getReader === 'function') {
+        console.log('[PUA] _streamChatViaRoche: using ReadableStream')
         return self._processStream(result, contentEl)
       }
       // Check if result has body as ReadableStream
       if (result && result.body && typeof result.body.getReader === 'function') {
+        console.log('[PUA] _streamChatViaRoche: using result.body ReadableStream')
         return self._processStream(result.body, contentEl)
       }
       // Non-streaming result
+      console.log('[PUA] _streamChatViaRoche: non-streaming result, text length=' + ((result && result.text) || '').length)
       var text = (result && result.text) || ''
       if (text) {
         self._updateStreamingMessage(contentEl, self._escHtml(text), false)
       }
       return text
     }).catch(function(e) {
+      console.log('[PUA] _streamChatViaRoche stream failed: ' + (e.message || e) + ', trying non-streaming')
       // If roche.ai.chat streaming fails, try non-streaming
       return self.roche.ai.chat({
         messages: messages
@@ -9301,6 +9315,11 @@
     var chatEl = contentEl.querySelector('#conv-chat')
     if (!chatEl) return
 
+    // \u4FDD\u5B58\u5F53\u524D\u6EDA\u52A8\u4F4D\u7F6E
+    var savedScrollTop = chatEl.scrollTop
+    var savedScrollHeight = chatEl.scrollHeight
+    var wasAtBottom = (savedScrollTop + chatEl.clientHeight >= savedScrollHeight - 50)
+
     var h = ''
     var msgs = this._convMessages
     var renderLimit = this._convRenderLimit
@@ -9343,9 +9362,13 @@
     var countEl = contentEl.querySelector('#conv-msg-count')
     if (countEl) countEl.textContent = msgs.length + ' \u6761'
 
-    // Scroll
-    if (this._convAutoScroll) {
+    // \u6062\u590D\u6EDA\u52A8\u4F4D\u7F6E\uFF1A\u5982\u679C\u4E4B\u524D\u5728\u5E95\u90E8\u5219\u6EDA\u5230\u5E95\u90E8\uFF0C\u5426\u5219\u4FDD\u6301\u539F\u4F4D\u7F6E
+    if (wasAtBottom || this._convAutoScroll) {
       chatEl.scrollTop = chatEl.scrollHeight
+    } else {
+      // \u4FDD\u6301\u76F8\u5BF9\u4F4D\u7F6E\uFF1A\u65B0\u5185\u5BB9\u9AD8\u5EA6\u53D8\u5316\u65F6\u8C03\u6574 scrollTop
+      var newScrollHeight = chatEl.scrollHeight
+      chatEl.scrollTop = savedScrollTop + (newScrollHeight - savedScrollHeight)
     }
   }
 
