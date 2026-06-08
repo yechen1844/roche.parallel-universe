@@ -3230,6 +3230,12 @@
     if (ppSelect) {
       ppSelect.addEventListener('change', function() {
         if (!self._promptPresetData) return
+        // \u5148\u4FDD\u5B58\u5F53\u524D\u5DE5\u4F5C\u533A\u7684 items
+        var oldActiveId = self._promptPresetData.activePresetId
+        var oldPs = self._promptPresetData.presets || []
+        for (var ok = 0; ok < oldPs.length; ok++) {
+          if (oldPs[ok].id === oldActiveId) { oldPs[ok].items = self.presets.slice(); break }
+        }
         self._promptPresetData.activePresetId = this.value
         var target = null
         var ps = self._promptPresetData.presets || []
@@ -3241,6 +3247,9 @@
           self.selPreset = self.presets.length > 0 ? self.presets[0].id : ''
           self._savePresets()
         }
+        // \u91CD\u5EFA asmOrder \u4EE5\u5339\u914D\u65B0\u5DE5\u4F5C\u533A\u7684\u9884\u8BBE ID
+        self.asmOrder = self._defaultAsmOrder()
+        self._saveAsmOrder()
         self._savePromptPresets()
         self._render()
       })
@@ -4309,6 +4318,12 @@
     if (rpSelect) {
       rpSelect.addEventListener('change', function() {
         if (!self._regexPresetData) return
+        // \u5148\u4FDD\u5B58\u5F53\u524D\u5DE5\u4F5C\u533A\u7684 regexes
+        var oldActiveId = self._regexPresetData.activePresetId
+        var oldPs = self._regexPresetData.presets || []
+        for (var ok = 0; ok < oldPs.length; ok++) {
+          if (oldPs[ok].id === oldActiveId) { oldPs[ok].regexes = self.regexes.slice(); break }
+        }
         self._regexPresetData.activePresetId = this.value
         var target = null
         var ps = self._regexPresetData.presets || []
