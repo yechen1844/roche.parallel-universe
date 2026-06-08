@@ -9503,8 +9503,10 @@
       // Non-streaming result
       console.log('[PUA] _streamChatViaRoche: non-streaming result, text length=' + ((result && result.text) || '').length)
       var text = (result && result.text) || ''
-      if (text) {
-        self._updateStreamingMessage(contentEl, self._escHtml(text), false)
+      if (text && self._convStreamingMsg) {
+        self._convStreamingMsg.content = text
+        self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
+        self._updateStreamingMessage(contentEl, self._convStreamingMsg.rendered, false)
       }
       return text
     }).catch(function(e) {
@@ -9514,8 +9516,10 @@
         messages: messages
       }).then(function(result) {
         var text = (result && result.text) || ''
-        if (text) {
-          self._updateStreamingMessage(contentEl, self._escHtml(text), false)
+        if (text && self._convStreamingMsg) {
+          self._convStreamingMsg.content = text
+          self._convStreamingMsg.rendered = self._applyConvRegexRender(text)
+          self._updateStreamingMessage(contentEl, self._convStreamingMsg.rendered, false)
         }
         return text
       }).catch(function(e2) {
@@ -9536,13 +9540,18 @@
     var decoder = new TextDecoder()
     var buffer = ''
     var fullContent = ''
+    var lastRenderTime = 0
+    var renderInterval = 100 // Render at most every 100ms for performance
 
     function processChunk() {
       return reader.read().then(function(result) {
         if (result.done) {
-          // Update streaming message content
-          if (self._convStreamingMsg) self._convStreamingMsg.content = fullContent
-          self._updateStreamingMessage(contentEl, self._escHtml(fullContent), false)
+          // Final render with regex applied
+          if (self._convStreamingMsg) {
+            self._convStreamingMsg.content = fullContent
+            self._convStreamingMsg.rendered = self._applyConvRegexRender(fullContent)
+          }
+          self._updateStreamingMessage(contentEl, self._convStreamingMsg ? self._convStreamingMsg.rendered : self._escHtml(fullContent), false)
           return fullContent
         }
         buffer += decoder.decode(result.value, { stream: true })
@@ -9557,9 +9566,17 @@
             var delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content || ''
             if (delta) {
               fullContent += delta
-              // Store content in message object so it survives page switches
               if (self._convStreamingMsg) self._convStreamingMsg.content = fullContent
-              self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
+              // Throttled render: apply regex and update DOM at intervals
+              var now = Date.now()
+              if (now - lastRenderTime >= renderInterval) {
+                lastRenderTime = now
+                var rendered = self._applyConvRegexRender(fullContent)
+                self._updateStreamingMessage(contentEl, rendered, true)
+              } else {
+                // Between throttled renders, just show escaped text for responsiveness
+                self._updateStreamingMessage(contentEl, self._escHtml(fullContent), true)
+              }
             }
           } catch(e) {}
         }
@@ -9606,9 +9623,12 @@
       if (isStreaming) {
         contentDiv.innerHTML += '<span class="pua-conv-typing" style="display:inline"></span>'
       }
+      // Apply font size during streaming
+      var savedFontSize = parseInt(localStorage.getItem('pua_conv_font_size')) || 0
+      if (savedFontSize > 0) contentDiv.style.fontSize = savedFontSize + 'px'
     }
-    // Auto-scroll if enabled
-    if (this._convAutoScroll) {
+    // Auto-scroll to bottom during streaming so user can see new content
+    if (isStreaming) {
       chatEl.scrollTop = chatEl.scrollHeight
     }
   }
