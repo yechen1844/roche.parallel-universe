@@ -7410,31 +7410,37 @@
           }
           break
         case 'recall':
-          // 召回记忆：根据当前对话动态检索相关事实记忆
+          // 召回记忆：优先使用异步召回结果，否则用同步召回
           var recallFacts2 = (this.asmData.longTerm && this.asmData.longTerm.facts) ? this.asmData.longTerm.facts : []
           if (recallFacts2.length > 0) {
-            var recallQuery2 = ''
-            var recallMsgs = this.asmData.shortTerm || []
-            if (recallMsgs.length > 0) {
-              var lastRecallMsg = recallMsgs[recallMsgs.length - 1]
-              recallQuery2 = (lastRecallMsg.text || lastRecallMsg.content || '').substring(0, 200)
+            var recalledFacts = null
+            // 优先使用异步召回结果（来自 _sendMessage）
+            if (this._pendingRecalledFacts && this._pendingRecalledFacts.length > 0) {
+              recalledFacts = this._pendingRecalledFacts
+            } else {
+              // Fallback to sync recall
+              var recallQuery2 = ''
+              var recallMsgs = this.asmData.shortTerm || []
+              if (recallMsgs.length > 0) {
+                var lastRecallMsg = recallMsgs[recallMsgs.length - 1]
+                recallQuery2 = (lastRecallMsg.text || lastRecallMsg.content || '').substring(0, 200)
+              }
+              if (!recallQuery2) recallQuery2 = '对话上下文'
+              var recallSettings2 = this._loadSettings()
+              var recallMax2 = recallSettings2.recallMaxCount || 8
+              recalledFacts = this._recallMemoriesSync(recallQuery2, recallFacts2, recallMax2)
             }
-            if (!recallQuery2) recallQuery2 = '对话上下文'
-            var recallSettings2 = this._loadSettings()
-            var recallMax2 = recallSettings2.recallMaxCount || 8
-            var recalledFacts = this._recallMemoriesSync(recallQuery2, recallFacts2, recallMax2)
-            if (recalledFacts.length > 0) {
-              var recallTexts = []
+            // recalledFacts 可能是 [{fact, score}] 或 [fact]
+            var recallTexts = []
+            if (recalledFacts) {
               for (var rci = 0; rci < recalledFacts.length; rci++) {
-                recallTexts.push(recalledFacts[rci].summaryText || recalledFacts[rci].action || recalledFacts[rci].text || '')
+                var rf = recalledFacts[rci]
+                var rfText = rf.fact ? (rf.fact.summaryText || rf.fact.text || '') : (rf.summaryText || rf.text || '')
+                if (rfText) recallTexts.push(rfText)
               }
-              var recallStr = ''
-              for (var rsi = 0; rsi < recallTexts.length; rsi++) {
-                if (recallTexts[rsi]) {
-                  if (recallStr) recallStr += '\n'
-                  recallStr += recallTexts[rsi]
-                }
-              }
+            }
+            if (recallTexts.length > 0) {
+              var recallStr = recallTexts.join('\n')
               if (recallStr) messages.push({ role: 'system', content: '[召回记忆]\n' + recallStr })
             }
           }
@@ -10389,45 +10395,69 @@
     this._convSending = true
     this._convStreamingMsg = astMsg
 
-    // Build context (only includes messages up to the user message we just added)
-    var messages = this._buildConvContext(userMsg.id)
-    console.log('[PUA] _sendMessage: final messages count=' + messages.length)
-    for (var di = 0; di < messages.length; di++) {
-      console.log('[PUA] _sendMessage msg[' + di + '] role=' + messages[di].role + ' content=' + (messages[di].content||'').substring(0, 80))
+    // Async: recall memories first, then build context
+    var recallQuery = text.substring(0, 200)
+    var memData = this._convBranchId ? this._loadMemData(this._convBranchId) : null
+    var recallPromise = Promise.resolve(null)
+
+    if (memData && memData.facts && memData.facts.length > 0) {
+      var settings = this._loadSettings()
+      var recallMax = settings.recallMaxCount || 8
+      recallPromise = this._recallMemoriesAsync(recallQuery, memData.facts, recallMax).then(function(results) {
+        console.log('[PUA] _sendMessage: async recall returned ' + results.length + ' results')
+        return results
+      }).catch(function(e) {
+        console.log('[PUA] _sendMessage: async recall failed, err=' + (e.message || e))
+        return null
+      })
     }
 
-    // Now add the assistant message to _convMessages BEFORE rendering,
-    // so it renders below the user message in correct order
-    astMsg.floorNumber = this._convMessages.length + 1
-    this._convMessages.push(astMsg)
+    recallPromise.then(function(recalledFacts) {
+      // Store recalled facts for _buildMessages to use
+      self._pendingRecalledFacts = recalledFacts
 
-    // Re-render to show user message + assistant placeholder
-    this._renderConvMessages(contentEl, true)
-
-    // Scroll to the user message position so user can see their message and the reply below
-    var chatEl = contentEl.querySelector('#conv-chat')
-    if (chatEl) {
-      var userMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
-      if (userMsgEl) {
-        // Use setTimeout to ensure DOM is fully rendered before scrolling
-        var targetScrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
-        if (targetScrollTop < 0) targetScrollTop = 0
-        chatEl.scrollTop = targetScrollTop
+      // Build context (only includes messages up to the user message we just added)
+      var messages = self._buildConvContext(userMsg.id)
+      console.log('[PUA] _sendMessage: final messages count=' + messages.length)
+      for (var di = 0; di < messages.length; di++) {
+        console.log('[PUA] _sendMessage msg[' + di + '] role=' + messages[di].role + ' content=' + (messages[di].content||'').substring(0, 80))
       }
-    }
 
-    // Stream chat
-    this._streamChat(messages).then(function(fullContent) {
-      console.log('[PUA] _sendMessage: streamChat resolved, contentLen=' + (fullContent || '').length)
-      if (!fullContent) {
-        console.error('[PUA] _sendMessage: empty content returned!')
+      // Clear pending recalled facts
+      self._pendingRecalledFacts = null
+
+      // Now add the assistant message to _convMessages BEFORE rendering,
+      // so it renders below the user message in correct order
+      astMsg.floorNumber = self._convMessages.length + 1
+      self._convMessages.push(astMsg)
+
+      // Re-render to show user message + assistant placeholder
+      self._renderConvMessages(contentEl, true)
+
+      // Scroll to the user message position so user can see their message and the reply below
+      var chatEl = contentEl.querySelector('#conv-chat')
+      if (chatEl) {
+        var userMsgEl = chatEl.querySelector('[data-msg-id="' + userMsg.id + '"]')
+        if (userMsgEl) {
+          // Use setTimeout to ensure DOM is fully rendered before scrolling
+          var targetScrollTop = userMsgEl.offsetTop - chatEl.offsetTop - 10
+          if (targetScrollTop < 0) targetScrollTop = 0
+          chatEl.scrollTop = targetScrollTop
+        }
       }
-      astMsg.content = fullContent
-      // Apply render regexes
-      astMsg.rendered = self._applyConvRegexRender(fullContent)
-      self._convSending = false
-      self._convStreamingMsg = null
-      self._saveConvMessages()
+
+      // Stream chat
+      self._streamChat(messages).then(function(fullContent) {
+        console.log('[PUA] _sendMessage: streamChat resolved, contentLen=' + (fullContent || '').length)
+        if (!fullContent) {
+          console.error('[PUA] _sendMessage: empty content returned!')
+        }
+        astMsg.content = fullContent
+        // Apply render regexes
+        astMsg.rendered = self._applyConvRegexRender(fullContent)
+        self._convSending = false
+        self._convStreamingMsg = null
+        self._saveConvMessages()
 
       // Re-render conversation messages, preserving scroll position using message anchor
       var contentEl = self._contentEl
@@ -10478,6 +10508,7 @@
       }
       self._toast('API \u8C03\u7528\u5931\u8D25: ' + (err.message || err))
     })
+    }) // end recallPromise.then
   }
 
   P._buildConvContext = function(upToMsgId) {
@@ -11581,6 +11612,7 @@
   }
 
   P._saveSummaryToMemory = function(branchId, summary, source, oneSentence, keywords) {
+    var self = this
     var memData = this._loadMemData(branchId)
     if (memData) {
       if (!memData.facts) memData.facts = []
@@ -11609,10 +11641,105 @@
 
       this._saveMemData(memData, branchId)
       console.log('[PUA] _saveSummaryToMemory: saved, id=' + factId + ' branchId=' + branchId)
+
+      // 自动生成向量记忆
+      self._autoGenerateEmbedding(factObj, memData, branchId)
     } else {
       console.log('[PUA] _saveSummaryToMemory: no memData for branchId=' + branchId)
       this._toast('\u4FDD\u5B58\u5931\u8D25\uFF1A\u672A\u627E\u5230\u8BB0\u5FC6\u6570\u636E')
     }
+  }
+
+  // 自动为单条事实记忆生成向量（静默，不阻塞UI）
+  P._autoGenerateEmbedding = function(factObj, memData, branchId) {
+    var self = this
+    var preset = this._getActivePreset()
+    if (!preset || !preset.vecEndpoint || !preset.vecApiKey || !preset.vecModel) {
+      console.log('[PUA] _autoGenerateEmbedding: skipped, no vector API config')
+      return
+    }
+    var text = factObj.oneSentence || factObj.text || ''
+    if (!text) return
+
+    self._getEmbedding(text).then(function(emb) {
+      factObj.embedding = emb
+      self._saveMemData(memData, branchId)
+      console.log('[PUA] _autoGenerateEmbedding: embedding generated for fact ' + factObj.id + ', dim=' + (emb ? emb.length : 0))
+    }).catch(function(e) {
+      console.log('[PUA] _autoGenerateEmbedding: failed for fact ' + factObj.id + ', err=' + (e.message || e))
+    })
+  }
+
+  // 批量为指定索引的事实记忆生成向量（静默，不阻塞UI）
+  P._autoGenerateEmbeddingsForFacts = function(memData, branchId, factIndices) {
+    var self = this
+    var preset = this._getActivePreset()
+    if (!preset || !preset.vecEndpoint || !preset.vecApiKey || !preset.vecModel) {
+      console.log('[PUA] _autoGenerateEmbeddingsForFacts: skipped, no vector API config')
+      return
+    }
+    var toEmbed = []
+    for (var i = 0; i < factIndices.length; i++) {
+      var fi = factIndices[i]
+      var fact = memData.facts[fi]
+      if (fact && !fact.embedding && (fact.oneSentence || fact.text)) {
+        toEmbed.push(fi)
+      }
+    }
+    if (toEmbed.length === 0) return
+
+    console.log('[PUA] _autoGenerateEmbeddingsForFacts: generating embeddings for ' + toEmbed.length + ' facts')
+    var idx = 0
+    function embedNext() {
+      if (idx >= toEmbed.length) {
+        self._saveMemData(memData, branchId)
+        console.log('[PUA] _autoGenerateEmbeddingsForFacts: all done')
+        return
+      }
+      var fi2 = toEmbed[idx]
+      var text2 = memData.facts[fi2].oneSentence || memData.facts[fi2].text || ''
+      self._getEmbedding(text2).then(function(emb) {
+        memData.facts[fi2].embedding = emb
+        idx++
+        embedNext()
+      }).catch(function(e) {
+        console.log('[PUA] _autoGenerateEmbeddingsForFacts: failed for index ' + fi2 + ', err=' + (e.message || e))
+        idx++
+        embedNext()
+      })
+    }
+    embedNext()
+  }
+
+  // 异步召回记忆（用于发送消息时，支持向量/副API召回）
+  // 返回 Promise<{fact, score}[]>
+  P._recallMemoriesAsync = function(query, facts, topK) {
+    var self = this
+    var settings = this._loadSettings()
+    var mode = settings.recallMode || 'vector'
+    var preset = this._getActivePreset()
+
+    if (mode === 'subapi' && preset && preset.subEndpoint && preset.subApiKey && preset.subModel) {
+      return self._subApiRecall(query, facts, topK)
+    }
+
+    // 向量模式：检查是否有向量API配置和已生成的向量
+    if (preset && preset.vecEndpoint && preset.vecApiKey && preset.vecModel) {
+      var hasEmbeddings = false
+      for (var i = 0; i < facts.length; i++) {
+        if (facts[i].embedding && facts[i].embedding.length > 0) {
+          hasEmbeddings = true
+          break
+        }
+      }
+      if (hasEmbeddings) {
+        return self._hybridRecall(query, facts, topK)
+      }
+    }
+
+    // Fallback to sync recall
+    var syncResults = self._recallMemoriesSync(query, facts, topK)
+    return Promise.resolve(syncResults.map(function(f) { return { fact: f, score: 1 } }))
   }
 
   P._triggerRelationshipSummary = function(branchId) {
@@ -13385,13 +13512,19 @@
         var fact = memData.facts[mi]
         h += '<div class="pua-mem-fact-item" data-fact-id="' + (fact.id || mi) + '">'
         var needsMark = fact.needsSummary ? ' <span style="color:var(--pua-accent);font-size:8px">[\u5F85\u603B\u7ED3]</span>' : ''
-        h += '<div class="pua-mem-fact-summary">' + this._escHtml(fact.oneSentence || fact.summary || fact.text || '') + needsMark + '</div>'
+        var vecIcon = (fact.embedding && fact.embedding.length > 0) ? ' <span style="color:#4ec9a0;font-size:9px" title="\u5DF2\u751F\u6210\u5411\u91CF\u8BB0\u5FC6">\u25C6</span>' : ''
+        h += '<div class="pua-mem-fact-summary">' + vecIcon + this._escHtml(fact.oneSentence || fact.summary || fact.text || '') + needsMark + '</div>'
         if (fact.keywords) {
           h += '<div class="pua-mem-fact-kw">\u5173\u952E\u8BCD: ' + this._escHtml(fact.keywords) + '</div>'
         }
+        // 字数和token数
+        var factText = fact.text || fact.summaryText || ''
+        var factChars = factText.length
+        var factTokens = Math.ceil(factChars * 0.6) // 粗略估算：中文约1.5字/token，英文约4字/token，取中间值
         if (fact.source) {
           h += '<span style="font-size:8px;color:var(--pua-text-dim);margin-right:6px">\u6765\u6E90: ' + this._escHtml(fact.source) + '</span>'
         }
+        h += '<span style="font-size:8px;color:var(--pua-text-dim);margin-right:6px">' + factChars + '\u5B57 / ~' + factTokens + 'tok</span>'
         h += '<span class="pua-mem-fact-time">' + (fact.timestamp || '') + '</span>'
         h += '</div>'
       }
@@ -13979,6 +14112,8 @@
       if (batchIdx >= toSummarize.length) {
         self._saveMemData(memData, branchId)
         self._toast('\u6279\u6B21\u603B\u7ED3\u5B8C\u6210')
+        // 自动为刚总结的事实记忆生成向量
+        self._autoGenerateEmbeddingsForFacts(memData, branchId, toSummarize)
         self._render()
         return
       }
@@ -14457,7 +14592,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.42.3',
+    version: '0.43.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
