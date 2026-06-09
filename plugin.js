@@ -5942,15 +5942,25 @@
 
     // 获取选中的角色人设（多个）
     if (branch.selectedCharIds && branch.selectedCharIds.length > 0 && this.roche.character && this.roche.character.get) {
+      console.log('[PUA] _fetchAsmData: fetching ' + branch.selectedCharIds.length + ' selected chars, ids=' + JSON.stringify(branch.selectedCharIds))
       for (var sci = 0; sci < branch.selectedCharIds.length; sci++) {
         (function(charId) {
           promises.push(
             self.roche.character.get(charId).then(function(ch) {
-              if (ch) self.asmData.chars.push(ch)
-            }).catch(function() {})
+              if (ch) {
+                console.log('[PUA] _fetchAsmData: got char id=' + charId + ' name=' + (ch.handle || ch.name) + ' hasPersona=' + !!(ch.persona || ch.bio))
+                self.asmData.chars.push(ch)
+              } else {
+                console.log('[PUA] _fetchAsmData: char id=' + charId + ' returned null')
+              }
+            }).catch(function(err) {
+              console.error('[PUA] _fetchAsmData: failed to get char id=' + charId + ' err=' + (err.message || err))
+            })
           )
         })(branch.selectedCharIds[sci])
       }
+    } else {
+      console.log('[PUA] _fetchAsmData: no selectedCharIds, branchId=' + branch.id + ' selectedCharIds=' + JSON.stringify(branch.selectedCharIds))
     }
 
     // 获取用户人设
@@ -10040,7 +10050,9 @@
       // Memory summarization trigger
       self._msgSinceLastSummary = (self._msgSinceLastSummary || 0) + 1
       var settings = self._loadSettings()
-      if (self._msgSinceLastSummary >= (settings.summarizeInterval || 30)) {
+      var summarizeInterval = settings.summarizeInterval || 30
+      console.log('[PUA] msgSinceLastSummary=' + self._msgSinceLastSummary + ' interval=' + summarizeInterval)
+      if (self._msgSinceLastSummary >= summarizeInterval) {
         self._msgSinceLastSummary = 0
         self._triggerConvSummary()
       }
@@ -10967,7 +10979,16 @@
   P._triggerConvSummary = function() {
     var self = this
     var preset = this._getActivePreset()
-    if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) return
+    if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
+      console.log('[PUA] _triggerConvSummary: skipped, no sub API config. preset=' + !!preset + ' subEndpoint=' + !!(preset && preset.subEndpoint) + ' subApiKey=' + !!(preset && preset.subApiKey) + ' subModel=' + !!(preset && preset.subModel))
+      return
+    }
+
+    var branchId = this._convBranchId
+    if (!branchId) {
+      console.log('[PUA] _triggerConvSummary: skipped, no branchId')
+      return
+    }
 
     // Build a summary of recent conversation
     var recentMsgs = this._convMessages.slice(-10)
@@ -10976,6 +10997,7 @@
       convText += recentMsgs[i].role + ': ' + (recentMsgs[i].content || '').substring(0, 200) + '\n'
     }
 
+    console.log('[PUA] _triggerConvSummary: triggering, msgSinceLastSummary=' + this._msgSinceLastSummary + ' convTextLen=' + convText.length)
     var prompt = '\u8BF7\u4ECE\u4EE5\u4E0B\u5BF9\u8BDD\u4E2D\u63D0\u53D6\u5173\u952E\u4E8B\u5B9E\u4FE1\u606F\uFF0C\u7528\u4E00\u53E5\u8BDD\u6982\u62EC\uFF1A\n\n' + convText
 
     var url = preset.subEndpoint.replace(/\/+$/, '') + '/chat/completions'
@@ -10989,27 +11011,32 @@
         max_tokens: 200
       })
     }).then(function(r) { return r.json() }).then(function(data) {
+      console.log('[PUA] _triggerConvSummary: API response received, hasChoices=' + !!(data && data.choices))
       if (data.choices && data.choices[0]) {
         var summary = (data.choices[0].message || {}).content || ''
         if (summary) {
           // Add to memory system
-          var branchId = self._convBranchId
-          if (branchId) {
-            var memData = self._loadMemData(branchId)
-            if (memData) {
-              if (!memData.facts) memData.facts = []
-              memData.facts.push({
-                text: summary,
-                summaryText: summary,
-                needsSummary: false,
-                timestamp: new Date().toISOString()
-              })
-              self._saveMemData(memData, branchId)
-            }
+          var memData = self._loadMemData(branchId)
+          if (memData) {
+            if (!memData.facts) memData.facts = []
+            memData.facts.push({
+              id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+              text: summary,
+              summary: summary,
+              summaryText: summary,
+              keywords: '',
+              needsSummary: true,
+              timestamp: new Date().toISOString(),
+              source: 'auto-summary'
+            })
+            self._saveMemData(memData, branchId)
+            console.log('[PUA] _triggerConvSummary: fact saved, id=' + memData.facts[memData.facts.length - 1].id)
           }
         }
       }
-    }).catch(function() {})
+    }).catch(function(err) {
+      console.error('[PUA] _triggerConvSummary failed: ' + (err.message || err))
+    })
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -12612,6 +12639,7 @@
     h += '<button class="pua-btn pua-btn-sm" id="mem-fact-summarize">\u2726 \u603B\u7ED3\u8BB0\u5FC6</button>'
     h += '<input type="number" id="mem-batch-size" value="10" min="1" max="50" style="width:48px;background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:4px;padding:3px 5px;color:var(--pua-text);font-size:10px;text-align:center;outline:none" title="\u6BCF\u6279\u603B\u7ED3\u6570\u91CF">'
     h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="mem-fact-summarize-all">\u5168\u90E8\u603B\u7ED3</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="mem-fact-conv-summary" style="background:var(--pua-accent);color:#fff">\u624B\u52A8\u603B\u7ED3\u5BF9\u8BDD</button>'
     h += '<button class="pua-btn pua-btn-sm pua-btn-danger" id="mem-fact-clear">\u6E05\u7A7A\u5168\u90E8</button>'
     h += '</div>'
     h += '</div>'
@@ -12692,6 +12720,15 @@
         if (batchSize < 1) batchSize = 1
         if (batchSize > 50) batchSize = 50
         self._summarizeFacts(memData, currentBranchId, batchSize, true)
+      })
+    }
+
+    // 手动总结对话
+    var convSummaryBtn = contentEl.querySelector('#mem-fact-conv-summary')
+    if (convSummaryBtn) {
+      convSummaryBtn.addEventListener('click', function() {
+        self._triggerConvSummary()
+        self._toast('\u5DF2\u89E6\u53D1\u5BF9\u8BDD\u603B\u7ED3')
       })
     }
 
@@ -13457,7 +13494,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.32.0',
+    version: '0.33.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
