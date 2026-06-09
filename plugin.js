@@ -13507,7 +13507,25 @@
     if (convSummaryBtn) {
       convSummaryBtn.addEventListener('click', function() {
         if (!currentBranchId) { self._toast('\u8BF7\u5148\u9009\u62E9\u5206\u652F'); return }
-        var maxFloor = self._convMessages ? self._convMessages.length : 1
+        // 从分支数据获取实际消息数量，而非依赖 _convMessages
+        var maxFloor = 1
+        var branch = self._getBranch(currentBranchId)
+        if (branch && branch.messages && branch.messages.length > 0) {
+          maxFloor = branch.messages.length
+        } else {
+          // 尝试从 localStorage 加载
+          var branchKey = 'pua_conv_' + currentBranchId
+          try {
+            var rawMsgs = localStorage.getItem(branchKey)
+            if (rawMsgs) {
+              var msgs = JSON.parse(rawMsgs)
+              if (Array.isArray(msgs) && msgs.length > 0) maxFloor = msgs.length
+            }
+          } catch(e) {}
+        }
+        if (self._convMessages && self._convMessages.length > maxFloor) {
+          maxFloor = self._convMessages.length
+        }
         self._showManualSummaryModal(currentBranchId, maxFloor)
       })
     }
@@ -14421,7 +14439,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.42.0',
+    version: '0.42.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
