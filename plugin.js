@@ -6155,6 +6155,33 @@
           }
         }
       }
+      // Ensure extra chars are in asmOrder
+      if (self.asmData.chars && self.asmData.chars.length > 0) {
+        var existingCharIds = {}
+        for (var eci = 0; eci < self.asmOrder.length; eci++) {
+          if (self.asmOrder[eci].type === 'char') existingCharIds[self.asmOrder[eci].id] = true
+        }
+        for (var aci = 0; aci < self.asmData.chars.length; aci++) {
+          var charItem = self.asmData.chars[aci]
+          // Skip main char (it has id='char' in asmOrder)
+          if (self.asmData.char && charItem.id === self.asmData.char.id) continue
+          if (!existingCharIds[charItem.id]) {
+            // Insert after the main char entry
+            var mainCharIdx = -1
+            for (var mci = 0; mci < self.asmOrder.length; mci++) {
+              if (self.asmOrder[mci].type === 'char' && self.asmOrder[mci].id === 'char') {
+                mainCharIdx = mci
+                break
+              }
+            }
+            var insertIdx = mainCharIdx >= 0 ? mainCharIdx + 1 : self.asmOrder.length
+            self.asmOrder.splice(insertIdx, 0, { type: 'char', id: charItem.id })
+            existingCharIds[charItem.id] = true
+            console.log('[PUA] _fetchAsmData: added char to asmOrder, id=' + charItem.id + ' name=' + (charItem.handle || charItem.name))
+          }
+        }
+        self._saveAsmOrder()
+      }
       self.asmLoading = false
       if (!silent) self._render()
     }).catch(function(err) {
@@ -7646,6 +7673,8 @@
     console.log('[PUA] _downloadViaLink: START filename=' + filename + ' blobSize=' + blob.size)
     var url = URL.createObjectURL(blob)
     console.log('[PUA] _downloadViaLink: blobURL created=' + url.substring(0, 50))
+
+    // Method 1: Create <a> element with download attribute
     var a = document.createElement('a')
     a.href = url
     a.download = filename || 'download'
@@ -7655,10 +7684,42 @@
     a.click()
     document.body.removeChild(a)
     console.log('[PUA] _downloadViaLink: click triggered, a element removed')
+
+    // Method 2: Fallback for WebView where a.click() doesn't trigger download
+    // Try window.open with the blob URL after a short delay
+    setTimeout(function() {
+      // Check if the download likely failed (in WebView, a.click() silently fails)
+      // Try opening in new window as fallback
+      try {
+        var newWin = window.open(url, '_blank')
+        if (!newWin) {
+          console.log('[PUA] _downloadViaLink: window.open blocked, trying location.href')
+          // Last resort: use data URI
+          var reader = new FileReader()
+          reader.onload = function() {
+            var dataUrl = reader.result
+            var link = document.createElement('a')
+            link.href = dataUrl
+            link.download = filename || 'download'
+            link.style.display = 'none'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            console.log('[PUA] _downloadViaLink: data URI fallback triggered')
+          }
+          reader.readAsDataURL(blob)
+        } else {
+          console.log('[PUA] _downloadViaLink: window.open succeeded')
+        }
+      } catch(e) {
+        console.log('[PUA] _downloadViaLink: window.open failed: ' + e.message)
+      }
+    }, 500)
+
     setTimeout(function() {
       URL.revokeObjectURL(url)
       console.log('[PUA] _downloadViaLink: blobURL revoked')
-    }, 10000)
+    }, 30000)
   }
 
   P._escHtml = function(s) {
@@ -11024,7 +11085,7 @@
 
   /* ── Memory summarization trigger ── */
 
-  P._triggerConvSummary = function() {
+  P._triggerConvSummary = function(overrideBranchId) {
     var self = this
     var preset = this._getActivePreset()
     if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
@@ -11032,9 +11093,9 @@
       return
     }
 
-    var branchId = this._convBranchId
+    var branchId = overrideBranchId || this._convBranchId
     if (!branchId) {
-      console.log('[PUA] _triggerConvSummary: skipped, no branchId')
+      console.log('[PUA] _triggerConvSummary: skipped, no branchId (convBranchId=' + this._convBranchId + ' overrideBranchId=' + overrideBranchId + ')')
       return
     }
 
@@ -12775,7 +12836,7 @@
     var convSummaryBtn = contentEl.querySelector('#mem-fact-conv-summary')
     if (convSummaryBtn) {
       convSummaryBtn.addEventListener('click', function() {
-        self._triggerConvSummary()
+        self._triggerConvSummary(currentBranchId)
         self._toast('\u5DF2\u89E6\u53D1\u5BF9\u8BDD\u603B\u7ED3')
       })
     }
@@ -13542,7 +13603,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.34.0',
+    version: '0.35.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
