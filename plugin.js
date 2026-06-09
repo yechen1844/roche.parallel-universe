@@ -11415,7 +11415,10 @@
         if (rawMsgs) {
           convMessages = JSON.parse(rawMsgs)
         } else {
-          var branch = this._getBranch(overrideBranchId)
+          var branch = null
+          for (var tbi = 0; tbi < this.branches.length; tbi++) {
+            if (this.branches[tbi].id === overrideBranchId) { branch = this.branches[tbi]; break }
+          }
           if (branch && branch.messages && branch.messages.length > 0) {
             convMessages = []
             for (var mi = 0; mi < branch.messages.length; mi++) {
@@ -13509,7 +13512,10 @@
         if (!currentBranchId) { self._toast('\u8BF7\u5148\u9009\u62E9\u5206\u652F'); return }
         // 从分支数据获取实际消息数量，而非依赖 _convMessages
         var maxFloor = 1
-        var branch = self._getBranch(currentBranchId)
+        var branch = null
+        for (var mbi = 0; mbi < self.branches.length; mbi++) {
+          if (self.branches[mbi].id === currentBranchId) { branch = self.branches[mbi]; break }
+        }
         if (branch && branch.messages && branch.messages.length > 0) {
           maxFloor = branch.messages.length
         } else {
@@ -14439,7 +14445,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.42.1',
+    version: '0.42.2',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
