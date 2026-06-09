@@ -11388,14 +11388,10 @@
   P._triggerConvSummary = function(overrideBranchId) {
     var self = this
     var preset = this._getActivePreset()
-    if (!preset || !preset.subEndpoint || !preset.subApiKey || !preset.subModel) {
-      console.log('[PUA] _triggerConvSummary: skipped, no sub API config. preset=' + !!preset + ' subEndpoint=' + !!(preset && preset.subEndpoint) + ' subApiKey=' + !!(preset && preset.subApiKey) + ' subModel=' + !!(preset && preset.subModel))
-      return
-    }
-
     var branchId = overrideBranchId || this._convBranchId
     if (!branchId) {
       console.log('[PUA] _triggerConvSummary: skipped, no branchId (convBranchId=' + this._convBranchId + ' overrideBranchId=' + overrideBranchId + ')')
+      self._toast('无法总结：未选择分支')
       return
     }
 
@@ -11408,6 +11404,7 @@
         var rawMsgs = localStorage.getItem(branchKey)
         if (rawMsgs) {
           convMessages = JSON.parse(rawMsgs)
+          console.log('[PUA] _triggerConvSummary: loaded ' + convMessages.length + ' messages from localStorage for branch ' + overrideBranchId)
         } else {
           // Try loading from branch data
           var branch = this._getBranch(overrideBranchId)
@@ -11420,6 +11417,9 @@
               else if (m.type === 'system') role = 'system'
               convMessages.push({ role: role, content: m.text || m.content || '' })
             }
+            console.log('[PUA] _triggerConvSummary: loaded ' + convMessages.length + ' messages from branch data for branch ' + overrideBranchId)
+          } else {
+            console.log('[PUA] _triggerConvSummary: no messages found for branch ' + overrideBranchId)
           }
         }
       } catch(e) {
@@ -11443,51 +11443,113 @@
     console.log('[PUA] _triggerConvSummary: triggering, branchId=' + branchId + ' convTextLen=' + convText.length + ' msgCount=' + recentMsgs.length)
     var prompt = '\u8BF7\u4ECE\u4EE5\u4E0B\u5BF9\u8BDD\u4E2D\u63D0\u53D6\u5173\u952E\u4E8B\u5B9E\u4FE1\u606F\uFF0C\u7528\u4E00\u53E5\u8BDD\u6982\u62EC\uFF1A\n\n' + convText
 
-    var url = preset.subEndpoint.replace(/\/+$/, '') + '/chat/completions'
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.subApiKey },
-      body: JSON.stringify({
-        model: preset.subModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        max_tokens: 200
-      })
-    }).then(function(r) { return r.json() }).then(function(data) {
-      console.log('[PUA] _triggerConvSummary: API response received, hasChoices=' + !!(data && data.choices))
-      if (data.choices && data.choices[0]) {
-        var summary = (data.choices[0].message || {}).content || ''
-        if (summary) {
-          // Add to memory system
-          var memData = self._loadMemData(branchId)
-          if (memData) {
-            if (!memData.facts) memData.facts = []
-            memData.facts.push({
-              id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-              text: summary,
-              summary: summary,
-              summaryText: summary,
-              keywords: '',
-              needsSummary: true,
-              timestamp: new Date().toISOString(),
-              source: 'manual-summary'
-            })
-            self._saveMemData(memData, branchId)
-            console.log('[PUA] _triggerConvSummary: fact saved, id=' + memData.facts[memData.facts.length - 1].id)
-            self._toast('对话总结已生成并保存')
+    // Try sub API first, then fall back to roche.ai.chat
+    var useSubApi = preset && preset.subEndpoint && preset.subApiKey && preset.subModel
+    var useRocheAi = this.roche && this.roche.ai && this.roche.ai.chat
+
+    if (useSubApi) {
+      console.log('[PUA] _triggerConvSummary: using sub API, endpoint=' + preset.subEndpoint.substring(0, 30) + ' model=' + preset.subModel)
+      var url = preset.subEndpoint.replace(/\/+$/, '') + '/chat/completions'
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.subApiKey },
+        body: JSON.stringify({
+          model: preset.subModel,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          max_tokens: 200
+        })
+      }).then(function(r) {
+        console.log('[PUA] _triggerConvSummary: sub API HTTP status=' + r.status)
+        return r.json()
+      }).then(function(data) {
+        console.log('[PUA] _triggerConvSummary: sub API response, hasChoices=' + !!(data && data.choices) + ' keys=' + (data ? Object.keys(data).join(',') : 'null'))
+        if (data.error) {
+          console.log('[PUA] _triggerConvSummary: sub API error: ' + JSON.stringify(data.error).substring(0, 200))
+          // Fall back to roche.ai.chat
+          if (useRocheAi) {
+            self._triggerConvSummaryViaRocheAi(branchId, prompt)
+          } else {
+            self._toast('总结失败: ' + (data.error.message || 'API 错误'))
+          }
+          return
+        }
+        if (data.choices && data.choices[0]) {
+          var summary = (data.choices[0].message || {}).content || ''
+          if (summary) {
+            self._saveSummaryToMemory(branchId, summary, 'manual-summary')
+          } else {
+            console.log('[PUA] _triggerConvSummary: sub API returned empty summary')
+            self._toast('总结内容为空')
           }
         } else {
-          console.log('[PUA] _triggerConvSummary: API returned empty summary')
-          self._toast('总结内容为空')
+          console.log('[PUA] _triggerConvSummary: sub API response has no choices')
+          if (useRocheAi) {
+            self._triggerConvSummaryViaRocheAi(branchId, prompt)
+          } else {
+            self._toast('总结生成失败：API 无有效响应')
+          }
         }
+      }).catch(function(err) {
+        console.error('[PUA] _triggerConvSummary: sub API fetch failed: ' + (err.message || err))
+        // Fall back to roche.ai.chat
+        if (useRocheAi) {
+          self._triggerConvSummaryViaRocheAi(branchId, prompt)
+        } else {
+          self._toast('总结生成失败: ' + (err.message || '网络错误'))
+        }
+      })
+    } else if (useRocheAi) {
+      console.log('[PUA] _triggerConvSummary: no sub API config, using roche.ai.chat')
+      self._triggerConvSummaryViaRocheAi(branchId, prompt)
+    } else {
+      console.log('[PUA] _triggerConvSummary: no API available (sub API not configured, roche.ai.chat not available)')
+      self._toast('无法总结：请先配置副 API 或确保 Roche AI 可用')
+    }
+  }
+
+  P._triggerConvSummaryViaRocheAi = function(branchId, prompt) {
+    var self = this
+    console.log('[PUA] _triggerConvSummaryViaRocheAi: calling roche.ai.chat')
+    this.roche.ai.chat({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1
+    }).then(function(result) {
+      console.log('[PUA] _triggerConvSummaryViaRocheAi: response received, hasText=' + !!(result && result.text))
+      var summary = result && result.text ? result.text : ''
+      if (summary) {
+        self._saveSummaryToMemory(branchId, summary, 'manual-summary')
       } else {
-        console.log('[PUA] _triggerConvSummary: API response has no choices, data=' + JSON.stringify(data).substring(0, 200))
-        self._toast('总结生成失败：API 无有效响应')
+        console.log('[PUA] _triggerConvSummaryViaRocheAi: empty response')
+        self._toast('总结内容为空')
       }
     }).catch(function(err) {
-      console.error('[PUA] _triggerConvSummary failed: ' + (err.message || err))
+      console.error('[PUA] _triggerConvSummaryViaRocheAi failed: ' + (err.message || err))
       self._toast('总结生成失败: ' + (err.message || '未知错误'))
     })
+  }
+
+  P._saveSummaryToMemory = function(branchId, summary, source) {
+    var memData = this._loadMemData(branchId)
+    if (memData) {
+      if (!memData.facts) memData.facts = []
+      memData.facts.push({
+        id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        text: summary,
+        summary: summary,
+        summaryText: summary,
+        keywords: '',
+        needsSummary: true,
+        timestamp: new Date().toISOString(),
+        source: source || 'manual-summary'
+      })
+      this._saveMemData(memData, branchId)
+      console.log('[PUA] _saveSummaryToMemory: saved, id=' + memData.facts[memData.facts.length - 1].id + ' branchId=' + branchId)
+      this._toast('对话总结已生成并保存')
+    } else {
+      console.log('[PUA] _saveSummaryToMemory: no memData for branchId=' + branchId)
+      this._toast('保存失败：未找到记忆数据')
+    }
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -13968,7 +14030,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.40.0',
+    version: '0.41.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
