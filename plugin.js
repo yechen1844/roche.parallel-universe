@@ -6155,33 +6155,52 @@
           }
         }
       }
-      // Ensure extra chars are in asmOrder
-      if (self.asmData.chars && self.asmData.chars.length > 0) {
-        var existingCharIds = {}
-        for (var eci = 0; eci < self.asmOrder.length; eci++) {
-          if (self.asmOrder[eci].type === 'char') existingCharIds[self.asmOrder[eci].id] = true
-        }
-        for (var aci = 0; aci < self.asmData.chars.length; aci++) {
-          var charItem = self.asmData.chars[aci]
-          // Skip main char (it has id='char' in asmOrder)
-          if (self.asmData.char && charItem.id === self.asmData.char.id) continue
-          if (!existingCharIds[charItem.id]) {
-            // Insert after the main char entry
-            var mainCharIdx = -1
-            for (var mci = 0; mci < self.asmOrder.length; mci++) {
-              if (self.asmOrder[mci].type === 'char' && self.asmOrder[mci].id === 'char') {
-                mainCharIdx = mci
-                break
-              }
-            }
-            var insertIdx = mainCharIdx >= 0 ? mainCharIdx + 1 : self.asmOrder.length
-            self.asmOrder.splice(insertIdx, 0, { type: 'char', id: charItem.id })
-            existingCharIds[charItem.id] = true
-            console.log('[PUA] _fetchAsmData: added char to asmOrder, id=' + charItem.id + ' name=' + (charItem.handle || charItem.name))
-          }
-        }
-        self._saveAsmOrder()
+      // Sync char entries in asmOrder with current asmData.chars
+      // Build set of valid char IDs: 'char' (main) + all extra char IDs from asmData.chars
+      var validCharIds = { 'char': true }
+      if (self.asmData.char && self.asmData.char.id) {
+        validCharIds[self.asmData.char.id] = true // main char by actual ID too
       }
+      if (self.asmData.chars) {
+        for (var vci = 0; vci < self.asmData.chars.length; vci++) {
+          var vc = self.asmData.chars[vci]
+          if (vc && vc.id) validCharIds[vc.id] = true
+        }
+      }
+      // Remove stale char entries not in current branch's char list
+      var newOrder = []
+      for (var oi2 = 0; oi2 < self.asmOrder.length; oi2++) {
+        if (self.asmOrder[oi2].type === 'char') {
+          if (validCharIds[self.asmOrder[oi2].id]) {
+            newOrder.push(self.asmOrder[oi2])
+          } else {
+            console.log('[PUA] _fetchAsmData: removed stale char from asmOrder, id=' + self.asmOrder[oi2].id)
+          }
+        } else {
+          newOrder.push(self.asmOrder[oi2])
+        }
+      }
+      // Add missing char entries (extra chars not yet in asmOrder)
+      for (var aci2 = 0; aci2 < (self.asmData.chars || []).length; aci2++) {
+        var charItem2 = self.asmData.chars[aci2]
+        if (!charItem2 || !charItem2.id) continue
+        if (self.asmData.char && charItem2.id === self.asmData.char.id) continue
+        var alreadyExists = false
+        for (var ni = 0; ni < newOrder.length; ni++) {
+          if (newOrder[ni].type === 'char' && newOrder[ni].id === charItem2.id) { alreadyExists = true; break }
+        }
+        if (!alreadyExists) {
+          var insertIdx2 = -1
+          for (var mci2 = 0; mci2 < newOrder.length; mci2++) {
+            if (newOrder[mci2].type === 'char' && newOrder[mci2].id === 'char') { insertIdx2 = mci2 + 1; break }
+          }
+          if (insertIdx2 < 0) insertIdx2 = newOrder.length
+          newOrder.splice(insertIdx2, 0, { type: 'char', id: charItem2.id })
+          console.log('[PUA] _fetchAsmData: added char to asmOrder, id=' + charItem2.id + ' name=' + (charItem2.handle || charItem2.name))
+        }
+      }
+      self.asmOrder = newOrder
+      self._saveAsmOrder()
       self.asmLoading = false
       if (!silent) self._render()
     }).catch(function(err) {
@@ -7670,11 +7689,12 @@
   }
 
   P._downloadViaLink = function(blob, filename) {
+    var self = this
     console.log('[PUA] _downloadViaLink: START filename=' + filename + ' blobSize=' + blob.size)
     var url = URL.createObjectURL(blob)
     console.log('[PUA] _downloadViaLink: blobURL created=' + url.substring(0, 50))
 
-    // Method 1: Create <a> element with download attribute
+    // Method 1: Create <a> element with download attribute (works in standard browsers)
     var a = document.createElement('a')
     a.href = url
     a.download = filename || 'download'
@@ -7685,41 +7705,84 @@
     document.body.removeChild(a)
     console.log('[PUA] _downloadViaLink: click triggered, a element removed')
 
-    // Method 2: Fallback for WebView where a.click() doesn't trigger download
-    // Try window.open with the blob URL after a short delay
+    // Method 2: WebView fallback - show modal with copy button after delay
+    // If a.click() didn't trigger download within 2 seconds, show manual fallback
     setTimeout(function() {
-      // Check if the download likely failed (in WebView, a.click() silently fails)
-      // Try opening in new window as fallback
-      try {
-        var newWin = window.open(url, '_blank')
-        if (!newWin) {
-          console.log('[PUA] _downloadViaLink: window.open blocked, trying location.href')
-          // Last resort: use data URI
-          var reader = new FileReader()
-          reader.onload = function() {
-            var dataUrl = reader.result
-            var link = document.createElement('a')
-            link.href = dataUrl
-            link.download = filename || 'download'
-            link.style.display = 'none'
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            console.log('[PUA] _downloadViaLink: data URI fallback triggered')
-          }
-          reader.readAsDataURL(blob)
-        } else {
-          console.log('[PUA] _downloadViaLink: window.open succeeded')
-        }
-      } catch(e) {
-        console.log('[PUA] _downloadViaLink: window.open failed: ' + e.message)
-      }
-    }, 500)
+      console.log('[PUA] _downloadViaLink: showing WebView fallback modal')
+      self._showExportFallbackModal(blob, filename)
+    }, 2000)
 
     setTimeout(function() {
       URL.revokeObjectURL(url)
       console.log('[PUA] _downloadViaLink: blobURL revoked')
     }, 30000)
+  }
+
+  P._showExportFallbackModal = function(blob, filename) {
+    var self = this
+    var contentEl = this._contentEl || document.querySelector('#pua-content')
+    if (!contentEl) return
+
+    // Read blob as text for display/copy
+    var reader = new FileReader()
+    reader.onload = function() {
+      var textContent = reader.result
+      var sizeKB = Math.round(textContent.length / 1024)
+
+      var overlay = document.createElement('div')
+      overlay.id = 'pua-export-fallback-overlay'
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99998;display:flex;align-items:center;justify-content:center'
+
+      var modal = document.createElement('div')
+      modal.style.cssText = 'background:var(--pua-bg);border-radius:12px;padding:20px;max-width:90vw;max-height:85vh;width:500px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--pua-border)'
+
+      modal.innerHTML = '<div style="font-size:14px;font-weight:bold;color:var(--pua-text)">' + this._escHtml(filename) + '</div>' +
+        '<div style="font-size:11px;color:var(--pua-text-dim)">\u6587\u4EF6\u5927\u5C0F: ' + sizeKB + ' KB | \u5728 WebView/APK \u73AF\u5883\u4E2D\u65E0\u6CD5\u76F4\u63A5\u4E0B\u8F7D\uFF0C\u8BF7\u590D\u5236\u5185\u5BB9\u624B\u52A8\u4FDD\u5B58</div>' +
+        '<textarea id="pua-export-fallback-text" readonly style="width:100%;height:300px;background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:6px;color:var(--pua-text);font-size:11px;font-family:monospace;padding:10px;resize:none;outline:none;box-sizing:border-box"></textarea>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button id="pua-export-fallback-copy" class="pua-btn pua-btn-sm pua-btn-gold">\u590D\u5236\u5168\u90E8\u5185\u5BB9</button>' +
+        '<button id="pua-export-fallback-close" class="pua-btn pua-btn-sm">\u5173\u95ED</button>' +
+        '</div>'
+
+      overlay.appendChild(modal)
+      contentEl.appendChild(overlay)
+
+      var textArea = overlay.querySelector('#pua-export-fallback-text')
+      if (textArea) textArea.value = textContent
+
+      var copyBtn = overlay.querySelector('#pua-export-fallback-copy')
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textContent).then(function() {
+              self._toast('\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F (' + sizeKB + ' KB)')
+            }).catch(function() {
+              // Fallback: select all and execCommand copy
+              textArea.select()
+              document.execCommand('copy')
+              self._toast('\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F')
+            })
+          } else {
+            textArea.select()
+            document.execCommand('copy')
+            self._toast('\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F')
+          }
+        })
+      }
+
+      var closeBtn = overlay.querySelector('#pua-export-fallback-close')
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+        })
+      }
+
+      // Close on clicking outside
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay)
+      })
+    }.bind(this)
+    reader.readAsText(blob)
   }
 
   P._escHtml = function(s) {
@@ -13603,7 +13666,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.35.0',
+    version: '0.36.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
