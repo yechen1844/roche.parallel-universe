@@ -7909,27 +7909,72 @@
         if (type === 'object' && val) {
           try { keys = Object.keys(val).join(',') } catch(e) { keys = '(cannot enumerate)' }
         }
-        caps.push('window.' + nativeKeys[i] + ': type=' + type + (keys ? ' keys=[' + keys + ']' : ''))
+        caps.push('window.' + nativeKeys[i] + ': type=' + type + (keys ? ' keys=[' + keys + ']' : ' keys=[]'))
         // Deep enumerate nativeBridge
         if (nativeKeys[i] === 'nativeBridge' && type === 'object' && val) {
+          // Method 1: Object.keys (enumerable only)
           try {
             var nbKeys = Object.keys(val)
-            for (var ni = 0; ni < nbKeys.length; ni++) {
-              var nbVal = val[nbKeys[ni]]
-              var nbType = typeof nbVal
-              caps.push('  nativeBridge.' + nbKeys[ni] + ': ' + nbType + (nbType === 'function' ? '()' : nbType === 'object' && nbVal ? ' keys=[' + Object.keys(nbVal).join(',') + ']' : nbType === 'string' ? '=' + nbVal.substring(0, 100) : ''))
-            }
-          } catch(nbErr) {
-            caps.push('  nativeBridge enumeration error: ' + nbErr.message)
-          }
-          // Try to get prototype methods
+            caps.push('  Object.keys(nativeBridge): [' + (nbKeys.length ? nbKeys.join(',') : 'empty') + ']')
+          } catch(e1) { caps.push('  Object.keys error: ' + e1.message) }
+          // Method 2: Object.getOwnPropertyNames (includes non-enumerable)
+          try {
+            var ownNames = Object.getOwnPropertyNames(val)
+            caps.push('  getOwnPropertyNames(nativeBridge): [' + (ownNames.length ? ownNames.join(',') : 'empty') + ']')
+          } catch(e2) { caps.push('  getOwnPropertyNames error: ' + e2.message) }
+          // Method 3: Prototype chain
           try {
             var proto = Object.getPrototypeOf(val)
+            caps.push('  prototype === Object.prototype: ' + (proto === Object.prototype))
             if (proto && proto !== Object.prototype) {
-              var protoKeys = Object.getOwnPropertyNames(proto)
-              caps.push('  nativeBridge prototype: [' + protoKeys.join(', ') + ']')
+              var protoNames = Object.getOwnPropertyNames(proto)
+              caps.push('  prototype ownNames: [' + protoNames.join(',') + ']')
             }
-          } catch(protoErr) {}
+            var proto2 = proto ? Object.getPrototypeOf(proto) : null
+            if (proto2 && proto2 !== Object.prototype) {
+              caps.push('  proto2 ownNames: [' + Object.getOwnPropertyNames(proto2).join(',') + ']')
+            }
+          } catch(e3) { caps.push('  prototype error: ' + e3.message) }
+          // Method 4: Direct typeof check for common bridge methods (Android addJavascriptInterface methods are non-enumerable)
+          var bridgeMethods = ['saveFile', 'exportFile', 'downloadFile', 'writeFile', 'postMessage', 'send',
+            'save', 'export', 'download', 'write', 'open', 'share', 'createFile', 'writeToFile',
+            'saveToDownloads', 'saveToDocuments', 'saveToStorage', 'storeFile', 'putFile',
+            'saveData', 'exportData', 'downloadData', 'writeData', 'storeData',
+            'saveJSON', 'exportJSON', 'saveText', 'exportText',
+            'pickFolder', 'getDirectory', 'getDownloadsDir', 'getDocumentsDir',
+            'requestPermission', 'checkPermission', 'hasPermission',
+            'showSaveDialog', 'showFileChooser', 'openFileChooser',
+            'onSave', 'onExport', 'onDownload',
+            'call', 'invoke', 'execute', 'run', 'apply',
+            'toString', 'valueOf', 'constructor', 'hasOwnProperty']
+          var foundMethods = []
+          for (var mi = 0; mi < bridgeMethods.length; mi++) {
+            try {
+              var mType = typeof val[bridgeMethods[mi]]
+              if (mType === 'function') {
+                foundMethods.push(bridgeMethods[mi] + '()')
+              }
+            } catch(mErr) {}
+          }
+          caps.push('  Direct typeof probe found: [' + (foundMethods.length ? foundMethods.join(', ') : 'none') + ']')
+          // Method 5: for-in loop (catches some non-enumerable in certain WebView)
+          var forInKeys = []
+          try {
+            for (var fk in val) { forInKeys.push(fk) }
+          } catch(e4) {}
+          caps.push('  for-in keys: [' + (forInKeys.length ? forInKeys.join(',') : 'empty') + ']')
+          // Method 6: JSON.stringify
+          try {
+            var jsonStr = JSON.stringify(val)
+            caps.push('  JSON.stringify: ' + (jsonStr ? jsonStr.substring(0, 200) : 'null'))
+          } catch(e5) { caps.push('  JSON.stringify error: ' + e5.message) }
+          // Method 7: toString / valueOf
+          try { caps.push('  toString: ' + val.toString().substring(0, 200)) } catch(e6) { caps.push('  toString error: ' + e6.message) }
+          // Method 8: Check if it's a Proxy
+          try {
+            var isProxy = val.__proto__ === null && Object.keys(val).length === 0
+            caps.push('  might be Proxy: ' + isProxy)
+          } catch(e7) {}
         }
       }
     }
@@ -13855,7 +13900,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.38.0',
+    version: '0.39.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
