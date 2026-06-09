@@ -7661,21 +7661,61 @@
     console.log('[PUA] _downloadFile: START ts=' + timestamp + ' filename=' + filename + ' mimeType=' + mimeType + ' dataType=' + typeof data + ' dataSize=' + (data instanceof Blob ? data.size : (typeof data === 'string' ? data.length : '?')))
     var blob = (data instanceof Blob) ? data : new Blob([data], { type: mimeType || 'application/octet-stream' })
     console.log('[PUA] _downloadFile: blob created, size=' + blob.size)
-    // Try Web Share API first (works on mobile/APK)
+
+    // Environment detection
+    console.log('[PUA] _downloadFile: ENV showSaveFilePicker=' + !!window.showSaveFilePicker + ' navigator.share=' + !!navigator.share + ' navigator.canShare=' + !!navigator.canShare + ' userAgent=' + navigator.userAgent.substring(0, 120))
+
+    // Priority 1: File System Access API (showSaveFilePicker) - works in modern browsers and some Android WebViews
+    if (window.showSaveFilePicker) {
+      console.log('[PUA] _downloadFile: attempting showSaveFilePicker')
+      window.showSaveFilePicker({
+        suggestedName: filename || 'download',
+        types: [{
+          description: mimeType === 'application/json' ? 'JSON File' : 'Text File',
+          accept: (mimeType === 'application/json' ? { 'application/json': ['.json'] } : { 'text/plain': ['.txt', '.json'] })
+        }]
+      }).then(function(handle) {
+        return handle.createWritable().then(function(writable) {
+          return writable.write(blob).then(function() {
+            return writable.close()
+          })
+        })
+      }).then(function() {
+        console.log('[PUA] _downloadFile: showSaveFilePicker SUCCESS')
+        self._toast('已保存到文件: ' + filename)
+      }).catch(function(err) {
+        console.log('[PUA] _downloadFile: showSaveFilePicker FAILED err=' + err.message + ' name=' + err.name)
+        if (err.name === 'AbortError') {
+          console.log('[PUA] _downloadFile: user cancelled save dialog')
+          return
+        }
+        // Fall through to next method
+        self._downloadShareOrLink(blob, filename)
+      })
+      return
+    }
+
+    // Fall through to share/link methods
+    self._downloadShareOrLink(blob, filename)
+  }
+
+  P._downloadShareOrLink = function(blob, filename) {
+    var self = this
+    // Priority 2: Web Share API (works on some mobile/APK)
     var hasShare = !!(navigator.share && navigator.canShare)
     var canShareFiles = false
-    console.log('[PUA] _downloadFile: navigator.share=' + !!navigator.share + ' navigator.canShare=' + !!navigator.canShare)
+    console.log('[PUA] _downloadShareOrLink: navigator.share=' + !!navigator.share + ' navigator.canShare=' + !!navigator.canShare)
     if (navigator.share && navigator.canShare) {
-      var file = new File([blob], filename || 'download', { type: mimeType || 'application/octet-stream' })
+      var file = new File([blob], filename || 'download', { type: blob.type || 'application/octet-stream' })
       var shareData = { files: [file] }
       canShareFiles = navigator.canShare(shareData)
-      console.log('[PUA] _downloadFile: canShareFiles=' + canShareFiles)
+      console.log('[PUA] _downloadShareOrLink: canShareFiles=' + canShareFiles)
       if (canShareFiles) {
-        console.log('[PUA] _downloadFile: attempting navigator.share')
+        console.log('[PUA] _downloadShareOrLink: attempting navigator.share')
         navigator.share(shareData).then(function() {
-          console.log('[PUA] _downloadFile: navigator.share SUCCESS')
+          console.log('[PUA] _downloadShareOrLink: navigator.share SUCCESS')
         }).catch(function(err) {
-          console.log('[PUA] _downloadFile: navigator.share FAILED err=' + err.message + ' name=' + err.name)
+          console.log('[PUA] _downloadShareOrLink: navigator.share FAILED err=' + err.message + ' name=' + err.name)
           if (err.name !== 'AbortError') {
             self._downloadViaLink(blob, filename)
           }
@@ -7683,8 +7723,8 @@
         return
       }
     }
-    // Fallback: download link
-    console.log('[PUA] _downloadFile: using download link fallback')
+    // Priority 3: download link
+    console.log('[PUA] _downloadShareOrLink: using download link fallback')
     this._downloadViaLink(blob, filename)
   }
 
@@ -7783,6 +7823,45 @@
       })
     }.bind(this)
     reader.readAsText(blob)
+  }
+
+  P._detectExportCapabilities = function() {
+    var caps = []
+    caps.push('showSaveFilePicker: ' + !!window.showSaveFilePicker)
+    caps.push('navigator.share: ' + !!navigator.share)
+    caps.push('navigator.canShare: ' + !!navigator.canShare)
+    caps.push('navigator.clipboard: ' + !!(navigator.clipboard && navigator.clipboard.writeText))
+    caps.push('document.execCommand copy: ' + !!document.execCommand)
+    caps.push('userAgent: ' + navigator.userAgent.substring(0, 200))
+    // Check for native bridges
+    var nativeKeys = ['Android', 'RocheNative', 'RocheBridge', 'WebView', 'nativeBridge', 'JSBridge', 'webkit']
+    for (var i = 0; i < nativeKeys.length; i++) {
+      if (window[nativeKeys[i]]) {
+        var val = window[nativeKeys[i]]
+        var type = typeof val
+        var keys = ''
+        if (type === 'object' && val) {
+          try { keys = Object.keys(val).join(',') } catch(e) { keys = '(cannot enumerate)' }
+        }
+        caps.push('window.' + nativeKeys[i] + ': type=' + type + (keys ? ' keys=[' + keys + ']' : ''))
+      }
+    }
+    // Check roche object for any file-related methods
+    if (this.roche) {
+      var rocheKeys = Object.keys(this.roche)
+      caps.push('roche keys: [' + rocheKeys.join(', ') + ']')
+      for (var r = 0; r < rocheKeys.length; r++) {
+        var sub = this.roche[rocheKeys[r]]
+        if (sub && typeof sub === 'object') {
+          var subKeys = Object.keys(sub)
+          caps.push('roche.' + rocheKeys[r] + ' keys: [' + subKeys.join(', ') + ']')
+        }
+      }
+    }
+    var report = caps.join('\n')
+    console.log('[PUA] Export capabilities:\n' + report)
+    this._toast('导出能力已检测，请查看控制台日志')
+    return report
   }
 
   P._escHtml = function(s) {
@@ -12323,6 +12402,16 @@
     h += '<button class="pua-btn pua-btn-sm" id="set-fab-reset">\u91CD\u7F6E\u4F4D\u7F6E</button></div>'
     h += '</div>'
 
+    // 导出诊断
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u2726 \u5BFC\u51FA\u8BCA\u65AD</div>'
+    h += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:8px">\u68C0\u6D4B\u5F53\u524D\u73AF\u5883\u652F\u6301\u7684\u5BFC\u51FA\u65B9\u5F0F\uFF0C\u5E2E\u52A9\u8BCA\u65AD APK/Web \u5BFC\u51FA\u95EE\u9898</div>'
+    h += '<div style="display:flex;gap:6px">'
+    h += '<button class="pua-btn pua-btn-sm" id="set-detect-export">\u68C0\u6D4B\u5BFC\u51FA\u80FD\u529B</button>'
+    h += '</div>'
+    h += '<div id="set-export-report" style="font-size:9px;color:var(--pua-text-dim);margin-top:8px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;display:none;background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:6px;padding:8px"></div>'
+    h += '</div>'
+
     // \u4FDD\u5B58\u6309\u94AE
     h += '<div style="text-align:right;margin-top:6px">'
     h += '<button class="pua-btn pua-btn-gold" id="set-save-btn">\u4FDD\u5B58\u8BBE\u7F6E</button>'
@@ -12663,6 +12752,19 @@
         self._fabPos = null
         try { localStorage.removeItem('pua_fab_pos') } catch(e) {}
         self._toast('\u60AC\u6D6E\u7403\u4F4D\u7F6E\u5DF2\u91CD\u7F6E\uFF0C\u5237\u65B0\u540E\u751F\u6548')
+      })
+    }
+
+    // 导出诊断按钮
+    var detectExportBtn = contentEl.querySelector('#set-detect-export')
+    if (detectExportBtn) {
+      detectExportBtn.addEventListener('click', function() {
+        var report = self._detectExportCapabilities()
+        var reportEl = contentEl.querySelector('#set-export-report')
+        if (reportEl) {
+          reportEl.style.display = 'block'
+          reportEl.textContent = report
+        }
       })
     }
   }
@@ -13666,7 +13768,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.36.0',
+    version: '0.37.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
