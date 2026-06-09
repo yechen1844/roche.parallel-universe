@@ -7665,7 +7665,77 @@
     // Environment detection
     console.log('[PUA] _downloadFile: ENV showSaveFilePicker=' + !!window.showSaveFilePicker + ' navigator.share=' + !!navigator.share + ' navigator.canShare=' + !!navigator.canShare + ' userAgent=' + navigator.userAgent.substring(0, 120))
 
-    // Priority 1: File System Access API (showSaveFilePicker) - works in modern browsers and some Android WebViews
+    // Priority 1: nativeBridge (Roche APK native file export)
+    if (window.nativeBridge && typeof window.nativeBridge === 'object') {
+      console.log('[PUA] _downloadFile: attempting nativeBridge, keys=[' + Object.keys(window.nativeBridge).join(',') + ']')
+      // Try common native bridge methods for file export
+      var nb = window.nativeBridge
+      if (typeof nb.saveFile === 'function') {
+        console.log('[PUA] _downloadFile: calling nativeBridge.saveFile')
+        try {
+          var nbResult = nb.saveFile(filename || 'download', blob, mimeType || 'application/octet-stream')
+          console.log('[PUA] _downloadFile: nativeBridge.saveFile result=' + JSON.stringify(nbResult))
+          self._toast('已通过 nativeBridge 保存: ' + filename)
+          return
+        } catch(nbErr) {
+          console.log('[PUA] _downloadFile: nativeBridge.saveFile error=' + nbErr.message)
+        }
+      }
+      if (typeof nb.exportFile === 'function') {
+        console.log('[PUA] _downloadFile: calling nativeBridge.exportFile')
+        try {
+          var nbResult2 = nb.exportFile(filename || 'download', blob, mimeType || 'application/octet-stream')
+          console.log('[PUA] _downloadFile: nativeBridge.exportFile result=' + JSON.stringify(nbResult2))
+          self._toast('已通过 nativeBridge 导出: ' + filename)
+          return
+        } catch(nbErr2) {
+          console.log('[PUA] _downloadFile: nativeBridge.exportFile error=' + nbErr2.message)
+        }
+      }
+      if (typeof nb.downloadFile === 'function') {
+        console.log('[PUA] _downloadFile: calling nativeBridge.downloadFile')
+        try {
+          var nbResult3 = nb.downloadFile(filename || 'download', blob, mimeType || 'application/octet-stream')
+          console.log('[PUA] _downloadFile: nativeBridge.downloadFile result=' + JSON.stringify(nbResult3))
+          self._toast('已通过 nativeBridge 下载: ' + filename)
+          return
+        } catch(nbErr3) {
+          console.log('[PUA] _downloadFile: nativeBridge.downloadFile error=' + nbErr3.message)
+        }
+      }
+      if (typeof nb.writeFile === 'function') {
+        console.log('[PUA] _downloadFile: calling nativeBridge.writeFile')
+        try {
+          var nbResult4 = nb.writeFile(filename || 'download', data, mimeType || 'application/octet-stream')
+          console.log('[PUA] _downloadFile: nativeBridge.writeFile result=' + JSON.stringify(nbResult4))
+          self._toast('已通过 nativeBridge 写入: ' + filename)
+          return
+        } catch(nbErr4) {
+          console.log('[PUA] _downloadFile: nativeBridge.writeFile error=' + nbErr4.message)
+        }
+      }
+      // Try sending base64 via postMessage or similar
+      if (typeof nb.postMessage === 'function') {
+        console.log('[PUA] _downloadFile: attempting nativeBridge.postMessage for file export')
+        try {
+          var reader = new FileReader()
+          reader.onload = function() {
+            var base64 = reader.result.split(',')[1]
+            var msg = JSON.stringify({ type: 'saveFile', filename: filename || 'download', data: base64, mimeType: mimeType || 'application/octet-stream' })
+            nb.postMessage(msg)
+            console.log('[PUA] _downloadFile: nativeBridge.postMessage sent')
+            self._toast('已通过 nativeBridge 发送: ' + filename)
+          }
+          reader.readAsDataURL(blob)
+          return
+        } catch(nbErr5) {
+          console.log('[PUA] _downloadFile: nativeBridge.postMessage error=' + nbErr5.message)
+        }
+      }
+      console.log('[PUA] _downloadFile: nativeBridge exists but no known file export method found')
+    }
+
+    // Priority 2: File System Access API (showSaveFilePicker) - works in modern browsers and some Android WebViews
     if (window.showSaveFilePicker) {
       console.log('[PUA] _downloadFile: attempting showSaveFilePicker')
       window.showSaveFilePicker({
@@ -7685,11 +7755,7 @@
         self._toast('已保存到文件: ' + filename)
       }).catch(function(err) {
         console.log('[PUA] _downloadFile: showSaveFilePicker FAILED err=' + err.message + ' name=' + err.name)
-        if (err.name === 'AbortError') {
-          console.log('[PUA] _downloadFile: user cancelled save dialog')
-          return
-        }
-        // Fall through to next method
+        // Fall through to next method regardless (AbortError might be WebView blocking the dialog)
         self._downloadShareOrLink(blob, filename)
       })
       return
@@ -7844,6 +7910,27 @@
           try { keys = Object.keys(val).join(',') } catch(e) { keys = '(cannot enumerate)' }
         }
         caps.push('window.' + nativeKeys[i] + ': type=' + type + (keys ? ' keys=[' + keys + ']' : ''))
+        // Deep enumerate nativeBridge
+        if (nativeKeys[i] === 'nativeBridge' && type === 'object' && val) {
+          try {
+            var nbKeys = Object.keys(val)
+            for (var ni = 0; ni < nbKeys.length; ni++) {
+              var nbVal = val[nbKeys[ni]]
+              var nbType = typeof nbVal
+              caps.push('  nativeBridge.' + nbKeys[ni] + ': ' + nbType + (nbType === 'function' ? '()' : nbType === 'object' && nbVal ? ' keys=[' + Object.keys(nbVal).join(',') + ']' : nbType === 'string' ? '=' + nbVal.substring(0, 100) : ''))
+            }
+          } catch(nbErr) {
+            caps.push('  nativeBridge enumeration error: ' + nbErr.message)
+          }
+          // Try to get prototype methods
+          try {
+            var proto = Object.getPrototypeOf(val)
+            if (proto && proto !== Object.prototype) {
+              var protoKeys = Object.getOwnPropertyNames(proto)
+              caps.push('  nativeBridge prototype: [' + protoKeys.join(', ') + ']')
+            }
+          } catch(protoErr) {}
+        }
       }
     }
     // Check roche object for any file-related methods
@@ -13768,7 +13855,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.37.0',
+    version: '0.38.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
