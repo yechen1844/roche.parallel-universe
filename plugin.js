@@ -393,6 +393,10 @@
     '.asm-card-role-assistant { background:rgba(239,106,138,0.12); color:#ef6a8a; }',
     '.asm-card-meta { font-size:10px; color:var(--pua-text-dim); }',
     '.asm-card-body { font-size:10px; color:var(--pua-text-sub); line-height:1.4; }',
+    '.asm-disabled .asm-card { opacity:0.4; border-left-style:dashed; }',
+    '.asm-toggle-btn { cursor:pointer; font-size:14px; margin-left:auto; flex-shrink:0; }',
+    '.asm-toggle-btn.on { color:#4ec9a0; }',
+    '.asm-toggle-btn:not(.on) { color:var(--pua-text-dim); }',
     '.asm-type-preset .asm-dot, .asm-type-preset .asm-line { background:#5b8def; }',
     '.asm-type-preset .asm-card { border-left-color:#5b8def; }',
     '.asm-type-char .asm-dot, .asm-type-char .asm-line { background:#a76aef; }',
@@ -854,6 +858,9 @@
     this.asmOrder = []
     this._asmOrderLoaded = false
     this.asmLoading = false
+    // 顺序预设
+    this.asmOrderPresets = []
+    this._asmOrderPresetsLoaded = false
     // 助手数据
     this._assistantData = null
     this._assistantSending = false
@@ -918,6 +925,7 @@
     this._loadPromptPresets()
     this._loadAsmConfig()
     this._loadAsmOrder()
+    this._loadAsmOrderPresets()
     this._loadSettings()
     this._loadAssistantData()
 
@@ -5525,23 +5533,111 @@
     })
   }
 
+  /* ── 顺序预设管理 ── */
+  P._loadAsmOrderPresets = function() {
+    var self = this
+    if (!this.roche || !this.roche.storage) {
+      this._asmOrderPresetsLoaded = true
+      return
+    }
+    this.roche.storage.get('pua_asm_order_presets').then(function(data) {
+      if (data && data.presets && data.presets.length) {
+        self.asmOrderPresets = data.presets
+      }
+      self._asmOrderPresetsLoaded = true
+    }).catch(function() {
+      self._asmOrderPresetsLoaded = true
+    })
+  }
+
+  P._saveAsmOrderPresets = function() {
+    if (!this.roche || !this.roche.storage) return
+    this.roche.storage.set('pua_asm_order_presets', { presets: this.asmOrderPresets }).catch(function(e) {
+      console.error('[PUA] save asm order presets failed', e)
+    })
+  }
+
+  P._saveAsmOrderAsPreset = function(name) {
+    var preset = {
+      id: 'aop_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      name: name || '未命名预设',
+      order: this.asmOrder.slice(),
+      isDefault: this.asmOrderPresets.length === 0,
+      createdAt: new Date().toISOString()
+    }
+    this.asmOrderPresets.push(preset)
+    this._saveAsmOrderPresets()
+    return preset
+  }
+
+  P._loadAsmOrderFromPreset = function(presetId) {
+    for (var i = 0; i < this.asmOrderPresets.length; i++) {
+      if (this.asmOrderPresets[i].id === presetId) {
+        this.asmOrder = this.asmOrderPresets[i].order.slice()
+        this._saveAsmOrder()
+        return true
+      }
+    }
+    return false
+  }
+
+  P._renameAsmOrderPreset = function(presetId, newName) {
+    for (var i = 0; i < this.asmOrderPresets.length; i++) {
+      if (this.asmOrderPresets[i].id === presetId) {
+        this.asmOrderPresets[i].name = newName
+        this._saveAsmOrderPresets()
+        return true
+      }
+    }
+    return false
+  }
+
+  P._deleteAsmOrderPreset = function(presetId) {
+    var wasDefault = false
+    for (var i = 0; i < this.asmOrderPresets.length; i++) {
+      if (this.asmOrderPresets[i].id === presetId) {
+        wasDefault = this.asmOrderPresets[i].isDefault
+        this.asmOrderPresets.splice(i, 1)
+        break
+      }
+    }
+    if (wasDefault && this.asmOrderPresets.length > 0) {
+      this.asmOrderPresets[0].isDefault = true
+    }
+    this._saveAsmOrderPresets()
+  }
+
+  P._setDefaultAsmOrderPreset = function(presetId) {
+    for (var i = 0; i < this.asmOrderPresets.length; i++) {
+      this.asmOrderPresets[i].isDefault = (this.asmOrderPresets[i].id === presetId)
+    }
+    this._saveAsmOrderPresets()
+  }
+
+  P._getDefaultAsmOrderPresetId = function() {
+    for (var i = 0; i < this.asmOrderPresets.length; i++) {
+      if (this.asmOrderPresets[i].isDefault) return this.asmOrderPresets[i].id
+    }
+    return ''
+  }
+
   /* ── 绑定导出 ── */
   P._showBundleExportModal = function() {
     var self = this
     var modal = this._modalOverlay
     if (!modal) return
 
-    var body = '<div style="font-size:11px;color:var(--pua-text-sub);margin-bottom:12px">\u9009\u62E9\u8981\u5BFC\u51FA\u7684\u5185\u5BB9\uFF0C\u5C06\u6253\u5305\u4E3A\u4E00\u4E2A JSON \u6587\u4EF6</div>'
+    var body = '<div style="font-size:11px;color:var(--pua-text-sub);margin-bottom:12px">\u4EE5\u4E0B\u4E09\u7C7B\u9884\u8BBE\u6570\u636E\u5C06\u6253\u5305\u5BFC\u51FA\u4E3A\u4E00\u4E2A JSON \u6587\u4EF6</div>'
     body += '<div style="display:flex;flex-direction:column;gap:10px">'
-    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
-    body += '<input type="checkbox" id="bundle-export-presets" checked>'
-    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u9884\u8BBE\u6761\u76EE</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.presets.length + ' \u9879</div></div></label>'
-    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
-    body += '<input type="checkbox" id="bundle-export-regexes" checked>'
-    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u6B63\u5219\u89C4\u5219</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.regexes.length + ' \u9879</div></div></label>'
-    body += '<label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;cursor:pointer">'
-    body += '<input type="checkbox" id="bundle-export-asmorder" checked>'
-    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u7EC4\u88C5\u987A\u5E8F</div><div style="font-size:9px;color:var(--pua-text-dim)">' + (this.asmOrder ? this.asmOrder.length : 0) + ' \u9879</div></div></label>'
+    body += '<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;background:var(--pua-card)">'
+    body += '<input type="checkbox" id="bundle-export-presets" checked disabled>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u9884\u8BBE\u6761\u76EE</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.presets.length + ' \u9879</div></div></div>'
+    body += '<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;background:var(--pua-card)">'
+    body += '<input type="checkbox" id="bundle-export-regexes" checked disabled>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u6B63\u5219\u89C4\u5219</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.regexes.length + ' \u9879</div></div></div>'
+    body += '<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--pua-border);border-radius:8px;background:var(--pua-card)">'
+    body += '<input type="checkbox" id="bundle-export-asmorderpresets" checked disabled>'
+    body += '<div><div style="font-size:11px;font-weight:600;color:var(--pua-accent-text)">\u2714 \u987A\u5E8F\u9884\u8BBE</div><div style="font-size:9px;color:var(--pua-text-dim)">' + this.asmOrderPresets.length + ' \u9879\uFF08\u542B\u7EC4\u88C5\u987A\u5E8F\uFF09</div></div></div>'
     body += '</div>'
 
     var modalBody = modal.querySelector('.pua-modal-body')
@@ -5569,18 +5665,13 @@
   }
 
   P._doBundleExport = function() {
-    var modal = this._modalOverlay
-    if (!modal) return
-    var expPresets = modal.querySelector('#bundle-export-presets')
-    var expRegexes = modal.querySelector('#bundle-export-regexes')
-    var expAsmOrder = modal.querySelector('#bundle-export-asmorder')
-
     var bundle = {
-      version: 1,
+      version: 2,
       type: 'pua_asm_bundle',
-      presets: (expPresets && expPresets.checked) ? this.presets.slice() : [],
-      regexes: (expRegexes && expRegexes.checked) ? this.regexes.slice() : [],
-      asmOrder: (expAsmOrder && expAsmOrder.checked) ? (this.asmOrder || []).slice() : [],
+      presets: this.presets.slice(),
+      regexes: this.regexes.slice(),
+      asmOrderPresets: this.asmOrderPresets.slice(),
+      asmOrder: (this.asmOrder || []).slice(),
       exportDate: new Date().toISOString()
     }
 
@@ -5650,11 +5741,12 @@
               ph += '<div style="font-size:11px;font-weight:600;color:var(--pua-accent-text);margin-bottom:8px">\u6587\u4EF6\u9884\u89C8</div>'
               ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:4px">\u9884\u8BBE: ' + (data.presets ? data.presets.length : 0) + ' \u9879</div>'
               ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:4px">\u6B63\u5219: ' + (data.regexes ? data.regexes.length : 0) + ' \u9879</div>'
+              ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:4px">\u987A\u5E8F\u9884\u8BBE: ' + (data.asmOrderPresets ? data.asmOrderPresets.length : 0) + ' \u9879</div>'
               ph += '<div style="font-size:10px;color:var(--pua-text-sub);margin-bottom:10px">\u7EC4\u88C5\u987A\u5E8F: ' + (data.asmOrder && data.asmOrder.length > 0 ? data.asmOrder.length + ' \u9879' : '\u65E0') + '</div>'
               ph += '<div style="display:flex;flex-direction:column;gap:8px">'
-              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-presets" checked> \u5BFC\u5165\u9884\u8BBE (' + (data.presets ? data.presets.length : 0) + ')</label>'
-              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-regexes" checked> \u5BFC\u5165\u6B63\u5219 (' + (data.regexes ? data.regexes.length : 0) + ')</label>'
-              ph += '<label style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub);cursor:pointer"><input type="checkbox" id="bundle-import-asmorder" checked> \u5BFC\u5165\u7EC4\u88C5\u987A\u5E8F</label>'
+              ph += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub)"><input type="checkbox" id="bundle-import-presets" checked disabled> \u5BFC\u5165\u9884\u8BBE (' + (data.presets ? data.presets.length : 0) + ')</div>'
+              ph += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub)"><input type="checkbox" id="bundle-import-regexes" checked disabled> \u5BFC\u5165\u6B63\u5219 (' + (data.regexes ? data.regexes.length : 0) + ')</div>'
+              ph += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--pua-text-sub)"><input type="checkbox" id="bundle-import-asmorderpresets" checked disabled> \u5BFC\u5165\u987A\u5E8F\u9884\u8BBE (' + (data.asmOrderPresets ? data.asmOrderPresets.length : 0) + ')</div>'
               ph += '</div></div>'
               preview.innerHTML = ph
               preview.style.display = 'block'
@@ -5673,23 +5765,21 @@
   }
 
   P._doBundleImport = function() {
-    var modal = this._modalOverlay
-    if (!modal) return
     var data = this._parsedBundleData
     if (!data) { this._toast('\u6CA1\u6709\u53EF\u5BFC\u5165\u7684\u6570\u636E'); return }
 
-    var impPresets = modal.querySelector('#bundle-import-presets')
-    var impRegexes = modal.querySelector('#bundle-import-regexes')
-    var impAsmOrder = modal.querySelector('#bundle-import-asmorder')
-
-    var presetCount = 0, regexCount = 0, asmOrderImported = false
+    var presetCount = 0, regexCount = 0, asmOrderPresetCount = 0
     var count = 0
+    var idMap = {} // old id -> new id mapping for asmOrder references
 
-    if (impPresets && impPresets.checked && data.presets && data.presets.length) {
+    // Import presets
+    if (data.presets && data.presets.length) {
       for (var pi = 0; pi < data.presets.length; pi++) {
         var src = data.presets[pi]
+        var newId = 'p' + Date.now() + '_' + count
+        if (src.id) idMap[src.id] = newId
         this.presets.push({
-          id: 'p' + Date.now() + '_' + count,
+          id: newId,
           title: src.title || '\u672A\u547D\u540D',
           role: src.role || 'system',
           on: src.on !== undefined ? src.on : true,
@@ -5707,11 +5797,14 @@
       this._savePresets()
     }
 
-    if (impRegexes && impRegexes.checked && data.regexes && data.regexes.length) {
+    // Import regexes
+    if (data.regexes && data.regexes.length) {
       for (var ri = 0; ri < data.regexes.length; ri++) {
         var src2 = data.regexes[ri]
+        var newRId = 'r' + Date.now() + '_' + count
+        if (src2.id) idMap[src2.id] = newRId
         this.regexes.push({
-          id: 'r' + Date.now() + '_' + count,
+          id: newRId,
           name: src2.name || '\u672A\u547D\u540D',
           regex: src2.regex || '',
           html: src2.html || '',
@@ -5726,10 +5819,47 @@
       this._saveRegexes()
     }
 
-    if (impAsmOrder && impAsmOrder.checked && data.asmOrder && data.asmOrder.length) {
-      this.asmOrder = data.asmOrder.slice()
+    // Import asmOrder with id mapping
+    if (data.asmOrder && data.asmOrder.length) {
+      var mappedOrder = []
+      for (var oi = 0; oi < data.asmOrder.length; oi++) {
+        var item = data.asmOrder[oi]
+        var newItem = { type: item.type, id: item.id }
+        if (item.type === 'preset' && idMap[item.id]) {
+          newItem.id = idMap[item.id]
+        }
+        mappedOrder.push(newItem)
+      }
+      this.asmOrder = mappedOrder
       this._saveAsmOrder()
-      asmOrderImported = true
+    }
+
+    // Import asmOrderPresets with id mapping
+    if (data.asmOrderPresets && data.asmOrderPresets.length) {
+      for (var api = 0; api < data.asmOrderPresets.length; api++) {
+        var srcPreset = data.asmOrderPresets[api]
+        var mappedPresetOrder = []
+        if (srcPreset.order) {
+          for (var mi = 0; mi < srcPreset.order.length; mi++) {
+            var mItem = srcPreset.order[mi]
+            var newMItem = { type: mItem.type, id: mItem.id }
+            if (mItem.type === 'preset' && idMap[mItem.id]) {
+              newMItem.id = idMap[mItem.id]
+            }
+            mappedPresetOrder.push(newMItem)
+          }
+        }
+        this.asmOrderPresets.push({
+          id: 'aop_' + Date.now() + '_' + count,
+          name: srcPreset.name || '\u5BFC\u5165\u9884\u8BBE',
+          order: mappedPresetOrder,
+          isDefault: false,
+          createdAt: new Date().toISOString()
+        })
+        count++
+        asmOrderPresetCount++
+      }
+      this._saveAsmOrderPresets()
     }
 
     this._parsedBundleData = null
@@ -5738,7 +5868,7 @@
     var summary = ''
     if (presetCount > 0) summary += '\u9884\u8BBE ' + presetCount + ' \u9879'
     if (regexCount > 0) summary += (summary ? ', ' : '') + '\u6B63\u5219 ' + regexCount + ' \u9879'
-    if (asmOrderImported) summary += (summary ? ', ' : '') + '\u7EC4\u88C5\u987A\u5E8F'
+    if (asmOrderPresetCount > 0) summary += (summary ? ', ' : '') + '\u987A\u5E8F\u9884\u8BBE ' + asmOrderPresetCount + ' \u9879'
     this._toast('\u7ED1\u5B9A\u5BFC\u5165\u5B8C\u6210: ' + (summary || '\u65E0\u5185\u5BB9'))
     this._render()
   }
@@ -5934,12 +6064,34 @@
               if (data.core) {
                 if (!self.asmData.longTerm.core) {
                   self.asmData.longTerm.core = data.core
+                } else {
+                  // Merge core memory text instead of discarding
+                  var coreText = data.core.summary || data.core.text || ''
+                  if (coreText) {
+                    var existingText = self.asmData.longTerm.core.summary || self.asmData.longTerm.core.text || ''
+                    if (existingText.indexOf(coreText) === -1) {
+                      if (self.asmData.longTerm.core.summary) {
+                        self.asmData.longTerm.core.summary += '\n' + coreText
+                      } else if (self.asmData.longTerm.core.text) {
+                        self.asmData.longTerm.core.text += '\n' + coreText
+                      }
+                    }
+                  }
                 }
               }
-              // 合并事实记忆
+              // 合并事实记忆（去重）
               if (data.facts && data.facts.length > 0) {
+                var existingTexts = {}
+                for (var efi = 0; efi < self.asmData.longTerm.facts.length; efi++) {
+                  var efText = self.asmData.longTerm.facts[efi].text || self.asmData.longTerm.facts[efi].summary || ''
+                  if (efText) existingTexts[efText] = true
+                }
                 for (var fi = 0; fi < data.facts.length; fi++) {
-                  self.asmData.longTerm.facts.push(data.facts[fi])
+                  var fText = data.facts[fi].summaryText || data.facts[fi].action || data.facts[fi].text || ''
+                  if (fText && !existingTexts[fText]) {
+                    self.asmData.longTerm.facts.push(data.facts[fi])
+                    existingTexts[fText] = true
+                  }
                 }
               }
             }).catch(function() {})
@@ -6062,6 +6214,26 @@
     // === Right: Config panel ===
     h += '<div class="asm-config">'
 
+    // Config section: Order presets
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u987A\u5E8F\u9884\u8BBE</div>'
+    h += '<div style="display:flex;gap:6px;margin-bottom:6px">'
+    h += '<select class="pua-field-input" id="asm-order-preset-select" style="flex:1">'
+    h += '<option value="">-- \u9009\u62E9\u9884\u8BBE --</option>'
+    for (var opi = 0; opi < this.asmOrderPresets.length; opi++) {
+      var op = this.asmOrderPresets[opi]
+      var opSel = op.isDefault ? ' selected' : ''
+      h += '<option value="' + op.id + '"' + opSel + '>' + this._escHtml(op.name) + (op.isDefault ? ' \u2605' : '') + '</option>'
+    }
+    h += '</select></div>'
+    h += '<div style="display:flex;gap:4px;flex-wrap:wrap">'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-order-preset-save" style="font-size:9px">\u4FDD\u5B58\u5F53\u524D</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-order-preset-load" style="font-size:9px">\u52A0\u8F7D\u9884\u8BBE</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-order-preset-rename" style="font-size:9px">\u91CD\u547D\u540D</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-order-preset-default" style="font-size:9px">\u8BBE\u4E3A\u9ED8\u8BA4</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-order-preset-delete" style="font-size:9px">\u5220\u9664</button>'
+    h += '</div></div>'
+
     // Config section: Depth
     h += '<div class="asm-config-section">'
     h += '<div class="asm-config-title">\u804A\u5929\u8BB0\u5F55\u622A\u53D6</div>'
@@ -6146,6 +6318,16 @@
     }
     h += '</div>'
 
+    // Config section: Batch toggle
+    h += '<div class="asm-config-section">'
+    h += '<div class="asm-config-title">\u6279\u91CF\u64CD\u4F5C</div>'
+    h += '<div style="display:flex;gap:4px;flex-wrap:wrap">'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-enable-all-presets" style="font-size:9px">\u5168\u90E8\u542F\u7528\u9884\u8BBE</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-disable-all-presets" style="font-size:9px">\u5168\u90E8\u7981\u7528\u9884\u8BBE</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-enable-all-regexes" style="font-size:9px">\u5168\u90E8\u542F\u7528\u6B63\u5219</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="asm-disable-all-regexes" style="font-size:9px">\u5168\u90E8\u7981\u7528\u6B63\u5219</button>'
+    h += '</div></div>'
+
     h += '</div>' // end asm-config
     h += '</div>' // end asm-layout
 
@@ -6168,6 +6350,135 @@
     // Bind config input events
     var depthInput = contentEl.querySelector('#asm-depth')
     if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
+
+    // Bind order preset buttons
+    var opSelect = contentEl.querySelector('#asm-order-preset-select')
+    var opSaveBtn = contentEl.querySelector('#asm-order-preset-save')
+    var opLoadBtn = contentEl.querySelector('#asm-order-preset-load')
+    var opRenameBtn = contentEl.querySelector('#asm-order-preset-rename')
+    var opDefaultBtn = contentEl.querySelector('#asm-order-preset-default')
+    var opDeleteBtn = contentEl.querySelector('#asm-order-preset-delete')
+
+    if (opSaveBtn) {
+      opSaveBtn.addEventListener('click', function() {
+        var name = ''
+        var selId = opSelect ? opSelect.value : ''
+        if (selId) {
+          // Update existing preset
+          for (var i = 0; i < self.asmOrderPresets.length; i++) {
+            if (self.asmOrderPresets[i].id === selId) {
+              self.asmOrderPresets[i].order = self.asmOrder.slice()
+              self._saveAsmOrderPresets()
+              self._toast('\u987A\u5E8F\u9884\u8BBE\u5DF2\u66F4\u65B0: ' + self.asmOrderPresets[i].name)
+              return
+            }
+          }
+        }
+        // Create new preset
+        self._openModal('\u4FDD\u5B58\u987A\u5E8F\u9884\u8BBE', '<div class="pua-field"><div class="pua-field-label">\u9884\u8BBE\u540D\u79F0</div><input class="pua-field-input" id="asm-order-preset-name" placeholder="\u8F93\u5165\u9884\u8BBE\u540D\u79F0" style="width:100%"></div>')
+        var modal = self._modalOverlay
+        var nameInput = modal ? modal.querySelector('#asm-order-preset-name') : null
+        if (nameInput) nameInput.focus()
+        var modalInner = modal ? modal.querySelector('.pua-modal') : null
+        if (modalInner) {
+          var oldFooter = modalInner.querySelector('.pua-modal-footer')
+          if (oldFooter) oldFooter.remove()
+          var footer = document.createElement('div')
+          footer.className = 'pua-modal-footer'
+          var confirmBtn = document.createElement('button')
+          confirmBtn.className = 'pua-btn pua-btn-gold'
+          confirmBtn.textContent = '\u4FDD\u5B58'
+          confirmBtn.addEventListener('click', function() {
+            var presetName = nameInput ? nameInput.value.trim() : ''
+            if (!presetName) { self._toast('\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0'); return }
+            self._saveAsmOrderAsPreset(presetName)
+            self._closeModal()
+            self._toast('\u987A\u5E8F\u9884\u8BBE\u5DF2\u4FDD\u5B58: ' + presetName)
+            self._render()
+          })
+          var cancelBtn = document.createElement('button')
+          cancelBtn.className = 'pua-btn'
+          cancelBtn.textContent = '\u53D6\u6D88'
+          cancelBtn.addEventListener('click', function() { self._closeModal() })
+          footer.appendChild(cancelBtn)
+          footer.appendChild(confirmBtn)
+          modalInner.appendChild(footer)
+        }
+      })
+    }
+
+    if (opLoadBtn) {
+      opLoadBtn.addEventListener('click', function() {
+        var selId = opSelect ? opSelect.value : ''
+        if (!selId) { self._toast('\u8BF7\u5148\u9009\u62E9\u9884\u8BBE'); return }
+        if (self._loadAsmOrderFromPreset(selId)) {
+          self._toast('\u5DF2\u52A0\u8F7D\u987A\u5E8F\u9884\u8BBE')
+          self._render()
+        } else {
+          self._toast('\u9884\u8BBE\u4E0D\u5B58\u5728')
+        }
+      })
+    }
+
+    if (opRenameBtn) {
+      opRenameBtn.addEventListener('click', function() {
+        var selId = opSelect ? opSelect.value : ''
+        if (!selId) { self._toast('\u8BF7\u5148\u9009\u62E9\u9884\u8BBE'); return }
+        var oldName = ''
+        for (var i = 0; i < self.asmOrderPresets.length; i++) {
+          if (self.asmOrderPresets[i].id === selId) { oldName = self.asmOrderPresets[i].name; break }
+        }
+        self._openModal('\u91CD\u547D\u540D\u9884\u8BBE', '<div class="pua-field"><div class="pua-field-label">\u65B0\u540D\u79F0</div><input class="pua-field-input" id="asm-order-preset-newname" value="' + self._escHtml(oldName) + '" style="width:100%"></div>')
+        var modal = self._modalOverlay
+        var nameInput = modal ? modal.querySelector('#asm-order-preset-newname') : null
+        if (nameInput) nameInput.focus()
+        var modalInner = modal ? modal.querySelector('.pua-modal') : null
+        if (modalInner) {
+          var oldFooter = modalInner.querySelector('.pua-modal-footer')
+          if (oldFooter) oldFooter.remove()
+          var footer = document.createElement('div')
+          footer.className = 'pua-modal-footer'
+          var confirmBtn = document.createElement('button')
+          confirmBtn.className = 'pua-btn pua-btn-gold'
+          confirmBtn.textContent = '\u786E\u8BA4'
+          confirmBtn.addEventListener('click', function() {
+            var newName = nameInput ? nameInput.value.trim() : ''
+            if (!newName) { self._toast('\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A'); return }
+            self._renameAsmOrderPreset(selId, newName)
+            self._closeModal()
+            self._toast('\u5DF2\u91CD\u547D\u540D')
+            self._render()
+          })
+          var cancelBtn = document.createElement('button')
+          cancelBtn.className = 'pua-btn'
+          cancelBtn.textContent = '\u53D6\u6D88'
+          cancelBtn.addEventListener('click', function() { self._closeModal() })
+          footer.appendChild(cancelBtn)
+          footer.appendChild(confirmBtn)
+          modalInner.appendChild(footer)
+        }
+      })
+    }
+
+    if (opDefaultBtn) {
+      opDefaultBtn.addEventListener('click', function() {
+        var selId = opSelect ? opSelect.value : ''
+        if (!selId) { self._toast('\u8BF7\u5148\u9009\u62E9\u9884\u8BBE'); return }
+        self._setDefaultAsmOrderPreset(selId)
+        self._toast('\u5DF2\u8BBE\u4E3A\u9ED8\u8BA4')
+        self._render()
+      })
+    }
+
+    if (opDeleteBtn) {
+      opDeleteBtn.addEventListener('click', function() {
+        var selId = opSelect ? opSelect.value : ''
+        if (!selId) { self._toast('\u8BF7\u5148\u9009\u62E9\u9884\u8BBE'); return }
+        self._deleteAsmOrderPreset(selId)
+        self._toast('\u9884\u8BBE\u5DF2\u5220\u9664')
+        self._render()
+      })
+    }
 
     // Bind preset group selector
     var asmPpSelect = contentEl.querySelector('#asm-preset-group-select')
@@ -6225,6 +6536,67 @@
       })
     }
 
+    // Bind batch toggle buttons
+    var enableAllPresetsBtn = contentEl.querySelector('#asm-enable-all-presets')
+    if (enableAllPresetsBtn) {
+      enableAllPresetsBtn.addEventListener('click', function() {
+        for (var i = 0; i < self.presets.length; i++) self.presets[i].on = true
+        self._savePresets()
+        self._toast('\u5DF2\u5168\u90E8\u542F\u7528\u9884\u8BBE')
+        self._render()
+      })
+    }
+    var disableAllPresetsBtn = contentEl.querySelector('#asm-disable-all-presets')
+    if (disableAllPresetsBtn) {
+      disableAllPresetsBtn.addEventListener('click', function() {
+        for (var i = 0; i < self.presets.length; i++) self.presets[i].on = false
+        self._savePresets()
+        self._toast('\u5DF2\u5168\u90E8\u7981\u7528\u9884\u8BBE')
+        self._render()
+      })
+    }
+    var enableAllRegexesBtn = contentEl.querySelector('#asm-enable-all-regexes')
+    if (enableAllRegexesBtn) {
+      enableAllRegexesBtn.addEventListener('click', function() {
+        for (var i = 0; i < self.regexes.length; i++) self.regexes[i].on = true
+        self._saveRegexes()
+        self._toast('\u5DF2\u5168\u90E8\u542F\u7528\u6B63\u5219')
+        self._render()
+      })
+    }
+    var disableAllRegexesBtn = contentEl.querySelector('#asm-disable-all-regexes')
+    if (disableAllRegexesBtn) {
+      disableAllRegexesBtn.addEventListener('click', function() {
+        for (var i = 0; i < self.regexes.length; i++) self.regexes[i].on = false
+        self._saveRegexes()
+        self._toast('\u5DF2\u5168\u90E8\u7981\u7528\u6B63\u5219')
+        self._render()
+      })
+    }
+
+    // Bind individual toggle buttons in asm blocks
+    var toggleBtns = contentEl.querySelectorAll('.asm-toggle-btn')
+    for (var tbi = 0; tbi < toggleBtns.length; tbi++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation()
+          var toggleType = btn.getAttribute('data-toggle-type')
+          var toggleId = btn.getAttribute('data-toggle-id')
+          if (toggleType === 'preset') {
+            for (var i = 0; i < self.presets.length; i++) {
+              if (self.presets[i].id === toggleId) {
+                self.presets[i].on = !self.presets[i].on
+                self._savePresets()
+                self._toast(self.presets[i].on ? '\u5DF2\u542F\u7528' : '\u5DF2\u7981\u7528')
+                self._render()
+                break
+              }
+            }
+          }
+        })
+      })(toggleBtns[tbi])
+    }
+
     // Bind drag events for all blocks
     this._bindAsmDragEvents()
   }
@@ -6251,11 +6623,12 @@
             if (this.presets[pi].id === item.id) { preset = this.presets[pi]; break }
           }
           if (!preset) continue
-          if (!preset.on) continue
+          var presetDisabled = !preset.on
           roleLabel = preset.role ? '[' + preset.role.toUpperCase() + '] ' : ''
           title = roleLabel + this._escHtml(preset.title)
-          meta = preset.role
-          body = '\u53EF\u7F16\u8F91 \xB7 \u53EF\u62D6\u62FD'
+          meta = presetDisabled ? '\u5DF2\u7981\u7528' : preset.role
+          body = '\u53EF\u7F16\u8F91 \xB7 \u53EF\u62D6\u62FD' + (presetDisabled ? '' : '')
+          if (presetDisabled) typeClass += ' asm-disabled'
           break
         case 'char':
           typeClass = 'asm-type-char'
@@ -6345,6 +6718,16 @@
       h += '<div class="asm-card draggable" draggable="true">'
       h += '<div class="asm-card-head"><span class="asm-card-title">' + title + '</span>'
       if (meta) h += '<span class="asm-card-meta">' + meta + '</span>'
+      // Add toggle for preset type
+      if (item.type === 'preset') {
+        var presetObj = null
+        for (var tpi = 0; tpi < this.presets.length; tpi++) {
+          if (this.presets[tpi].id === item.id) { presetObj = this.presets[tpi]; break }
+        }
+        if (presetObj) {
+          h += '<span class="asm-toggle-btn' + (presetObj.on ? ' on' : '') + '" data-toggle-type="preset" data-toggle-id="' + item.id + '" title="' + (presetObj.on ? '\u70B9\u51FB\u7981\u7528' : '\u70B9\u51FB\u542F\u7528') + '">' + (presetObj.on ? '\u25CF' : '\u25CB') + '</span>'
+        }
+      }
       h += '</div>'
       h += '<div class="asm-card-body">' + body + '</div>'
       h += '</div></div>'
@@ -7210,6 +7593,27 @@
 
   P._downloadFile = function(data, filename, mimeType) {
     var blob = (data instanceof Blob) ? data : new Blob([data], { type: mimeType || 'application/octet-stream' })
+    // Try Web Share API first (works on mobile/APK)
+    if (navigator.share && navigator.canShare) {
+      var file = new File([blob], filename || 'download', { type: mimeType || 'application/octet-stream' })
+      var shareData = { files: [file] }
+      if (navigator.canShare(shareData)) {
+        navigator.share(shareData).then(function() {
+          // Shared successfully
+        }).catch(function(err) {
+          // User cancelled or share failed, fallback to download link
+          if (err.name !== 'AbortError') {
+            self._downloadViaLink(blob, filename)
+          }
+        })
+        return
+      }
+    }
+    // Fallback: download link
+    this._downloadViaLink(blob, filename)
+  }
+
+  P._downloadViaLink = function(blob, filename) {
     var url = URL.createObjectURL(blob)
     var a = document.createElement('a')
     a.href = url
@@ -7218,7 +7622,7 @@
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    setTimeout(function() { URL.revokeObjectURL(url) }, 5000)
+    setTimeout(function() { URL.revokeObjectURL(url) }, 10000)
   }
 
   P._escHtml = function(s) {
@@ -12393,13 +12797,15 @@
       if (!text) { self._toast('\u8BF7\u8F93\u5165\u4E8B\u5B9E\u5185\u5BB9'); return }
       if (!memData.facts) memData.facts = []
       memData.facts.push({
-        id: 'f' + Date.now(),
+        id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
         text: text,
         summary: summary || text.substring(0, 50),
         keywords: keywords,
         embedding: null,
         timestamp: new Date().toLocaleString('zh-CN'),
-        conversationId: ''
+        conversationId: '',
+        source: 'manual',
+        needsSummary: false
       })
       self._saveMemData(memData, branchId)
       self._closeModal()
@@ -12662,14 +13068,6 @@
               memData.facts[fIdx].summary = summary
               memData.facts[fIdx].keywords = keywords
               memData.facts[fIdx].needsSummary = false
-
-              // 同步追加到 core.events
-              if (!memData.core) memData.core = { relationship: '', events: '' }
-              if (memData.core.events) {
-                memData.core.events += '\n' + summary
-              } else {
-                memData.core.events = summary
-              }
             }
           }
         }
@@ -13059,7 +13457,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.31.0',
+    version: '0.32.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
