@@ -6359,7 +6359,15 @@
 
     // Bind config input events
     var depthInput = contentEl.querySelector('#asm-depth')
-    if (depthInput) depthInput.addEventListener('change', function() { self.asmConfig.contextDepth = parseInt(this.value) || 40 })
+    if (depthInput) depthInput.addEventListener('change', function() {
+      var newDepth = parseInt(this.value) || 40
+      self.asmConfig.contextDepth = newDepth
+      self._convContextDepth = newDepth
+      var s = self._loadSettings()
+      s.contextDepth = newDepth
+      self._saveSettings(s)
+      self._saveAsmConfig()
+    })
 
     // Bind order preset buttons
     var opSelect = contentEl.querySelector('#asm-order-preset-select')
@@ -7364,7 +7372,7 @@
           var chatTpl = (this._loadSettings().chatPrompt || '').trim()
           // If convMsgs provided (from _buildConvContext), use them with filtering
           if (convMsgs) {
-            var depth = this._convContextDepth || 30
+            var depth = this.asmConfig.contextDepth || this._convContextDepth || 40
             var endIdx = convMsgs.length
             if (upToMsgId) {
               for (var uei = 0; uei < convMsgs.length; uei++) {
@@ -7602,16 +7610,26 @@
      ════════════════════════════════════════════════════════════ */
 
   P._downloadFile = function(data, filename, mimeType) {
+    var self = this
+    var timestamp = new Date().toISOString()
+    console.log('[PUA] _downloadFile: START ts=' + timestamp + ' filename=' + filename + ' mimeType=' + mimeType + ' dataType=' + typeof data + ' dataSize=' + (data instanceof Blob ? data.size : (typeof data === 'string' ? data.length : '?')))
     var blob = (data instanceof Blob) ? data : new Blob([data], { type: mimeType || 'application/octet-stream' })
+    console.log('[PUA] _downloadFile: blob created, size=' + blob.size)
     // Try Web Share API first (works on mobile/APK)
+    var hasShare = !!(navigator.share && navigator.canShare)
+    var canShareFiles = false
+    console.log('[PUA] _downloadFile: navigator.share=' + !!navigator.share + ' navigator.canShare=' + !!navigator.canShare)
     if (navigator.share && navigator.canShare) {
       var file = new File([blob], filename || 'download', { type: mimeType || 'application/octet-stream' })
       var shareData = { files: [file] }
-      if (navigator.canShare(shareData)) {
+      canShareFiles = navigator.canShare(shareData)
+      console.log('[PUA] _downloadFile: canShareFiles=' + canShareFiles)
+      if (canShareFiles) {
+        console.log('[PUA] _downloadFile: attempting navigator.share')
         navigator.share(shareData).then(function() {
-          // Shared successfully
+          console.log('[PUA] _downloadFile: navigator.share SUCCESS')
         }).catch(function(err) {
-          // User cancelled or share failed, fallback to download link
+          console.log('[PUA] _downloadFile: navigator.share FAILED err=' + err.message + ' name=' + err.name)
           if (err.name !== 'AbortError') {
             self._downloadViaLink(blob, filename)
           }
@@ -7620,19 +7638,27 @@
       }
     }
     // Fallback: download link
+    console.log('[PUA] _downloadFile: using download link fallback')
     this._downloadViaLink(blob, filename)
   }
 
   P._downloadViaLink = function(blob, filename) {
+    console.log('[PUA] _downloadViaLink: START filename=' + filename + ' blobSize=' + blob.size)
     var url = URL.createObjectURL(blob)
+    console.log('[PUA] _downloadViaLink: blobURL created=' + url.substring(0, 50))
     var a = document.createElement('a')
     a.href = url
     a.download = filename || 'download'
     a.style.display = 'none'
     document.body.appendChild(a)
+    console.log('[PUA] _downloadViaLink: a element appended to DOM, triggering click')
     a.click()
     document.body.removeChild(a)
-    setTimeout(function() { URL.revokeObjectURL(url) }, 10000)
+    console.log('[PUA] _downloadViaLink: click triggered, a element removed')
+    setTimeout(function() {
+      URL.revokeObjectURL(url)
+      console.log('[PUA] _downloadViaLink: blobURL revoked')
+    }, 10000)
   }
 
   P._escHtml = function(s) {
@@ -9538,6 +9564,9 @@
         self._convRenderLimit = rl
         self._convContextDepth = cd
         self._convAutoScroll = as
+        // Sync depth to asmConfig so context preview uses the same value
+        self.asmConfig.contextDepth = cd
+        self._saveAsmConfig()
         var s = self._loadSettings()
         s.renderLimit = rl
         s.contextDepth = cd
@@ -9566,8 +9595,16 @@
     var loadMoreBtn = contentEl.querySelector('#conv-load-more')
     if (loadMoreBtn) {
       loadMoreBtn.addEventListener('click', function() {
-        self._convRenderLimit = self._convMessages.length
-        self._renderPage()
+        var increment = 20
+        var newLimit = self._convRenderLimit + increment
+        if (newLimit > self._convMessages.length) newLimit = self._convMessages.length
+        self._convRenderLimit = newLimit
+        self._renderConvMessages(contentEl, true)
+        var chatEl = contentEl.querySelector('#conv-chat')
+        var newLoadMoreBtn = chatEl ? chatEl.querySelector('#conv-load-more') : null
+        if (newLoadMoreBtn && chatEl) {
+          chatEl.scrollTop = newLoadMoreBtn.offsetTop - chatEl.offsetTop
+        }
       })
     }
 
@@ -10515,8 +10552,19 @@
     var self = this
     if (loadMoreBtn) {
       loadMoreBtn.addEventListener('click', function() {
-        self._convRenderLimit = self._convMessages.length
-        self._renderPage()
+        // Incremental load: add 20 more messages (or show all if less than 20 remaining)
+        var increment = 20
+        var newLimit = self._convRenderLimit + increment
+        if (newLimit > self._convMessages.length) newLimit = self._convMessages.length
+        self._convRenderLimit = newLimit
+        // Save the load-more button's position for scroll restoration
+        var loadMoreOffset = chatEl.scrollTop
+        self._renderConvMessages(contentEl, true)
+        // Scroll to show the newly loaded messages at the top
+        var newLoadMoreBtn = chatEl.querySelector('#conv-load-more')
+        if (newLoadMoreBtn) {
+          chatEl.scrollTop = newLoadMoreBtn.offsetTop - chatEl.offsetTop
+        }
       })
     }
 
@@ -13494,7 +13542,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.33.0',
+    version: '0.34.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
