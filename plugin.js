@@ -1953,21 +1953,25 @@
     }
 
     // 获取会话列表（群聊等）
-    if (this.roche && this.roche.conversation && this.roche.conversation.list) {
+    var convListAvailable = !!(this.roche && this.roche.conversation && this.roche.conversation.list)
+    console.log('[PUA] _loadCharOptions: conversation.list available=' + convListAvailable)
+    if (convListAvailable) {
       fetchPromises.push(
         this.roche.conversation.list().then(function(convs) {
           console.log('[PUA] conversation.list returned ' + (convs ? convs.length : 0) + ' convs')
           if (convs && convs.length) {
             self._convList = convs
+            var groupCount = 0
             convs.forEach(function(cv) {
-              var convId = cv.conversationId || cv.id || ''
+              var convId = cv.id || cv.conversationId || ''
               var name = cv.name || cv.handle || '\u672A\u77E5'
-              var isGroup = cv.type === 'group' || (cv.members && cv.members.length > 2)
-              console.log('[PUA] conv: name=' + name + ' cv.id=' + cv.id + ' cv.conversationId=' + cv.conversationId + ' convId=' + convId + ' isGroup=' + isGroup)
-              // 检查是否已存在
+              var isGroup = cv.type === 'group' || cv.isGroup || (cv.members && cv.members.length > 2)
+              if (isGroup) groupCount++
+              console.log('[PUA] conv: name=' + name + ' cv.id=' + cv.id + ' cv.conversationId=' + cv.conversationId + ' convId=' + convId + ' isGroup=' + isGroup + ' type=' + cv.type)
+              // 检查是否已存在（只跳过和角色单聊完全相同的会话）
               var dup = false
               for (var i = 0; i < options.length; i++) {
-                if (options[i].convId === convId) { dup = true; break }
+                if (options[i].convId === convId && !options[i].isGroup && !isGroup) { dup = true; break }
               }
               if (!dup && convId) {
                 options.push({
@@ -1979,13 +1983,22 @@
                   charAvatar: cv.avatar || '',
                   isGroup: isGroup
                 })
+              } else if (dup) {
+                console.log('[PUA] skipped dup conv: name=' + name + ' convId=' + convId)
+              } else if (!convId) {
+                console.warn('[PUA] skipped conv with empty convId: name=' + name)
               }
             })
+            console.log('[PUA] conversation.list: found ' + groupCount + ' group chats')
+          } else {
+            console.warn('[PUA] conversation.list returned empty or null')
           }
         }).catch(function(e) {
-          console.warn('[PUA] conversation.list failed', e)
+          console.warn('[PUA] conversation.list failed: ' + (e.message || e))
         })
       )
+    } else {
+      console.warn('[PUA] conversation.list not available, group chats will not be shown')
     }
 
     if (fetchPromises.length === 0) {
@@ -2064,12 +2077,11 @@
       var convId = selectedValue.replace('conv_', '')
       var found = null
       for (var j = 0; j < this._convList.length; j++) {
-        var cid = this._convList[j].conversationId || this._convList[j].id || ''
+        var cid = this._convList[j].id || this._convList[j].conversationId || ''
         if (cid === convId) { found = this._convList[j]; break }
       }
       if (found) {
-        // 统一使用 conversationId（记忆API需要 conversationId）
-        this._pendingConvId = found.conversationId || convId
+        this._pendingConvId = convId
         this._pendingCharId = found.contactId || ''
         this._pendingCharName = found.name || found.handle || ''
         this._pendingCharAvatar = found.avatar || ''
@@ -14728,7 +14740,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.44.3',
+    version: '0.44.4',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
