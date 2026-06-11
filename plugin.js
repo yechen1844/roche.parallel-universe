@@ -1963,7 +1963,7 @@
             self._convList = convs
             var groupCount = 0
             convs.forEach(function(cv) {
-              var convId = cv.id || cv.conversationId || ''
+              var convId = cv.conversationId || cv.id || ''
               var name = cv.name || cv.handle || '\u672A\u77E5'
               var isGroup = cv.type === 'group' || cv.isGroup || (cv.members && cv.members.length > 2)
               if (isGroup) groupCount++
@@ -2077,7 +2077,7 @@
       var convId = selectedValue.replace('conv_', '')
       var found = null
       for (var j = 0; j < this._convList.length; j++) {
-        var cid = this._convList[j].id || this._convList[j].conversationId || ''
+        var cid = this._convList[j].conversationId || this._convList[j].id || ''
         if (cid === convId) { found = this._convList[j]; break }
       }
       if (found) {
@@ -14740,7 +14740,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.44.4',
+    version: '0.44.5',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
