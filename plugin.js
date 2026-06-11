@@ -919,6 +919,31 @@
     // 捕获控制台日志
     this._captureConsole()
 
+    // 诊断 roche.memory 可用性
+    if (this.roche) {
+      var memDiag = {
+        hasMemory: !!this.roche.memory,
+        memoryKeys: this.roche.memory ? Object.keys(this.roche.memory) : [],
+        getShortTerm: !!(this.roche.memory && this.roche.memory.getShortTerm),
+        getLongTerm: !!(this.roche.memory && this.roche.memory.getLongTerm),
+        search: !!(this.roche.memory && this.roche.memory.search),
+        write: !!(this.roche.memory && this.roche.memory.write),
+        update: !!(this.roche.memory && this.roche.memory.update),
+        delete: !!(this.roche.memory && this.roche.memory.delete)
+      }
+      console.log('[PUA] roche.memory diagnostic: ' + JSON.stringify(memDiag))
+      // 测试调用
+      if (this.roche.memory && this.roche.memory.getLongTerm) {
+        this.roche.memory.getLongTerm({ conversationId: 'test', limit: 1 }).then(function(d) {
+          console.log('[PUA] getLongTerm test call: returned=' + JSON.stringify(d).substring(0, 200))
+        }).catch(function(e) {
+          console.log('[PUA] getLongTerm test call FAILED: ' + (e.message || e))
+        })
+      }
+    } else {
+      console.warn('[PUA] roche object is null/undefined!')
+    }
+
     // 加载已保存的分支和预设（同步数据）
     this._loadPresets()
     this._loadRegexes()
@@ -6035,26 +6060,45 @@
 
     // 获取记忆数据
     // 1. 主会话的记忆
+    console.log('[PUA] _fetchAsmData: fetching memory, branch.source=' + branch.source + ' sourceConvId=' + branch.sourceConvId + ' roche.memory=' + !!(this.roche && this.roche.memory))
     if (branch.source === 'online' && branch.sourceConvId) {
       var convId = branch.sourceConvId
       if (this.roche.memory && this.roche.memory.getShortTerm) {
         promises.push(
           this.roche.memory.getShortTerm({ conversationId: convId, limit: 100 }).then(function(msgs) {
             self.asmData.shortTerm = msgs || []
-          }).catch(function() {})
+            console.log('[PUA] _fetchAsmData: getShortTerm returned, msgs=' + (msgs ? (Array.isArray(msgs) ? msgs.length : 'not-array') : 'null') + ' convId=' + convId)
+          }).catch(function(e) {
+            console.warn('[PUA] _fetchAsmData: getShortTerm FAILED, convId=' + convId + ' err=' + (e.message || e))
+          })
         )
+      } else {
+        console.warn('[PUA] _fetchAsmData: no roche.memory.getShortTerm available')
       }
       if (this.roche.memory && this.roche.memory.getLongTerm) {
         promises.push(
           this.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
             self.asmData.longTerm = data || null
-          }).catch(function() {})
+            if (data) {
+              var factCount = (data.facts && data.facts.length) || 0
+              var hasCore = !!(data.core)
+              var vecCount = (data.vectors && data.vectors.length) || 0
+              console.log('[PUA] _fetchAsmData: getLongTerm returned, facts=' + factCount + ' core=' + hasCore + ' vectors=' + vecCount + ' convId=' + convId)
+            } else {
+              console.warn('[PUA] _fetchAsmData: getLongTerm returned null, convId=' + convId)
+            }
+          }).catch(function(e) {
+            console.warn('[PUA] _fetchAsmData: getLongTerm FAILED, convId=' + convId + ' err=' + (e.message || e))
+          })
         )
+      } else {
+        console.warn('[PUA] _fetchAsmData: no roche.memory.getLongTerm available')
       }
     } else {
       // 离线分支：直接使用分支中的数据
       this.asmData.shortTerm = branch.messages || []
       this.asmData.longTerm = branch.longTermMemory || null
+      console.log('[PUA] _fetchAsmData: offline branch, shortTerm=' + this.asmData.shortTerm.length + ' longTerm=' + (this.asmData.longTerm ? 'yes' : 'no'))
     }
 
     // 2. 绑定的其他会话的记忆
@@ -14592,7 +14636,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.43.0',
+    version: '0.43.1',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
