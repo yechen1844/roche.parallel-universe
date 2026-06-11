@@ -6099,6 +6099,33 @@
       this.asmData.shortTerm = branch.messages || []
       this.asmData.longTerm = branch.longTermMemory || null
       console.log('[PUA] _fetchAsmData: offline branch, shortTerm=' + this.asmData.shortTerm.length + ' longTerm=' + (this.asmData.longTerm ? 'yes' : 'no'))
+      // 尝试从角色的conversationId获取在线记忆
+      if (!this.asmData.longTerm && branch.charId && this.roche && this.roche.character && this.roche.memory) {
+        var offlineCharId = branch.charId
+        promises.push(
+          this.roche.character.get(offlineCharId).then(function(charObj) {
+            if (charObj && charObj.conversationId) {
+              console.log('[PUA] _fetchAsmData: offline branch, fetching memory from char conversationId=' + charObj.conversationId)
+              // 更新分支的memoryConvIds
+              if (!branch.memoryConvIds || branch.memoryConvIds.length === 0) {
+                branch.memoryConvIds = [charObj.conversationId]
+                if (!branch.sourceConvId) branch.sourceConvId = charObj.conversationId
+                self._saveBranches()
+              }
+              return self.roche.memory.getLongTerm({ conversationId: charObj.conversationId, limit: 100 }).then(function(data) {
+                if (data) {
+                  self.asmData.longTerm = data
+                  var factCount = (data.facts && data.facts.length) || 0
+                  var hasCore = !!(data.core)
+                  console.log('[PUA] _fetchAsmData: got longTerm for offline branch, facts=' + factCount + ' core=' + hasCore)
+                }
+              })
+            }
+          }).catch(function(e) {
+            console.warn('[PUA] _fetchAsmData: failed to get char for offline branch, err=' + (e.message || e))
+          })
+        )
+      }
     }
 
     // 2. 绑定的其他会话的记忆
@@ -7432,8 +7459,30 @@
           break
         case 'memory-core':
           if (this.asmData.longTerm && this.asmData.longTerm.core) {
-            var coreText = this.asmData.longTerm.core.summary || this.asmData.longTerm.core.text || ''
-            if (coreText) messages.push({ role: 'system', content: '[\u6838\u5FC3\u8BB0\u5FC6]\n' + coreText })
+            var coreParts = []
+            // 关系进展
+            if (this.asmData.longTerm.core.relationship) {
+              coreParts.push('【关系与剧情进展】\n' + this.asmData.longTerm.core.relationship)
+            }
+            // 事件摘要
+            if (this.asmData.longTerm.core.events && this.asmData.longTerm.core.events.length > 0) {
+              var evtTexts = []
+              for (var evi = 0; evi < this.asmData.longTerm.core.events.length; evi++) {
+                var evtText = this.asmData.longTerm.core.events[evi].text || ''
+                if (evtText) evtTexts.push(evtText)
+              }
+              if (evtTexts.length > 0) {
+                coreParts.push('【事件摘要】\n' + evtTexts.join('\n'))
+              }
+            }
+            // 兼容旧格式：core.summary / core.text
+            if (coreParts.length === 0) {
+              var oldCoreText = this.asmData.longTerm.core.summary || this.asmData.longTerm.core.text || ''
+              if (oldCoreText) coreParts.push(oldCoreText)
+            }
+            if (coreParts.length > 0) {
+              messages.push({ role: 'system', content: '[核心记忆]\n' + coreParts.join('\n\n') })
+            }
           }
           break
         case 'memory-fact':
@@ -7441,7 +7490,10 @@
             var factTexts = []
             for (var fi = 0; fi < this.asmData.longTerm.facts.length; fi++) {
               var f = this.asmData.longTerm.facts[fi]
-              factTexts.push(f.summaryText || f.action || f.text || '')
+              // 传入具体事实内容(text)，而非一句话摘要(oneSentence/summaryText)
+              // 一句话摘要由核心记忆的事件摘要部分负责传入
+              var factContent = f.text || f.content || ''
+              if (factContent) factTexts.push(factContent)
             }
             var factStr = ''
             for (var fsi = 0; fsi < factTexts.length; fsi++) {
@@ -7450,7 +7502,7 @@
                 factStr += factTexts[fsi]
               }
             }
-            if (factStr) messages.push({ role: 'system', content: '[\u4E8B\u5B9E\u8BB0\u5FC6]\n' + factStr })
+            if (factStr) messages.push({ role: 'system', content: '[事实记忆]\n' + factStr })
           }
           break
         case 'recall':
@@ -7479,7 +7531,7 @@
             if (recalledFacts) {
               for (var rci = 0; rci < recalledFacts.length; rci++) {
                 var rf = recalledFacts[rci]
-                var rfText = rf.fact ? (rf.fact.summaryText || rf.fact.text || '') : (rf.summaryText || rf.text || '')
+                var rfText = rf.fact ? (rf.fact.text || rf.fact.content || rf.fact.summaryText || '') : (rf.text || rf.content || rf.summaryText || '')
                 if (rfText) recallTexts.push(rfText)
               }
             }
@@ -13602,6 +13654,25 @@
           }
           if (selBranch && selBranch.memoryConvIds && selBranch.memoryConvIds.length > 0) {
             self._loadMemFromBranches(selBranch.memoryConvIds, selBranch.id)
+          } else if (selBranch && selBranch.charId && self.roche && self.roche.character) {
+            // 没有绑定的记忆会话，但有角色ID，尝试从角色获取conversationId
+            self.roche.character.get(selBranch.charId).then(function(charObj) {
+              if (charObj && charObj.conversationId) {
+                console.log('[PUA] mem-branch-select: got conversationId=' + charObj.conversationId + ' from char ' + selBranch.charId)
+                selBranch.memoryConvIds = [charObj.conversationId]
+                if (selBranch.sourceConvId !== charObj.conversationId) {
+                  selBranch.sourceConvId = charObj.conversationId
+                }
+                self._saveBranches()
+                self._loadMemFromBranches([charObj.conversationId], selBranch.id)
+              } else {
+                console.log('[PUA] mem-branch-select: char has no conversationId, charId=' + selBranch.charId)
+                self._render()
+              }
+            }).catch(function(e) {
+              console.warn('[PUA] mem-branch-select: failed to get char, err=' + (e.message || e))
+              self._render()
+            })
           } else {
             self._render()
           }
@@ -14048,15 +14119,45 @@
         self.roche.memory.getLongTerm({ conversationId: convId, limit: 100 }).then(function(data) {
           if (!data) { loaded++; if (loaded >= total) { self._saveMemData(memData, branchId); self._toast('\u8BB0\u5FC6\u52A0\u8F7D\u5B8C\u6210'); self._render() } return }
 
-          // 合并核心记忆 → relationship
+          // 合并核心记忆
           if (data.core) {
-            var coreText = data.core.summary || data.core.text || String(data.core)
-            if (coreText) {
-              if (!memData.core) memData.core = { relationship: '', events: [] }
-              if (memData.core.relationship && memData.core.relationship.indexOf(coreText) === -1) {
-                memData.core.relationship += '\n' + coreText
-              } else if (!memData.core.relationship) {
-                memData.core.relationship = coreText
+            if (!memData.core) memData.core = { relationship: '', events: [] }
+            // 合并关系进展
+            var relText = data.core.relationship || ''
+            if (relText && memData.core.relationship.indexOf(relText) === -1) {
+              if (memData.core.relationship) {
+                memData.core.relationship += '\n' + relText
+              } else {
+                memData.core.relationship = relText
+              }
+            }
+            // 合并事件摘要
+            if (data.core.events && Array.isArray(data.core.events)) {
+              if (!memData.core.events) memData.core.events = []
+              for (var cei = 0; cei < data.core.events.length; cei++) {
+                var evtItem = data.core.events[cei]
+                var evtText = evtItem.text || evtItem.summaryText || ''
+                if (!evtText) continue
+                var evtExists = false
+                for (var eei = 0; eei < memData.core.events.length; eei++) {
+                  if (memData.core.events[eei].text === evtText) { evtExists = true; break }
+                }
+                if (!evtExists) {
+                  memData.core.events.push({
+                    id: evtItem.id || ('evt_' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)),
+                    text: evtText,
+                    timestamp: evtItem.timestamp || new Date().toISOString()
+                  })
+                }
+              }
+            }
+            // 兼容旧格式：core.summary / core.text
+            var coreSummary = data.core.summary || data.core.text || ''
+            if (coreSummary && memData.core.relationship.indexOf(coreSummary) === -1) {
+              if (memData.core.relationship) {
+                memData.core.relationship += '\n' + coreSummary
+              } else {
+                memData.core.relationship = coreSummary
               }
             }
           }
@@ -14066,25 +14167,26 @@
             if (!memData.facts) memData.facts = []
             for (var fi = 0; fi < data.facts.length; fi++) {
               var fact = data.facts[fi]
-              var factText = fact.summaryText || fact.action || fact.text || ''
-              if (!factText) continue
+              // 优先使用具体事实内容(text)，而非一句话摘要(summaryText)
+              var factContent = fact.text || fact.content || fact.summaryText || fact.action || ''
+              if (!factContent) continue
               var exists = false
               for (var ei = 0; ei < memData.facts.length; ei++) {
-                if (memData.facts[ei].text === factText) { exists = true; break }
+                if (memData.facts[ei].text === factContent) { exists = true; break }
               }
               if (!exists) {
                 memData.facts.push({
-                  id: 'f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-                  text: factText,
-                  summaryText: factText,
-                  oneSentence: '',
-                  summary: '',
+                  id: fact.id || ('f' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)),
+                  text: factContent,
+                  summaryText: fact.summaryText || fact.action || '',
+                  oneSentence: fact.summaryText || fact.action || '',
+                  summary: fact.summaryText || fact.action || '',
                   keywords: '',
                   embedding: null,
-                  timestamp: new Date().toLocaleString('zh-CN'),
+                  timestamp: fact.timestamp || new Date().toLocaleString('zh-CN'),
                   conversationId: convId,
                   source: 'roche-import',
-                  needsSummary: true
+                  needsSummary: !!(fact.summaryText || fact.action)
                 })
               }
             }
@@ -14636,7 +14738,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.43.1',
+    version: '0.44.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
