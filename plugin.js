@@ -1960,9 +1960,10 @@
           if (convs && convs.length) {
             self._convList = convs
             convs.forEach(function(cv) {
-              var convId = cv.id || cv.conversationId || ''
+              var convId = cv.conversationId || cv.id || ''
               var name = cv.name || cv.handle || '\u672A\u77E5'
               var isGroup = cv.type === 'group' || (cv.members && cv.members.length > 2)
+              console.log('[PUA] conv: name=' + name + ' cv.id=' + cv.id + ' cv.conversationId=' + cv.conversationId + ' convId=' + convId + ' isGroup=' + isGroup)
               // 检查是否已存在
               var dup = false
               for (var i = 0; i < options.length; i++) {
@@ -2063,11 +2064,12 @@
       var convId = selectedValue.replace('conv_', '')
       var found = null
       for (var j = 0; j < this._convList.length; j++) {
-        var cid = this._convList[j].id || this._convList[j].conversationId || ''
+        var cid = this._convList[j].conversationId || this._convList[j].id || ''
         if (cid === convId) { found = this._convList[j]; break }
       }
       if (found) {
-        this._pendingConvId = convId
+        // 统一使用 conversationId（记忆API需要 conversationId）
+        this._pendingConvId = found.conversationId || convId
         this._pendingCharId = found.contactId || ''
         this._pendingCharName = found.name || found.handle || ''
         this._pendingCharAvatar = found.avatar || ''
@@ -2465,19 +2467,22 @@
     // ===== 异步加载会话列表（记忆绑定） =====
     if (this.roche.conversation && this.roche.conversation.list) {
       this.roche.conversation.list().then(function(convs) {
+        console.log('[PUA] _openBranch: conversation.list returned ' + (convs ? convs.length : 0) + ' convs, branch.sourceConvId=' + branch.sourceConvId + ' branch.memoryConvIds=' + JSON.stringify(branch.memoryConvIds || []))
         var memList = modal.querySelector('#branch-mem-list')
         if (!memList) return
         var h = ''
         for (var i = 0; i < (convs || []).length; i++) {
           var cv = convs[i]
           var cvId = cv.conversationId || cv.id
+          var cvIdAlt = cv.id || cv.conversationId  // 备选ID，兼容旧数据
           var cvName = cv.handle || cv.name || cv.title || '?'
           var isGroup = cv.isGroup || cv.type === 'group'
           var isBound = false
           for (var bi = 0; bi < (branch.memoryConvIds || []).length; bi++) {
-            if (branch.memoryConvIds[bi] === cvId) { isBound = true; break }
+            if (branch.memoryConvIds[bi] === cvId || branch.memoryConvIds[bi] === cvIdAlt) { isBound = true; break }
           }
-          if (branch.sourceConvId === cvId) isBound = true
+          if (branch.sourceConvId === cvId || branch.sourceConvId === cvIdAlt) isBound = true
+          console.log('[PUA] _openBranch: conv[' + i + '] name=' + cvName + ' cv.id=' + cv.id + ' cv.conversationId=' + cv.conversationId + ' cvId=' + cvId + ' isBound=' + isBound)
           h += '<div class="pua-check-item' + (isBound ? ' checked' : '') + '" data-conv-id="' + cvId + '">'
           h += '<div class="pua-check-box">\u2713</div>'
           h += '<span class="pua-check-icon">' + (isGroup ? '\uD83D\uDC65' : '\uD83D\uDC64') + '</span>'
@@ -14723,7 +14728,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.44.2',
+    version: '0.44.3',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
