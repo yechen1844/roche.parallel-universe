@@ -6166,18 +6166,46 @@
               // 合并核心记忆
               if (data.core) {
                 if (!self.asmData.longTerm.core) {
-                  self.asmData.longTerm.core = data.core
-                } else {
-                  // Merge core memory text instead of discarding
-                  var coreText = data.core.summary || data.core.text || ''
-                  if (coreText) {
-                    var existingText = self.asmData.longTerm.core.summary || self.asmData.longTerm.core.text || ''
-                    if (existingText.indexOf(coreText) === -1) {
-                      if (self.asmData.longTerm.core.summary) {
-                        self.asmData.longTerm.core.summary += '\n' + coreText
-                      } else if (self.asmData.longTerm.core.text) {
-                        self.asmData.longTerm.core.text += '\n' + coreText
-                      }
+                  self.asmData.longTerm.core = { relationship: '', events: [], summary: '', text: '' }
+                }
+                // 合并 relationship
+                var dataRel = data.core.relationship || ''
+                if (dataRel) {
+                  if (!self.asmData.longTerm.core.relationship) {
+                    self.asmData.longTerm.core.relationship = dataRel
+                  } else if (self.asmData.longTerm.core.relationship.indexOf(dataRel) === -1) {
+                    self.asmData.longTerm.core.relationship += '\n' + dataRel
+                  }
+                }
+                // 合并 events 数组
+                if (data.core.events && Array.isArray(data.core.events)) {
+                  if (!self.asmData.longTerm.core.events) self.asmData.longTerm.core.events = []
+                  for (var devi = 0; devi < data.core.events.length; devi++) {
+                    var dataEvt = data.core.events[devi]
+                    var dataEvtText = dataEvt.text || dataEvt.oneSentence || ''
+                    if (!dataEvtText) continue
+                    var dataEvtExists = false
+                    for (var deei = 0; deei < self.asmData.longTerm.core.events.length; deei++) {
+                      if (self.asmData.longTerm.core.events[deei].text === dataEvtText) { dataEvtExists = true; break }
+                    }
+                    if (!dataEvtExists) {
+                      self.asmData.longTerm.core.events.push({
+                        id: dataEvt.id || ('evt_' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)),
+                        text: dataEvtText,
+                        timestamp: dataEvt.timestamp || new Date().toISOString()
+                      })
+                    }
+                  }
+                }
+                // 兼容旧格式：也合并 summary/text
+                var coreText = data.core.summary || data.core.text || ''
+                if (coreText) {
+                  var existingText = self.asmData.longTerm.core.summary || self.asmData.longTerm.core.text || ''
+                  if (existingText.indexOf(coreText) === -1) {
+                    if (self.asmData.longTerm.core.summary) {
+                      self.asmData.longTerm.core.summary += '\n' + coreText
+                    } else if (self.asmData.longTerm.core.text) {
+                      self.asmData.longTerm.core.text += '\n' + coreText
                     }
                   }
                 }
@@ -6214,16 +6242,50 @@
           // 合并核心记忆
           if (localMemData.core) {
             if (!self.asmData.longTerm.core) {
-              self.asmData.longTerm.core = { summary: '', text: '' }
+              self.asmData.longTerm.core = { relationship: '', events: [], summary: '', text: '' }
             }
-            var localCoreText = localMemData.core.relationship || ''
-            if (localCoreText) {
-              var existingCore = self.asmData.longTerm.core.summary || self.asmData.longTerm.core.text || ''
-              if (existingCore.indexOf(localCoreText) === -1) {
-                self.asmData.longTerm.core.summary = existingCore ? existingCore + '\n' + localCoreText : localCoreText
-                self.asmData.longTerm.core.text = self.asmData.longTerm.core.summary
+            // 合并 relationship
+            var localCoreRel = localMemData.core.relationship || ''
+            if (localCoreRel) {
+              if (!self.asmData.longTerm.core.relationship) {
+                self.asmData.longTerm.core.relationship = localCoreRel
+              } else if (self.asmData.longTerm.core.relationship.indexOf(localCoreRel) === -1) {
+                self.asmData.longTerm.core.relationship += '\n' + localCoreRel
               }
             }
+            // 合并 events 数组
+            if (localMemData.core.events && Array.isArray(localMemData.core.events)) {
+              if (!self.asmData.longTerm.core.events) self.asmData.longTerm.core.events = []
+              for (var levi = 0; levi < localMemData.core.events.length; levi++) {
+                var localEvt = localMemData.core.events[levi]
+                var localEvtText = localEvt.text || localEvt.oneSentence || ''
+                if (!localEvtText) continue
+                var evtExists = false
+                for (var leei = 0; leei < self.asmData.longTerm.core.events.length; leei++) {
+                  if (self.asmData.longTerm.core.events[leei].text === localEvtText) { evtExists = true; break }
+                }
+                if (!evtExists) {
+                  self.asmData.longTerm.core.events.push({
+                    id: localEvt.id || ('evt_' + Date.now() + '-' + Math.random().toString(36).substr(2, 6)),
+                    text: localEvtText,
+                    timestamp: localEvt.timestamp || new Date().toISOString()
+                  })
+                }
+              }
+            }
+            // 兼容旧格式：同步 summary/text
+            var mergedCoreText = ''
+            if (self.asmData.longTerm.core.relationship) mergedCoreText += self.asmData.longTerm.core.relationship
+            if (self.asmData.longTerm.core.events && self.asmData.longTerm.core.events.length > 0) {
+              if (mergedCoreText) mergedCoreText += '\n'
+              var evtArr = []
+              for (var levi2 = 0; levi2 < self.asmData.longTerm.core.events.length; levi2++) {
+                evtArr.push(self.asmData.longTerm.core.events[levi2].text || '')
+              }
+              mergedCoreText += evtArr.join('\n')
+            }
+            self.asmData.longTerm.core.summary = mergedCoreText
+            self.asmData.longTerm.core.text = mergedCoreText
           }
           // 合并事实记忆
           if (localMemData.facts && localMemData.facts.length > 0) {
@@ -7132,16 +7194,38 @@
         h += '</div>'
         break
       case 'memory-core':
-        var coreText = (this.asmData.longTerm && this.asmData.longTerm.core) ? (this.asmData.longTerm.core.summary || this.asmData.longTerm.core.text || '') : ''
+        var coreObj = (this.asmData.longTerm && this.asmData.longTerm.core) ? this.asmData.longTerm.core : null
         h += '<div class="pua-field"><div class="pua-field-label">\u6838\u5FC3\u8BB0\u5FC6</div>'
-        h += '<textarea class="pua-detail-textarea" readonly>' + this._escHtml(coreText) + '</textarea></div>'
+        // 关系与剧情进展
+        var coreRel = coreObj ? (coreObj.relationship || '') : ''
+        h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u5173\u7CFB\u4E0E\u5267\u60C5\u8FDB\u5C55</div>'
+        h += '<textarea class="pua-detail-textarea" readonly style="min-height:80px">' + this._escHtml(coreRel) + '</textarea></div>'
+        // 事件摘要
+        var coreEvents = (coreObj && coreObj.events && Array.isArray(coreObj.events)) ? coreObj.events : []
+        h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u4E8B\u4EF6\u6458\u8981 (' + coreEvents.length + ' \u6761)</div>'
+        for (var cevi = 0; cevi < coreEvents.length; cevi++) {
+          h += '<div style="margin-bottom:4px;padding:4px 8px;background:var(--pua-bg-input);border-radius:4px;font-size:10px;color:var(--pua-text-sub)">'
+          h += this._escHtml(coreEvents[cevi].text || '')
+          h += '</div>'
+        }
+        if (coreEvents.length === 0) {
+          // 兼容旧格式
+          var oldCoreText = coreObj ? (coreObj.summary || coreObj.text || '') : ''
+          if (oldCoreText) {
+            h += '<textarea class="pua-detail-textarea" readonly style="min-height:80px">' + this._escHtml(oldCoreText) + '</textarea>'
+          } else {
+            h += '<div style="font-size:10px;color:var(--pua-text-dim)">\u65E0\u4E8B\u4EF6\u6458\u8981</div>'
+          }
+        }
+        h += '</div>'
+        h += '</div>'
         break
       case 'memory-fact':
         var facts = (this.asmData.longTerm && this.asmData.longTerm.facts) ? this.asmData.longTerm.facts : []
         h += '<div class="pua-field"><div class="pua-field-label">\u4E8B\u5B9E\u8BB0\u5FC6 (' + facts.length + ')</div>'
         for (var fdi = 0; fdi < facts.length; fdi++) {
           h += '<div style="margin-bottom:4px;padding:4px 8px;background:var(--pua-bg-input);border-radius:4px;font-size:10px;color:var(--pua-text-sub)">'
-          h += this._escHtml(facts[fdi].summaryText || facts[fdi].action || facts[fdi].text || '')
+          h += this._escHtml(facts[fdi].text || facts[fdi].content || facts[fdi].summaryText || facts[fdi].action || '')
           h += '</div>'
         }
         h += '</div>'
@@ -7171,7 +7255,7 @@
           for (var ri = 0; ri < recalled.length; ri++) {
             h += '<div style="margin-bottom:4px;padding:4px 8px;background:var(--pua-bg-input);border-radius:4px;font-size:10px;color:var(--pua-text-sub)">'
             h += '<span style="color:var(--pua-accent);font-weight:600">#' + (ri + 1) + '</span> '
-            h += this._escHtml(recalled[ri].summaryText || recalled[ri].action || recalled[ri].text || '')
+            h += this._escHtml(recalled[ri].text || recalled[ri].content || recalled[ri].summaryText || recalled[ri].action || '')
             h += '</div>'
           }
           if (recalled.length === 0) h += '<div style="font-size:10px;color:var(--pua-text-dim)">无匹配的召回记忆</div>'
@@ -7508,9 +7592,14 @@
           break
         case 'memory-fact':
           if (this.asmData.longTerm && this.asmData.longTerm.facts && this.asmData.longTerm.facts.length > 0) {
+            var allFacts = this.asmData.longTerm.facts
+            var factSettings = this._loadSettings()
+            var factSendLimit = factSettings.factSendCount || 10
+            // 只取最新 factSendLimit 条事实记忆
+            var factStartIdx = Math.max(0, allFacts.length - factSendLimit)
             var factTexts = []
-            for (var fi = 0; fi < this.asmData.longTerm.facts.length; fi++) {
-              var f = this.asmData.longTerm.facts[fi]
+            for (var fi = factStartIdx; fi < allFacts.length; fi++) {
+              var f = allFacts[fi]
               // 传入具体事实内容(text)，而非一句话摘要(oneSentence/summaryText)
               // 一句话摘要由核心记忆的事件摘要部分负责传入
               var factContent = f.text || f.content || ''
@@ -7527,9 +7616,13 @@
           }
           break
         case 'recall':
-          // 召回记忆：优先使用异步召回结果，否则用同步召回
+          // 召回记忆：仅在事实记忆总数超过 factSendCount 时才触发召回
           var recallFacts2 = (this.asmData.longTerm && this.asmData.longTerm.facts) ? this.asmData.longTerm.facts : []
-          if (recallFacts2.length > 0) {
+          var recallSettings3 = this._loadSettings()
+          var recallFactLimit = recallSettings3.factSendCount || 10
+          var recallMax3 = recallSettings3.recallMaxCount || 8
+          // 只有当事实记忆总数 > factSendCount 时才需要召回
+          if (recallFacts2.length > recallFactLimit) {
             var recalledFacts = null
             // 优先使用异步召回结果（来自 _sendMessage）
             if (this._pendingRecalledFacts && this._pendingRecalledFacts.length > 0) {
@@ -7543,16 +7636,28 @@
                 recallQuery2 = (lastRecallMsg.text || lastRecallMsg.content || '').substring(0, 200)
               }
               if (!recallQuery2) recallQuery2 = '对话上下文'
-              var recallSettings2 = this._loadSettings()
-              var recallMax2 = recallSettings2.recallMaxCount || 8
-              recalledFacts = this._recallMemoriesSync(recallQuery2, recallFacts2, recallMax2)
+              recalledFacts = this._recallMemoriesSync(recallQuery2, recallFacts2, recallMax3)
             }
             // recalledFacts 可能是 [{fact, score}] 或 [fact]
+            // 排除已通过 memory-fact 注入的事实记忆（最新的 factSendLimit 条）
+            var factStartIdx2 = Math.max(0, recallFacts2.length - recallFactLimit)
+            var injectedFactIds = {}
+            for (var ifi = factStartIdx2; ifi < recallFacts2.length; ifi++) {
+              if (recallFacts2[ifi].id) injectedFactIds[recallFacts2[ifi].id] = true
+              // 也按内容去重
+              var ifText = recallFacts2[ifi].text || recallFacts2[ifi].content || ''
+              if (ifText) injectedFactIds[ifText] = true
+            }
             var recallTexts = []
             if (recalledFacts) {
               for (var rci = 0; rci < recalledFacts.length; rci++) {
                 var rf = recalledFacts[rci]
-                var rfText = rf.fact ? (rf.fact.text || rf.fact.content || rf.fact.summaryText || '') : (rf.text || rf.content || rf.summaryText || '')
+                var rfFact = rf.fact || rf
+                var rfText = rfFact.text || rfFact.content || rfFact.summaryText || ''
+                // 跳过已注入的事实记忆
+                var rfId = rfFact.id || ''
+                if (rfId && injectedFactIds[rfId]) continue
+                if (rfText && injectedFactIds[rfText]) continue
                 if (rfText) recallTexts.push(rfText)
               }
             }
@@ -10519,13 +10624,17 @@
     if (memData && memData.facts && memData.facts.length > 0) {
       var settings = this._loadSettings()
       var recallMax = settings.recallMaxCount || 8
-      recallPromise = this._recallMemoriesAsync(recallQuery, memData.facts, recallMax).then(function(results) {
-        console.log('[PUA] _sendMessage: async recall returned ' + results.length + ' results')
-        return results
-      }).catch(function(e) {
-        console.log('[PUA] _sendMessage: async recall failed, err=' + (e.message || e))
-        return null
-      })
+      var factSendLimit = settings.factSendCount || 10
+      // 只有当事实记忆总数超过 factSendCount 时才需要召回
+      if (memData.facts.length > factSendLimit) {
+        recallPromise = this._recallMemoriesAsync(recallQuery, memData.facts, recallMax).then(function(results) {
+          console.log('[PUA] _sendMessage: async recall returned ' + results.length + ' results')
+          return results
+        }).catch(function(e) {
+          console.log('[PUA] _sendMessage: async recall failed, err=' + (e.message || e))
+          return null
+        })
+      }
     }
 
     recallPromise.then(function(recalledFacts) {
@@ -14739,7 +14848,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.44.6',
+    version: '0.45.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
