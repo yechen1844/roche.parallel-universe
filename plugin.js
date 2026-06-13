@@ -5613,10 +5613,26 @@
   }
 
   P._saveAsmOrderAsPreset = function(name) {
+    // 保存预设时，将所有 char 条目合并为一个通用占位符 __char__
+    // 这样单人/多人存档可以共享同一个预设，加载时自动展开
+    var orderForPreset = []
+    var charInserted = false
+    for (var i = 0; i < this.asmOrder.length; i++) {
+      if (this.asmOrder[i].type === 'char') {
+        // 只在第一次遇到 char 时插入占位符
+        if (!charInserted) {
+          orderForPreset.push({ type: 'char', id: '__char__' })
+          charInserted = true
+        }
+        // 跳过后续的 char 条目（加载时会根据实际 char 列表展开）
+      } else {
+        orderForPreset.push(this.asmOrder[i])
+      }
+    }
     var preset = {
       id: 'aop_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       name: name || '未命名预设',
-      order: this.asmOrder.slice(),
+      order: orderForPreset,
       isDefault: this.asmOrderPresets.length === 0,
       createdAt: new Date().toISOString()
     }
@@ -5628,7 +5644,37 @@
   P._loadAsmOrderFromPreset = function(presetId) {
     for (var i = 0; i < this.asmOrderPresets.length; i++) {
       if (this.asmOrderPresets[i].id === presetId) {
-        this.asmOrder = this.asmOrderPresets[i].order.slice()
+        var rawOrder = this.asmOrderPresets[i].order.slice()
+        // 展开 __char__ 占位符为当前分支的实际 char 列表
+        var expandedOrder = []
+        for (var j = 0; j < rawOrder.length; j++) {
+          if (rawOrder[j].type === 'char' && rawOrder[j].id === '__char__') {
+            // 展开为主角色 + 所有额外角色
+            expandedOrder.push({ type: 'char', id: 'char' })
+            if (this.asmData.chars && this.asmData.chars.length > 0) {
+              for (var ci = 0; ci < this.asmData.chars.length; ci++) {
+                // 跳过主角色（已添加）
+                if (this.asmData.char && this.asmData.chars[ci].id === this.asmData.char.id) continue
+                expandedOrder.push({ type: 'char', id: this.asmData.chars[ci].id })
+              }
+            }
+          } else if (rawOrder[j].type === 'char' && rawOrder[j].id !== 'char' && rawOrder[j].id !== '__char__') {
+            // 兼容旧预设中的具体 char ID：如果当前分支有这个 char 则保留，否则跳过
+            var charExists = false
+            if (rawOrder[j].id === 'char') {
+              charExists = true
+            } else if (this.asmData.chars) {
+              for (var cci = 0; cci < this.asmData.chars.length; cci++) {
+                if (this.asmData.chars[cci].id === rawOrder[j].id) { charExists = true; break }
+              }
+            }
+            if (this.asmData.char && rawOrder[j].id === this.asmData.char.id) charExists = true
+            if (charExists) expandedOrder.push(rawOrder[j])
+          } else {
+            expandedOrder.push(rawOrder[j])
+          }
+        }
+        this.asmOrder = expandedOrder
         this._saveAsmOrder()
         return true
       }
@@ -6310,6 +6356,23 @@
           }
         }
       }
+      // Expand __char__ placeholders in asmOrder before syncing
+      var expandedAsmOrder = []
+      for (var eai = 0; eai < self.asmOrder.length; eai++) {
+        if (self.asmOrder[eai].type === 'char' && self.asmOrder[eai].id === '__char__') {
+          // 展开为主角色 + 所有额外角色
+          expandedAsmOrder.push({ type: 'char', id: 'char' })
+          if (self.asmData.chars && self.asmData.chars.length > 0) {
+            for (var eci = 0; eci < self.asmData.chars.length; eci++) {
+              if (self.asmData.char && self.asmData.chars[eci].id === self.asmData.char.id) continue
+              expandedAsmOrder.push({ type: 'char', id: self.asmData.chars[eci].id })
+            }
+          }
+        } else {
+          expandedAsmOrder.push(self.asmOrder[eai])
+        }
+      }
+      self.asmOrder = expandedAsmOrder
       // Sync char entries in asmOrder with current asmData.chars
       // Build set of valid char IDs: 'char' (main) + all extra char IDs from asmData.chars
       var mainCharRealId = (self.asmData.char && self.asmData.char.id) ? self.asmData.char.id : null
@@ -6609,10 +6672,22 @@
         var name = ''
         var selId = opSelect ? opSelect.value : ''
         if (selId) {
-          // Update existing preset
+          // Update existing preset - also convert char entries to placeholder
           for (var i = 0; i < self.asmOrderPresets.length; i++) {
             if (self.asmOrderPresets[i].id === selId) {
-              self.asmOrderPresets[i].order = self.asmOrder.slice()
+              var orderForUpdate = []
+              var charInserted2 = false
+              for (var j = 0; j < self.asmOrder.length; j++) {
+                if (self.asmOrder[j].type === 'char') {
+                  if (!charInserted2) {
+                    orderForUpdate.push({ type: 'char', id: '__char__' })
+                    charInserted2 = true
+                  }
+                } else {
+                  orderForUpdate.push(self.asmOrder[j])
+                }
+              }
+              self.asmOrderPresets[i].order = orderForUpdate
               self._saveAsmOrderPresets()
               self._toast('\u987A\u5E8F\u9884\u8BBE\u5DF2\u66F4\u65B0: ' + self.asmOrderPresets[i].name)
               return
@@ -6876,6 +6951,7 @@
           if (presetDisabled) typeClass += ' asm-disabled'
           break
         case 'char':
+          if (item.id === '__char__') continue // 跳过未展开的占位符
           typeClass = 'asm-type-char'
           var charObj = null
           if (item.id === 'char') {
@@ -7504,6 +7580,7 @@
           }
           break
         case 'char':
+          if (item.id === '__char__') break // 跳过未展开的占位符
           var charObj2 = null
           if (item.id === 'char') {
             charObj2 = this.asmData.char
@@ -14848,7 +14925,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.45.0',
+    version: '0.46.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
