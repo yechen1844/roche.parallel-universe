@@ -1775,8 +1775,13 @@
           tags.className = 'pua-branch-tags'
           // 来源标签
           var srcTag = document.createElement('span')
-          srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
-          srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          if (b.source === 'fork') {
+            srcTag.className = 'pua-tag pua-tag-preset'
+            srcTag.textContent = '\u5206\u652F'
+          } else {
+            srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
+            srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          }
           tags.appendChild(srcTag)
           b.tags.forEach(function(t) {
             var tag = document.createElement('span')
@@ -1792,8 +1797,13 @@
           var tags = document.createElement('div')
           tags.className = 'pua-branch-tags'
           var srcTag = document.createElement('span')
-          srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
-          srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          if (b.source === 'fork') {
+            srcTag.className = 'pua-tag pua-tag-preset'
+            srcTag.textContent = '\u5206\u652F'
+          } else {
+            srcTag.className = 'pua-tag ' + (b.source === 'offline' ? 'pua-tag-offline' : 'pua-tag-online')
+            srcTag.textContent = b.source === 'offline' ? '\u7EBF\u4E0B' : '\u7EBF\u4E0A'
+          }
           tags.appendChild(srcTag)
           card.appendChild(tags)
         }
@@ -2141,6 +2151,109 @@
     })
   }
 
+  /* ── 从当前进度新建分支（Fork） ── */
+  P._showForkBranchModal = function() {
+    var branch = null
+    for (var i = 0; i < this.branches.length; i++) {
+      if (this.branches[i].id === this._convBranchId) { branch = this.branches[i]; break }
+    }
+    if (!branch) {
+      this._toast('请先选择一个分支')
+      return
+    }
+    var defaultName = branch.name ? (branch.name + ' - 分支') : '新分支'
+    var body = '<div class="pua-field">'
+    body += '<div class="pua-field-label">新分支名称</div>'
+    body += '<input class="pua-field-input" id="fork-branch-name" value="' + this._escHtml(defaultName) + '" style="width:100%">'
+    body += '</div>'
+    body += '<div style="font-size:10px;color:var(--pua-text-dim);margin-top:8px">'
+    body += '将从「' + this._escHtml(branch.name || '未命名') + '」的当前进度创建新分支，继承所有对话和记忆数据。之后两个分支独立互不影响。'
+    body += '</div>'
+    this._openModal('新建分支', body)
+    var self = this
+    var modal = this._modalOverlay
+    var nameInput = modal ? modal.querySelector('#fork-branch-name') : null
+    if (nameInput) {
+      nameInput.focus()
+      nameInput.select()
+    }
+    var modalInner = modal ? modal.querySelector('.pua-modal') : null
+    if (modalInner) {
+      var oldFooter = modalInner.querySelector('.pua-modal-footer')
+      if (oldFooter) oldFooter.remove()
+      var footer = document.createElement('div')
+      footer.className = 'pua-modal-footer'
+      var confirmBtn = document.createElement('button')
+      confirmBtn.className = 'pua-btn pua-btn-gold'
+      confirmBtn.textContent = '创建分支'
+      confirmBtn.addEventListener('click', function() {
+        var newName = nameInput ? nameInput.value.trim() : ''
+        if (!newName) { self._toast('请输入分支名称'); return }
+        self._closeModal()
+        self._forkBranch(newName)
+      })
+      var cancelBtn = document.createElement('button')
+      cancelBtn.className = 'pua-btn'
+      cancelBtn.textContent = '取消'
+      cancelBtn.addEventListener('click', function() { self._closeModal() })
+      footer.appendChild(cancelBtn)
+      footer.appendChild(confirmBtn)
+      modalInner.appendChild(footer)
+    }
+  }
+
+  P._forkBranch = function(name) {
+    var sourceBranch = null
+    for (var i = 0; i < this.branches.length; i++) {
+      if (this.branches[i].id === this._convBranchId) { sourceBranch = this.branches[i]; break }
+    }
+    if (!sourceBranch) {
+      this._toast('未找到当前分支')
+      return
+    }
+    // 深拷贝消息和长期记忆
+    var clonedMessages = JSON.parse(JSON.stringify(sourceBranch.messages || []))
+    var clonedLongTerm = sourceBranch.longTermMemory ? JSON.parse(JSON.stringify(sourceBranch.longTermMemory)) : null
+    var clonedMountedWorldbooks = sourceBranch.mountedWorldbooks ? JSON.parse(JSON.stringify(sourceBranch.mountedWorldbooks)) : { global: true, local: {} }
+    var clonedMemoryConvIds = (sourceBranch.memoryConvIds || []).slice()
+    var clonedSelectedCharIds = (sourceBranch.selectedCharIds || []).slice()
+    var clonedMountedSources = (sourceBranch.mountedSources || []).slice()
+    var clonedTags = (sourceBranch.tags || []).slice()
+
+    var newBranch = {
+      id: 'b' + Date.now(),
+      name: name,
+      charId: sourceBranch.charId,
+      charName: sourceBranch.charName,
+      charAvatar: sourceBranch.charAvatar,
+      sourceConvId: sourceBranch.sourceConvId,
+      source: 'fork',
+      forkedFrom: sourceBranch.id,
+      msgCount: clonedMessages.length,
+      createdAt: new Date().toLocaleString('zh-CN'),
+      tags: clonedTags,
+      contextDepth: sourceBranch.contextDepth,
+      longTermMemory: clonedLongTerm,
+      messages: clonedMessages,
+      userPersona: sourceBranch.userPersona ? JSON.parse(JSON.stringify(sourceBranch.userPersona)) : null,
+      mountedSources: clonedMountedSources,
+      memoryConvIds: clonedMemoryConvIds,
+      mountedWorldbooks: clonedMountedWorldbooks,
+      selectedCharIds: clonedSelectedCharIds
+    }
+    this.branches.push(newBranch)
+    this._saveBranches()
+    // 复制对话页面的消息到新分支的 localStorage key
+    try {
+      localStorage.setItem('pua_conv_' + newBranch.id, JSON.stringify(this._convMessages.slice()))
+    } catch(e) {}
+    // 自动切换到新分支
+    this._convBranchId = newBranch.id
+    this._toast('已创建分支: ' + name)
+    this._render()
+    console.log('[PUA] _forkBranch: created fork branch id=' + newBranch.id + ' from id=' + sourceBranch.id)
+  }
+
   /* ── 执行创建分支 ── */
   P._doCreateBranch = function() {
     console.log('[PUA] _doCreateBranch called')
@@ -2313,7 +2426,14 @@
     body += '<span>\u89D2\u8272: ' + this._escHtml(branch.charName || '\u672A\u77E5') + '</span>'
     body += '<span>\u6D88\u606F: ' + branch.msgCount + ' \u6761</span>'
     body += '<span>\u521B\u5EFA: ' + this._escHtml(branch.createdAt || '-') + '</span>'
-    body += '<span>\u6765\u6E90: ' + (branch.source === 'offline' ? '\u7EBF\u4E0B\u8BB0\u5F55' : '\u7EBF\u4E0A\u5BF9\u8BDD') + '</span>'
+    body += '<span>\u6765\u6E90: ' + (branch.source === 'offline' ? '\u7EBF\u4E0B\u8BB0\u5F55' : branch.source === 'fork' ? '\u5206\u652F\u5F00\u65B0' : '\u7EBF\u4E0A\u5BF9\u8BDD') + '</span>'
+    if (branch.source === 'fork' && branch.forkedFrom) {
+      var forkSourceName = ''
+      for (var fi = 0; fi < this.branches.length; fi++) {
+        if (this.branches[fi].id === branch.forkedFrom) { forkSourceName = this.branches[fi].name; break }
+      }
+      body += '<span>\u6E90\u5206\u652F: ' + this._escHtml(forkSourceName || branch.forkedFrom) + '</span>'
+    }
     if (branch.source === 'offline' && branch.offlineMeta) {
       var om = branch.offlineMeta
       if (om.offlineSource) body += '<span>\u7C7B\u578B: ' + this._escHtml(om.offlineSource) + '</span>'
@@ -10062,6 +10182,7 @@
     h += '<span class="pua-conv-msg-count" id="conv-msg-count">' + this._convMessages.length + ' \u6761</span>'
     h += '<button class="pua-conv-topbar-btn" id="conv-settings-btn" title="\u8BBE\u7F6E">\u2699</button>'
     h += '<button class="pua-conv-topbar-btn" id="conv-context-btn" title="\u67E5\u770B\u4E0A\u4E0B\u6587">\uD83D\uDCCB</button>'
+    h += '<button class="pua-conv-topbar-btn" id="conv-fork-btn" title="\u4ECE\u5F53\u524D\u8FDB\u5EA6\u65B0\u5EFA\u5206\u652F">\u2997</button>'
     h += '</div>'
 
     // Settings panel (hidden)
@@ -10255,6 +10376,12 @@
     var contextBtn = contentEl.querySelector('#conv-context-btn')
     if (contextBtn) {
       contextBtn.addEventListener('click', function() { self._viewContext() })
+    }
+
+    // Fork branch
+    var forkBtn = contentEl.querySelector('#conv-fork-btn')
+    if (forkBtn) {
+      forkBtn.addEventListener('click', function() { self._showForkBranchModal() })
     }
 
     // Load more
@@ -14925,7 +15052,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.46.0',
+    version: '0.47.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
