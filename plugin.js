@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿/**
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿/**
  * 平行时空档案馆 v0.42.0
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
@@ -1570,10 +1570,10 @@
       { id: 'regex', icon: '\u2733', label: '\u6B63\u5219\u7BA1\u7406', badge: this.regexes.length },
       { id: 'assembly', icon: '\u2699', label: '\u4E0A\u4E0B\u6587\u7EC4\u88C5', badge: this.asmBranchId ? 1 : 0 },
       { id: 'memory', icon: '\u263D', label: '\u8BB0\u5FC6\u7CFB\u7EDF' },
-      { id: 'chat', icon: '\uD83D\uDCAC', label: '\u5BF9\u8BDD', badge: 0 },
-      { id: 'favorites', icon: '\u2B50', label: '\u6536\u85CF', badge: 0 },
-      { id: 'theme', icon: '\uD83C\uDFA8', label: '\u7F8E\u5316', badge: 0 },
-      { id: 'assistant', icon: '\u2728', label: '\u52A9\u624B', badge: 0 },
+      { id: 'chat', icon: '\u2709', label: '\u5BF9\u8BDD', badge: 0 },
+      { id: 'favorites', icon: '\u271A', label: '\u6536\u85CF', badge: 0 },
+      { id: 'theme', icon: '\u25C8', label: '\u7F8E\u5316', badge: 0 },
+      { id: 'assistant', icon: '\u2731', label: '\u52A9\u624B', badge: 0 },
       { id: 'settings', icon: '\u2691', label: '\u8BBE\u7F6E' },
     ]
 
@@ -1701,7 +1701,7 @@
 
     var importBtn = document.createElement('button')
     importBtn.className = 'pua-btn'
-    importBtn.textContent = '\u2B07 \u5BFC\u5165\u7EBF\u4E0B\u8BB0\u5F55'
+    importBtn.textContent = '\u5BFC\u5165\u7EBF\u4E0B\u8BB0\u5F55'
     importBtn.addEventListener('click', function() { self._showImportModal() })
     actionsEl.appendChild(importBtn)
 
@@ -1946,7 +1946,7 @@
               var convId = ch.conversationId || ''
               var name = ch.handle || ch.name || '\u672A\u77E5'
               options.push({
-                label: '\uD83D\uDC64 ' + name + ' (\u5355\u804A)',
+                label: ' ' + name + ' (\u5355\u804A)',
                 value: 'char_' + (ch.id || ''),
                 convId: convId,
                 charId: ch.id || '',
@@ -1985,7 +1985,7 @@
               }
               if (!dup && convId) {
                 options.push({
-                  label: (isGroup ? '\uD83D\uDC65 ' : '\uD83D\uDCDD ') + name + (isGroup ? ' (\u7FA4\u804A)' : ''),
+                  label: (isGroup ? ' ' : ' ') + name + (isGroup ? ' (\u7FA4\u804A)' : ''),
                   value: 'conv_' + convId,
                   convId: convId,
                   charId: cv.contactId || '',
@@ -2371,6 +2371,23 @@
           if (conv && conv.mountedMemorySources) {
             branch.mountedSources = conv.mountedMemorySources
           }
+          // 群聊：提取所有成员的角色 ID 到 selectedCharIds
+          if (conv && conv.members && Array.isArray(conv.members) && conv.members.length > 0) {
+            var memberIds = []
+            for (var mi = 0; mi < conv.members.length; mi++) {
+              var m = conv.members[mi]
+              var memberId = m.id || m.charId || m.characterId || (typeof m === 'string' ? m : '')
+              if (memberId && memberIds.indexOf(memberId) === -1) memberIds.push(memberId)
+            }
+            if (memberIds.length > 0) {
+              // 确保主角色也在列表中
+              if (branch.charId && memberIds.indexOf(branch.charId) === -1) {
+                memberIds.unshift(branch.charId)
+              }
+              branch.selectedCharIds = memberIds
+              console.log('[PUA] _doCreateBranch: group chat detected, selectedCharIds=' + JSON.stringify(memberIds))
+            }
+          }
         }).catch(function() {})
       )
     }
@@ -2507,7 +2524,7 @@
 
     // ===== 记忆绑定配置 =====
     body += '<div class="pua-config-section">'
-    body += '<div class="pua-config-section-title">\u2726 \u8BB0\u5FC6\u7ED1\u5B9A</div>'
+    body += '<div class="pua-config-section-title">\u8BB0\u5FC6\u7ED1\u5B9A</div>'
     body += '<div class="pua-config-section-desc">\u9009\u62E9\u8981\u5173\u8054\u7684\u4F1A\u8BDD\uFF0C\u83B7\u53D6\u5176\u6838\u5FC3\u8BB0\u5FC6\u548C\u4E8B\u5B9E\u8BB0\u5FC6</div>'
     body += '<div class="pua-config-section-body" id="branch-mem-list">'
     body += '<div style="text-align:center;padding:12px;color:var(--pua-text-dim);font-size:10px">\u52A0\u8F7D\u4E2D...</div>'
@@ -2517,11 +2534,11 @@
 
     // ===== 世界书挂载配置 =====
     body += '<div class="pua-config-section">'
-    body += '<div class="pua-config-section-title">\u2726 \u4E16\u754C\u4E66\u6302\u8F7D</div>'
+    body += '<div class="pua-config-section-title">\u4E16\u754C\u4E66\u6302\u8F7D</div>'
     body += '<div class="pua-config-section-desc">\u5168\u5C40\u4E16\u754C\u4E66\u81EA\u52A8\u6302\u8F7D\uFF0C\u672C\u5730\u4E16\u754C\u4E66\u9700\u624B\u52A8\u9009\u62E9</div>'
     body += '<div id="branch-wb-global-item" class="pua-check-item checked">'
     body += '<div class="pua-check-box">\u2713</div>'
-    body += '<span class="pua-check-icon">\uD83C\uDF0D</span>'
+    body += '<span class="pua-check-icon"></span>'
     body += '<span class="pua-check-label">\u5168\u5C40\u4E16\u754C\u4E66\uFF08\u81EA\u52A8\u6302\u8F7D\uFF09</span>'
     body += '</div>'
     body += '<input type="checkbox" id="branch-wb-global" checked style="display:none">'
@@ -2533,7 +2550,7 @@
 
     // ===== 角色人设配置 =====
     body += '<div class="pua-config-section">'
-    body += '<div class="pua-config-section-title">\u2726 \u89D2\u8272\u4EBA\u8BBE</div>'
+    body += '<div class="pua-config-section-title">\u89D2\u8272\u4EBA\u8BBE</div>'
     body += '<div class="pua-config-section-desc">\u9009\u62E9\u8981\u5305\u542B\u7684\u89D2\u8272\u4EBA\u8BBE\uFF08\u7FA4\u804A\u9700\u624B\u52A8\u9009\u62E9\uFF09</div>'
     body += '<div class="pua-config-section-body" id="branch-char-list">'
     body += '<div style="text-align:center;padding:12px;color:var(--pua-text-dim);font-size:10px">\u52A0\u8F7D\u4E2D...</div>'
@@ -2617,7 +2634,7 @@
           console.log('[PUA] _openBranch: conv[' + i + '] name=' + cvName + ' cv.id=' + cv.id + ' cv.conversationId=' + cv.conversationId + ' cvId=' + cvId + ' isBound=' + isBound)
           h += '<div class="pua-check-item' + (isBound ? ' checked' : '') + '" data-conv-id="' + cvId + '">'
           h += '<div class="pua-check-box">\u2713</div>'
-          h += '<span class="pua-check-icon">' + (isGroup ? '\uD83D\uDC65' : '\uD83D\uDC64') + '</span>'
+          h += '<span class="pua-check-icon">' + (isGroup ? '' : '') + '</span>'
           h += '<span class="pua-check-label">' + self._escHtml(cvName) + '</span>'
           h += '</div>'
         }
@@ -2674,7 +2691,7 @@
           h += '<div class="pua-check-group-header">'
           h += '<div class="pua-check-item' + (isMounted ? ' checked' : '') + ' branch-wb-cat-check" data-cat-id="' + cat.id + '">'
           h += '<div class="pua-check-box">\u2713</div>'
-          h += '<span class="pua-check-icon">\uD83D\uDCD6</span>'
+          h += '<span class="pua-check-icon"></span>'
           h += '<span class="pua-check-label">' + self._escHtml(cat.name || cat.id) + '</span>'
           h += '</div>'
           h += '<span class="pua-check-group-arrow">\u25B6</span>'
@@ -2773,7 +2790,7 @@
           var displayName = ch.handle || ch.name || '?'
           h += '<div class="pua-check-item' + (isSelected ? ' checked' : '') + ' branch-char-check" data-char-id="' + ch.id + '">'
           h += '<div class="pua-check-box">\u2713</div>'
-          h += '<span class="pua-check-icon">\uD83D\uDC64</span>'
+          h += '<span class="pua-check-icon"></span>'
           h += '<span class="pua-check-label">' + self._escHtml(displayName) + '</span>'
           h += '</div>'
         }
@@ -3353,7 +3370,7 @@
     // Import button
     var importBtn = document.createElement('button')
     importBtn.className = 'pua-btn'
-    importBtn.textContent = '\u2B07 \u5BFC\u5165'
+    importBtn.textContent = '\u5BFC\u5165'
     importBtn.addEventListener('click', function() { self._importPresetDialog() })
     actionsEl.appendChild(importBtn)
     
@@ -3458,14 +3475,14 @@
       h += '<div style="flex:1"></div>'
       h += '<button class="pua-btn pua-btn-sm pua-mobile-back" style="display:none" data-id="' + selPreset.id + '">\u2190 \u8FD4\u56DE\u5217\u8868</button>'
       h += '<button class="pua-btn pua-btn-danger pua-btn-sm pua-preset-delete" data-id="' + selPreset.id + '">\u5220\u9664</button>'
-      h += '<button class="pua-btn pua-btn-sm" id="preset-save-btn" style="background:var(--pua-accent);color:#000">\u2726 \u4FDD\u5B58</button>'
+      h += '<button class="pua-btn pua-btn-sm" id="preset-save-btn" style="background:var(--pua-accent);color:#000">\u4FDD\u5B58</button>'
       h += '</div>'
       // Content textarea
       h += '<div class="pua-detail-body">'
       h += '<div class="pua-detail-content"><textarea class="pua-detail-textarea pua-preset-content" data-id="' + selPreset.id + '" placeholder="\u8F93\u5165\u9884\u8BBE\u5185\u5BB9...">' + self._escHtml(selPreset.content) + '</textarea></div>'
       // Regex section
       h += '<div class="pua-regex-section">'
-      h += '<div class="pua-regex-section-title">\uD83D\uDD10 \u63D0\u793A\u8BCD\u66FF\u6362\uFF08\u4FEE\u6539\u53D1\u7ED9AI\u7684\u6587\u672C\uFF09</div>'
+      h += '<div class="pua-regex-section-title"> \u63D0\u793A\u8BCD\u66FF\u6362\uFF08\u4FEE\u6539\u53D1\u7ED9AI\u7684\u6587\u672C\uFF09</div>'
       h += '<div class="pua-regex-row"><label>\u6392\u9664\u8FC7\u6EE4</label>'
       h += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:rgba(220,53,69,0.15);color:#dc3545">\u9ED1\u540D\u5355</span>'
       h += '<input type="text" class="pua-preset-outregex" value="' + self._escHtml(selPreset.outRegex) + '" placeholder="\u5339\u914D\u5230\u7684\u5185\u5BB9\u4E0D\u8FDB\u5165\u4E0a\u4e0b\u6587" data-id="' + selPreset.id + '">'
@@ -4413,7 +4430,7 @@
     // Import button
     var importBtn = document.createElement('button')
     importBtn.className = 'pua-btn'
-    importBtn.textContent = '\u2B07 \u5BFC\u5165'
+    importBtn.textContent = '\u5BFC\u5165'
     importBtn.addEventListener('click', function() { self._importRegexDialog() })
     actionsEl.appendChild(importBtn)
 
@@ -4530,7 +4547,7 @@
       h += '<div style="flex:1"></div>'
       h += '<button class="pua-btn pua-btn-sm pua-mobile-back-regex" style="display:none" data-id="' + selRegex.id + '">\u2190 \u8FD4\u56DE\u5217\u8868</button>'
       h += '<button class="pua-btn pua-btn-danger pua-btn-sm pua-regex-delete" data-id="' + selRegex.id + '">\u5220\u9664</button>'
-      h += '<button class="pua-btn pua-btn-sm" id="regex-save-btn" style="background:var(--pua-accent);color:#000">\u2726 \u4FDD\u5B58</button>'
+      h += '<button class="pua-btn pua-btn-sm" id="regex-save-btn" style="background:var(--pua-accent);color:#000">\u4FDD\u5B58</button>'
       h += '</div>'
       // Content area
       h += '<div class="pua-detail-body">'
@@ -4563,7 +4580,7 @@
       var dMin = selRegex.dMin || 0
       var dMaxStr = selRegex.dMax === Infinity ? '' : String(selRegex.dMax || '')
       h += '<div class="pua-regex-section">'
-      h += '<div class="pua-regex-section-title">\uD83D\uDD10 \u751F\u6548\u6DF1\u5EA6</div>'
+      h += '<div class="pua-regex-section-title"> \u751F\u6548\u6DF1\u5EA6</div>'
       h += '<div class="pua-depth-row"><span class="pua-depth-label">\u6DF1\u5EA6\u8303\u56F4</span>'
       h += '<input class="pua-depth-input pua-regex-dmin" type="number" value="' + dMin + '" min="0" data-id="' + selRegex.id + '">'
       h += '<span class="pua-depth-sep">~</span>'
@@ -4942,7 +4959,7 @@
       // Add element select toggle button after the preview result
       var regexElemSelectBtn = document.createElement('button')
       regexElemSelectBtn.className = 'pua-code-block-btn'
-      regexElemSelectBtn.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+      regexElemSelectBtn.textContent = '\u9009\u4E2D\u5143\u7D20'
       regexElemSelectBtn.style.marginTop = '4px'
       regexResultEl.parentNode.insertBefore(regexElemSelectBtn, regexResultEl.nextSibling)
       // Add elem info div
@@ -4955,13 +4972,13 @@
         regexElemSelectActive = !regexElemSelectActive
         if (regexElemSelectActive) {
           regexResultEl.classList.add('pua-elem-select-active')
-          this.textContent = '\uD83D\uDD0D \u53D6\u6D88\u9009\u4E2D'
+          this.textContent = '\u53D6\u6D88\u9009\u4E2D'
           this.style.borderColor = '#4a9eff'
           this.style.color = '#4a9eff'
           regexResultEl.addEventListener('click', onRegexElemClick)
         } else {
           regexResultEl.classList.remove('pua-elem-select-active')
-          this.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+          this.textContent = '\u9009\u4E2D\u5143\u7D20'
           this.style.borderColor = ''
           this.style.color = ''
           regexResultEl.removeEventListener('click', onRegexElemClick)
@@ -5781,9 +5798,7 @@
           } else if (rawOrder[j].type === 'char' && rawOrder[j].id !== 'char' && rawOrder[j].id !== '__char__') {
             // 兼容旧预设中的具体 char ID：如果当前分支有这个 char 则保留，否则跳过
             var charExists = false
-            if (rawOrder[j].id === 'char') {
-              charExists = true
-            } else if (this.asmData.chars) {
+            if (this.asmData.chars) {
               for (var cci = 0; cci < this.asmData.chars.length; cci++) {
                 if (this.asmData.chars[cci].id === rawOrder[j].id) { charExists = true; break }
               }
@@ -6161,11 +6176,13 @@
       )
     }
 
-    // 获取选中的角色人设（多个）
+    // 获取选中的角色人设（多个，跳过主角色避免重复）
     if (branch.selectedCharIds && branch.selectedCharIds.length > 0 && this.roche.character && this.roche.character.get) {
       console.log('[PUA] _fetchAsmData: fetching ' + branch.selectedCharIds.length + ' selected chars, ids=' + JSON.stringify(branch.selectedCharIds))
       for (var sci = 0; sci < branch.selectedCharIds.length; sci++) {
-        (function(charId) {
+        // 跳过主角色（已通过 asmData.char 获取）
+        if (branch.selectedCharIds[sci] === branch.charId) continue
+        ;(function(charId) {
           promises.push(
             self.roche.character.get(charId).then(function(ch) {
               if (ch) {
@@ -6180,8 +6197,43 @@
           )
         })(branch.selectedCharIds[sci])
       }
+    } else if (branch.sourceConvId && this.roche.conversation && this.roche.conversation.get) {
+      // Fallback: 分支没有 selectedCharIds 但有 sourceConvId（可能是旧分支或群聊）
+      // 尝试从会话获取成员列表
+      console.log('[PUA] _fetchAsmData: no selectedCharIds, trying conversation.get for group members, convId=' + branch.sourceConvId)
+      promises.push(
+        this.roche.conversation.get(branch.sourceConvId).then(function(conv) {
+          if (conv && conv.members && Array.isArray(conv.members) && conv.members.length > 0) {
+            var memberIds = []
+            for (var gmi = 0; gmi < conv.members.length; gmi++) {
+              var gm = conv.members[gmi]
+              var gmemberId = gm.id || gm.charId || gm.characterId || (typeof gm === 'string' ? gm : '')
+              if (gmemberId && gmemberId !== branch.charId && memberIds.indexOf(gmemberId) === -1) memberIds.push(gmemberId)
+            }
+            console.log('[PUA] _fetchAsmData: found ' + memberIds.length + ' group members from conversation')
+            // 更新分支的 selectedCharIds（持久化）
+            branch.selectedCharIds = branch.charId ? [branch.charId].concat(memberIds) : memberIds
+            self._saveBranches()
+            // 获取每个成员的角色人设，收集为子 Promise 数组
+            var charPromises = []
+            for (var gci = 0; gci < memberIds.length; gci++) {
+              ;(function(charId) {
+                if (self.roche.character && self.roche.character.get) {
+                  charPromises.push(
+                    self.roche.character.get(charId).then(function(ch) {
+                      if (ch) self.asmData.chars.push(ch)
+                    }).catch(function() {})
+                  )
+                }
+              })(memberIds[gci])
+            }
+            // 等待所有角色获取完成后再 resolve 外层 Promise
+            return Promise.all(charPromises)
+          }
+        }).catch(function() {})
+      )
     } else {
-      console.log('[PUA] _fetchAsmData: no selectedCharIds, branchId=' + branch.id + ' selectedCharIds=' + JSON.stringify(branch.selectedCharIds))
+      console.log('[PUA] _fetchAsmData: no selectedCharIds and no sourceConvId, branchId=' + branch.id)
     }
 
     // 获取用户人设
@@ -6595,8 +6647,8 @@
     var btnRefresh = this._mkBtn('\u5237\u65B0\u6570\u636E', 'pua-btn', function() { self._fetchAsmData() })
     var btnPreview = this._mkBtn('\u9884\u89C8\u4E0A\u4E0B\u6587', 'pua-btn pua-btn-gold', function() { self._previewAssembly() })
     var btnSave = this._mkBtn('\u4FDD\u5B58', 'pua-btn', function() { self._saveAsmConfig(); self._toast('\u7EC4\u88C5\u914D\u7F6E\u5DF2\u4FDD\u5B58') })
-    var btnBundleExport = this._mkBtn('\uD83D\uDCE6 \u7ED1\u5B9A\u5BFC\u51FA', 'pua-btn', function() { self._showBundleExportModal() })
-    var btnBundleImport = this._mkBtn('\uD83D\uDCE5 \u7ED1\u5B9A\u5BFC\u5165', 'pua-btn', function() { self._showBundleImportModal() })
+    var btnBundleExport = this._mkBtn('\u7ED1\u5B9A\u5BFC\u51FA', 'pua-btn', function() { self._showBundleExportModal() })
+    var btnBundleImport = this._mkBtn('\u7ED1\u5B9A\u5BFC\u5165', 'pua-btn', function() { self._showBundleImportModal() })
     actionsEl.appendChild(btnRefresh)
     actionsEl.appendChild(btnPreview)
     actionsEl.appendChild(btnSave)
@@ -7935,12 +7987,23 @@
           }
           break
         case 'latestUserPrompt':
-          // Insert the latest user message wrapped with the prompt template
+          // 用提示词模板包装最后的用户消息（替换而非追加，避免重复 user 消息）
           var lpTpl = (this._loadSettings().latestUserPrompt || '').trim()
           if (lpTpl && this._lastUserMsgContent) {
             var wrappedContent = lpTpl.split('{content}').join(this._lastUserMsgContent)
-            messages.push({ role: 'user', content: wrappedContent })
-            console.log('[PUA] _buildMessages latestUserPrompt: inserted wrapped user msg, len=' + wrappedContent.length)
+            // 查找 messages 中最后一条 user 消息并替换
+            var lastUserIdx = -1
+            for (var lui = messages.length - 1; lui >= 0; lui--) {
+              if (messages[lui].role === 'user') { lastUserIdx = lui; break }
+            }
+            if (lastUserIdx >= 0) {
+              messages[lastUserIdx].content = wrappedContent
+              console.log('[PUA] _buildMessages latestUserPrompt: replaced last user msg at idx=' + lastUserIdx + ', len=' + wrappedContent.length)
+            } else {
+              // 如果没有找到 user 消息（如预览模式），则追加
+              messages.push({ role: 'user', content: wrappedContent })
+              console.log('[PUA] _buildMessages latestUserPrompt: no existing user msg, appended wrapped user msg')
+            }
           }
           break
       }
@@ -8587,7 +8650,7 @@
     h += '<option value="sub"' + (data.apiChoice === 'sub' ? ' selected' : '') + '>\u526F API</option>'
     h += '<option value="vec"' + (data.apiChoice === 'vec' ? ' selected' : '') + '>\u5411\u91CF API</option>'
     h += '</select>'
-    h += '<button class="pua-assistant-attach-btn" id="ast-prompt-btn" style="margin-left:4px">\uD83D\uDCDD \u63D0\u793A\u8BCD</button>'
+    h += '<button class="pua-assistant-attach-btn" id="ast-prompt-btn" style="margin-left:4px"> \u63D0\u793A\u8BCD</button>'
     h += '<button class="pua-btn pua-btn-sm" id="ast-clear-history" style="margin-left:auto">\u6E05\u7A7A\u5BF9\u8BDD</button>'
     h += '</div>'
 
@@ -8599,10 +8662,10 @@
     }
     h += '</select>'
     h += '<button class="pua-branch-btn" id="ast-branch-add">\u2795 \u65B0\u5BF9\u8BDD</button>'
-    h += '<button class="pua-branch-btn" id="ast-branch-rename">\u270F\uFE0F</button>'
-    h += '<button class="pua-branch-btn pua-branch-btn-danger" id="ast-branch-delete">\uD83D\uDDD1\uFE0F</button>'
-    h += '<button class="pua-branch-btn" id="ast-branch-export">\uD83D\uDCE5 \u5BFC\u51FA</button>'
-    h += '<button class="pua-branch-btn" id="ast-branch-import">\uD83D\uDCE4 \u5BFC\u5165</button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-rename"></button>'
+    h += '<button class="pua-branch-btn pua-branch-btn-danger" id="ast-branch-delete"></button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-export"> \u5BFC\u51FA</button>'
+    h += '<button class="pua-branch-btn" id="ast-branch-import"> \u5BFC\u5165</button>'
     h += '<span style="font-size:8px;color:var(--pua-text-dim);margin-left:auto">' + data.branches.length + '/10</span>'
     h += '</div>'
 
@@ -8611,7 +8674,7 @@
 
     if (!branch.history || branch.history.length === 0) {
       h += '<div class="pua-assistant-empty">'
-      h += '<div class="pua-assistant-empty-icon">\u2728</div>'
+      h += '<div class="pua-assistant-empty-icon"></div>'
       h += '<div class="pua-assistant-empty-text">\u5411\u52A9\u624B\u8BE2\u95EE\uFF0C\u5982\u201C\u5E2E\u6211\u6DFB\u52A0\u4E00\u4E2A\u89D2\u8272\u626E\u6F14\u9884\u8BBE\u201D</div>'
       h += '</div>'
     } else {
@@ -8619,24 +8682,24 @@
         var msg = branch.history[mi]
         if (msg.role === 'user') {
           h += '<div class="pua-assistant-msg pua-assistant-msg-user' + (msg.dimmed ? ' pua-msg-dimmed' : '') + '" data-msg-id="' + self._escHtml(msg.id) + '">'
-          h += '<div class="pua-assistant-msg-role">\uD83D\uDC64 \u4F60</div>'
+          h += '<div class="pua-assistant-msg-role"> \u4F60</div>'
           h += '<div class="pua-assistant-msg-content">' + self._escHtml(msg.content) + '</div>'
-          h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(msg.id) + '">\u270F\uFE0F</button>'
+          h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(msg.id) + '"></button>'
           // Show attached badges
           if (msg.attached && (msg.attached.presets.length > 0 || msg.attached.regexes.length > 0)) {
             h += '<div class="pua-assistant-attached-badges">'
             for (var api = 0; api < msg.attached.presets.length; api++) {
-              h += '<span class="pua-assistant-badge">\uD83D\uDCCB ' + self._escHtml(msg.attached.presets[api].title) + '</span>'
+              h += '<span class="pua-assistant-badge"> ' + self._escHtml(msg.attached.presets[api].title) + '</span>'
             }
             for (var ari = 0; ari < msg.attached.regexes.length; ari++) {
-              h += '<span class="pua-assistant-badge">\u2699\uFE0F ' + self._escHtml(msg.attached.regexes[ari].name) + '</span>'
+              h += '<span class="pua-assistant-badge"> ' + self._escHtml(msg.attached.regexes[ari].name) + '</span>'
             }
             h += '</div>'
           }
           h += '</div>'
         } else if (msg.role === 'assistant') {
           h += '<div class="pua-assistant-msg pua-assistant-msg-assistant">'
-          h += '<div class="pua-assistant-msg-role">\u2728 \u52A9\u624B</div>'
+          h += '<div class="pua-assistant-msg-role"> \u52A9\u624B</div>'
           h += self._renderAssistantContent(msg)
           h += '</div>'
         }
@@ -8650,7 +8713,7 @@
     h += '<div class="pua-assistant-attach-row">'
     // Attach presets dropdown
     h += '<div class="pua-assistant-attach-dropdown" id="ast-attach-preset-dropdown">'
-    h += '<button class="pua-assistant-attach-btn' + (attached.presets.length > 0 ? ' active' : '') + '" id="ast-attach-preset-btn">\uD83D\uDCCE \u9009\u62E9\u9884\u8BBE' + (attached.presets.length > 0 ? ' (' + attached.presets.length + ')' : '') + '</button>'
+    h += '<button class="pua-assistant-attach-btn' + (attached.presets.length > 0 ? ' active' : '') + '" id="ast-attach-preset-btn"> \u9009\u62E9\u9884\u8BBE' + (attached.presets.length > 0 ? ' (' + attached.presets.length + ')' : '') + '</button>'
     h += '<div class="pua-assistant-attach-list" id="ast-attach-preset-list">'
     for (var pi = 0; pi < this.presets.length; pi++) {
       var isSelPreset = false
@@ -8660,7 +8723,7 @@
     h += '</div></div>'
     // Attach regexes dropdown
     h += '<div class="pua-assistant-attach-dropdown" id="ast-attach-regex-dropdown">'
-    h += '<button class="pua-assistant-attach-btn' + (attached.regexes.length > 0 ? ' active' : '') + '" id="ast-attach-regex-btn">\uD83D\uDCCE \u9009\u62E9\u6B63\u5219' + (attached.regexes.length > 0 ? ' (' + attached.regexes.length + ')' : '') + '</button>'
+    h += '<button class="pua-assistant-attach-btn' + (attached.regexes.length > 0 ? ' active' : '') + '" id="ast-attach-regex-btn"> \u9009\u62E9\u6B63\u5219' + (attached.regexes.length > 0 ? ' (' + attached.regexes.length + ')' : '') + '</button>'
     h += '<div class="pua-assistant-attach-list" id="ast-attach-regex-list">'
     for (var ri = 0; ri < this.regexes.length; ri++) {
       var isSelRegex = false
@@ -8672,10 +8735,10 @@
     if (attached.presets.length > 0 || attached.regexes.length > 0) {
       h += '<div class="pua-assistant-attached-badges">'
       for (var abp = 0; abp < attached.presets.length; abp++) {
-        h += '<span class="pua-assistant-badge" data-badge-type="preset" data-badge-id="' + self._escHtml(attached.presets[abp].id) + '">\uD83D\uDCCB ' + self._escHtml(attached.presets[abp].title) + '<span class="badge-remove">\u00D7</span></span>'
+        h += '<span class="pua-assistant-badge" data-badge-type="preset" data-badge-id="' + self._escHtml(attached.presets[abp].id) + '"> ' + self._escHtml(attached.presets[abp].title) + '<span class="badge-remove">\u00D7</span></span>'
       }
       for (var abr = 0; abr < attached.regexes.length; abr++) {
-        h += '<span class="pua-assistant-badge" data-badge-type="regex" data-badge-id="' + self._escHtml(attached.regexes[abr].id) + '">\u2699\uFE0F ' + self._escHtml(attached.regexes[abr].name) + '<span class="badge-remove">\u00D7</span></span>'
+        h += '<span class="pua-assistant-badge" data-badge-type="regex" data-badge-id="' + self._escHtml(attached.regexes[abr].id) + '"> ' + self._escHtml(attached.regexes[abr].name) + '<span class="badge-remove">\u00D7</span></span>'
       }
       h += '</div>'
     }
@@ -9097,13 +9160,13 @@
           elemSelectActive = !elemSelectActive
           if (elemSelectActive) {
             previewDiv.classList.add('pua-elem-select-active')
-            this.textContent = '\uD83D\uDD0D \u53D6\u6D88\u9009\u4E2D'
+            this.textContent = '\u53D6\u6D88\u9009\u4E2D'
             this.style.borderColor = '#4a9eff'
             this.style.color = '#4a9eff'
             outputDiv.addEventListener('click', onElemClick)
           } else {
             previewDiv.classList.remove('pua-elem-select-active')
-            this.textContent = '\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20'
+            this.textContent = '\u9009\u4E2D\u5143\u7D20'
             this.style.borderColor = ''
             this.style.color = ''
             outputDiv.removeEventListener('click', onElemClick)
@@ -9295,10 +9358,10 @@
       var actionStatus = action.status || 'confirmed'
       var label = ''
       var confirmLabel = ''
-      if (action.type === 'addPreset') { label = '\uD83D\uDCCB \u6DFB\u52A0\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = '\u2705 \u6DFB\u52A0' }
-      else if (action.type === 'addRegex') { label = '\u2699\uFE0F \u6DFB\u52A0\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = '\u2705 \u6DFB\u52A0' }
-      else if (action.type === 'editPreset') { label = '\uD83D\uDCCB \u4FEE\u6539\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = '\u2705 \u5E94\u7528' }
-      else if (action.type === 'editRegex') { label = '\u2699\uFE0F \u4FEE\u6539\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = '\u2705 \u5E94\u7528' }
+      if (action.type === 'addPreset') { label = ' \u6DFB\u52A0\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = ' \u6DFB\u52A0' }
+      else if (action.type === 'addRegex') { label = ' \u6DFB\u52A0\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = ' \u6DFB\u52A0' }
+      else if (action.type === 'editPreset') { label = ' \u4FEE\u6539\u9884\u8BBE: ' + self._escHtml(action.data.title || ''); confirmLabel = ' \u5E94\u7528' }
+      else if (action.type === 'editRegex') { label = ' \u4FEE\u6539\u6B63\u5219: ' + self._escHtml(action.data.name || ''); confirmLabel = ' \u5E94\u7528' }
 
       h += '<div class="pua-assistant-action-card' + (actionStatus === 'ignored' ? ' pua-action-ignored' : '') + (actionStatus === 'confirmed' ? ' pua-action-confirmed' : '') + '" data-action-card-id="' + self._escHtml(action.id) + '">'
       h += '<span class="pua-assistant-action-label">' + label + '</span>'
@@ -9321,7 +9384,7 @@
       if ((action.type === 'addRegex' || action.type === 'editRegex') && action.data.regex && action.data.html) {
         h += '<div class="pua-regex-preview pua-regex-preview-auto" data-regex="' + self._escHtml(action.data.regex) + '" data-html="' + self._escHtml(action.data.html) + '">'
         h += '<div class="pua-regex-preview-output"></div>'
-        h += '<div style="display:flex;gap:4px;margin-top:4px"><button class="pua-code-block-btn pua-elem-select-toggle">\uD83D\uDD0D \u9009\u4E2D\u5143\u7D20</button></div>'
+        h += '<div style="display:flex;gap:4px;margin-top:4px"><button class="pua-code-block-btn pua-elem-select-toggle"> \u9009\u4E2D\u5143\u7D20</button></div>'
         h += '<div class="pua-elem-info" style="display:none"></div>'
         h += '</div>'
       }
@@ -9335,7 +9398,7 @@
         h += '<button class="pua-assistant-dismiss-btn" data-action-id="' + self._escHtml(action.id) + '">\u274C \u5FFD\u7565</button>'
         h += '</div>'
       } else if (actionStatus === 'confirmed') {
-        h += '<span class="pua-action-status">\u2705 \u5DF2\u4FDD\u5B58</span>'
+        h += '<span class="pua-action-status"> \u5DF2\u4FDD\u5B58</span>'
       } else if (actionStatus === 'ignored') {
         h += '<span class="pua-action-status">\u274C \u5DF2\u5FFD\u7565</span>'
       }
@@ -9346,7 +9409,7 @@
     if (pendingCount > 1) {
       h += '<div class="pua-batch-actions-bar">'
       h += '<span class="pua-batch-info">\u5171 ' + pendingCount + ' \u4E2A\u5F85\u5904\u7406\u64CD\u4F5C</span>'
-      h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="ast-batch-confirm">\u2705 \u5168\u90E8\u4FDD\u5B58</button>'
+      h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="ast-batch-confirm"> \u5168\u90E8\u4FDD\u5B58</button>'
       h += '<button class="pua-btn pua-btn-sm" id="ast-batch-dismiss">\u274C \u5168\u90E8\u5FFD\u7565</button>'
       h += '</div>'
     }
@@ -9712,16 +9775,16 @@
 
     var msgDiv = document.createElement('div')
     msgDiv.className = 'pua-assistant-msg pua-assistant-msg-user'
-    var h = '<div class="pua-assistant-msg-role">\uD83D\uDC64 \u4F60</div>'
+    var h = '<div class="pua-assistant-msg-role"> \u4F60</div>'
     h += '<div class="pua-assistant-msg-content">' + self._escHtml(userMsg.content) + '</div>'
-    h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(userMsg.id) + '">\u270F\uFE0F</button>'
+    h += '<button class="pua-assistant-edit-btn" data-edit-msg-id="' + self._escHtml(userMsg.id) + '"></button>'
     if (userMsg.attached && (userMsg.attached.presets.length > 0 || userMsg.attached.regexes.length > 0)) {
       h += '<div class="pua-assistant-attached-badges">'
       for (var api = 0; api < userMsg.attached.presets.length; api++) {
-        h += '<span class="pua-assistant-badge">\uD83D\uDCCB ' + self._escHtml(userMsg.attached.presets[api].title) + '</span>'
+        h += '<span class="pua-assistant-badge"> ' + self._escHtml(userMsg.attached.presets[api].title) + '</span>'
       }
       for (var ari = 0; ari < userMsg.attached.regexes.length; ari++) {
-        h += '<span class="pua-assistant-badge">\u2699\uFE0F ' + self._escHtml(userMsg.attached.regexes[ari].name) + '</span>'
+        h += '<span class="pua-assistant-badge"> ' + self._escHtml(userMsg.attached.regexes[ari].name) + '</span>'
       }
       h += '</div>'
     }
@@ -9905,7 +9968,7 @@
 
     var h = '<div class="pua-prompt-modal">'
     h += '<div class="pua-prompt-modal-header">'
-    h += '<span class="pua-prompt-modal-title">\uD83D\uDCDD \u7CFB\u7EDF\u63D0\u793A\u8BCD</span>'
+    h += '<span class="pua-prompt-modal-title"> \u7CFB\u7EDF\u63D0\u793A\u8BCD</span>'
     h += '<button class="pua-prompt-modal-close">\u00D7</button>'
     h += '</div>'
     h += '<div class="pua-prompt-modal-body">'
@@ -9917,7 +9980,7 @@
     }
     h += '</select>'
     h += '<button class="pua-prompt-modal-preset-btn pua-prompt-modal-save-btn" id="ast-preset-add" title="\u4FDD\u5B58\u4E3A\u65B0\u9884\u8BBE">\u2795</button>'
-    h += '<button class="pua-prompt-modal-preset-btn pua-prompt-modal-del-btn" id="ast-preset-del" title="\u5220\u9664\u5F53\u524D\u9884\u8BBE">\uD83D\uDDD1\uFE0F</button>'
+    h += '<button class="pua-prompt-modal-preset-btn pua-prompt-modal-del-btn" id="ast-preset-del" title="\u5220\u9664\u5F53\u524D\u9884\u8BBE"></button>'
     h += '<input class="pua-prompt-modal-name-input" id="ast-preset-name-input" placeholder="\u9884\u8BBE\u540D\u79F0">'
     h += '</div>'
     h += '<textarea class="pua-prompt-modal-textarea" id="ast-prompt-textarea">' + this._escHtml(currentPrompt) + '</textarea>'
@@ -10181,7 +10244,7 @@
     h += '</select>'
     h += '<span class="pua-conv-msg-count" id="conv-msg-count">' + this._convMessages.length + ' \u6761</span>'
     h += '<button class="pua-conv-topbar-btn" id="conv-settings-btn" title="\u8BBE\u7F6E">\u2699</button>'
-    h += '<button class="pua-conv-topbar-btn" id="conv-context-btn" title="\u67E5\u770B\u4E0A\u4E0B\u6587">\uD83D\uDCCB</button>'
+    h += '<button class="pua-conv-topbar-btn" id="conv-context-btn" title="\u67E5\u770B\u4E0A\u4E0B\u6587"></button>'
     h += '<button class="pua-conv-topbar-btn" id="conv-fork-btn" title="\u4ECE\u5F53\u524D\u8FDB\u5EA6\u65B0\u5EFA\u5206\u652F">\u2997</button>'
     h += '</div>'
 
@@ -10209,7 +10272,7 @@
     }
 
     if (msgs.length === 0) {
-      h += '<div class="pua-empty"><div class="pua-empty-icon">\uD83D\uDCAC</div><div class="pua-empty-text">\u9009\u62E9\u5206\u652F\u5F00\u59CB\u5BF9\u8BDD</div></div>'
+      h += '<div class="pua-empty"><div class="pua-empty-icon"></div><div class="pua-empty-text">\u9009\u62E9\u5206\u652F\u5F00\u59CB\u5BF9\u8BDD</div></div>'
     } else {
       if (collapsedCount > 0) {
         h += '<div class="pua-conv-collapsed" id="conv-load-more">\u66F4\u65E9\u7684\u6D88\u606F (' + collapsedCount + '\u6761) \u2014 \u52A0\u8F7D\u66F4\u591A</div>'
@@ -10229,9 +10292,9 @@
     h += '<button class="pua-conv-send" id="conv-send">\u27A4</button>'
     h += '</div>'
     h += '<div class="pua-conv-input-btns">'
-    h += '<button class="pua-conv-input-btn" id="conv-jump-btn">\uD83D\uDCCD \u8DF3\u8F6C\u697C\u5C42</button>'
-    h += '<button class="pua-conv-input-btn" id="conv-export-btn">\uD83D\uDCE5 \u5BFC\u51FA</button>'
-    h += '<button class="pua-conv-input-btn" id="conv-import-btn">\uD83D\uDCE4 \u5BFC\u5165</button>'
+    h += '<button class="pua-conv-input-btn" id="conv-jump-btn"> \u8DF3\u8F6C\u697C\u5C42</button>'
+    h += '<button class="pua-conv-input-btn" id="conv-export-btn"> \u5BFC\u51FA</button>'
+    h += '<button class="pua-conv-input-btn" id="conv-import-btn"> \u5BFC\u5165</button>'
     h += '</div>'
     h += '<div class="pua-conv-jump-row' + (this._convShowJump ? ' show' : '') + '" id="conv-jump-row">'
     h += '<span style="font-size:10px;color:var(--pua-text-sub)">\u697C\u5C42\u53F7:</span>'
@@ -12624,7 +12687,7 @@
 
   P._renderFavorites = function(titleEl, actionsEl, contentEl) {
     var self = this
-    titleEl.textContent = '\u2B50 \u6536\u85CF'
+    titleEl.textContent = '\u6536\u85CF'
     actionsEl.innerHTML = ''
 
     var favs = this._loadFavorites()
@@ -12636,7 +12699,7 @@
     }
 
     if (favs.length === 0) {
-      contentEl.innerHTML = '<div class="pua-empty"><div class="pua-empty-icon">\u2B50</div><div class="pua-empty-text">\u8FD8\u6CA1\u6709\u6536\u85CF\u7684\u6D88\u606F</div></div>'
+      contentEl.innerHTML = '<div class="pua-empty"><div class="pua-empty-icon"></div><div class="pua-empty-text">\u8FD8\u6CA1\u6709\u6536\u85CF\u7684\u6D88\u606F</div></div>'
       return
     }
 
@@ -12652,12 +12715,12 @@
       h += '<span class="pua-fav-floor">#' + (fav.floorNumber || 0) + '</span>'
       h += '<span class="pua-fav-role pua-fav-role-' + (fav.role || 'user') + '">' + (fav.role === 'assistant' ? '\u52A9\u624B' : '\u7528\u6237') + '</span>'
       if (!exists) {
-        h += '<span class="pua-fav-warning">\u26A0\uFE0F \u5DF2\u5220\u9664</span>'
+        h += '<span class="pua-fav-warning"> \u5DF2\u5220\u9664</span>'
       }
       h += '</div>'
       h += '<div class="pua-fav-content">' + this._escHtml(fav.content || '') + '</div>'
       if (fav.note) {
-        h += '<div class="pua-fav-note">\uD83D\uDCDD ' + this._escHtml(fav.note) + '</div>'
+        h += '<div class="pua-fav-note"> ' + this._escHtml(fav.note) + '</div>'
       }
       h += '<div class="pua-fav-actions">'
       if (exists) {
@@ -13030,7 +13093,7 @@
 
     // 主题选择器
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\uD83C\uDFA8 \u4E3B\u9898\u9009\u62E9</div>'
+    h += '<div class="pua-settings-title"> \u4E3B\u9898\u9009\u62E9</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u5F53\u524D\u4E3B\u9898</span>'
     h += '<select class="pua-settings-select" id="theme-select">'
     h += '<option value="">-- \u65E0\u81EA\u5B9A\u4E49\u4E3B\u9898 --</option>'
@@ -13049,7 +13112,7 @@
 
     // CSS 编辑器
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u270F CSS \u7F16\u8F91\u5668</div>'
+    h += '<div class="pua-settings-title">CSS \u7F16\u8F91\u5668</div>'
     var currentCss = ''
     if (activeId) {
       for (var ci = 0; ci < themes.length; ci++) {
@@ -13285,7 +13348,7 @@
 
     // API 预设选择
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 API \u9884\u8BBE</div>'
+    h += '<div class="pua-settings-title">API \u9884\u8BBE</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u5F53\u524D\u9884\u8BBE</span>'
     h += '<select class="pua-settings-select" id="set-preset-select">'
     for (var si = 0; si < presets.length; si++) {
@@ -13320,7 +13383,7 @@
 
     // 副 API 配置
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u526F API \u914D\u7F6E</div>'
+    h += '<div class="pua-settings-title">\u526F API \u914D\u7F6E</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
     h += '<input class="pua-settings-input" id="set-sub-endpoint" placeholder="https://api.example.com/v1" value="' + self._escHtml(activePreset ? activePreset.subEndpoint : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
@@ -13338,7 +13401,7 @@
 
     // 向量 API 配置
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u5411\u91CF API \u914D\u7F6E</div>'
+    h += '<div class="pua-settings-title">\u5411\u91CF API \u914D\u7F6E</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u63A5\u53E3\u5730\u5740</span>'
     h += '<input class="pua-settings-input" id="set-vec-endpoint" placeholder="https://api.example.com/v1" value="' + self._escHtml(activePreset ? activePreset.vecEndpoint : '') + '"></div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">API Key</span>'
@@ -13356,7 +13419,7 @@
 
     // 记忆参数（全局）
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u8BB0\u5FC6\u53C2\u6570</div>'
+    h += '<div class="pua-settings-title">\u8BB0\u5FC6\u53C2\u6570</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u6BCF\u8F6E\u53D1\u9001\u4E8B\u5B9E\u8BB0\u5FC6</span>'
     h += '<input class="pua-settings-input" id="set-mem-fact-send" type="number" min="1" max="100" value="' + (settings.factSendCount || 10) + '" style="width:80px;flex:none">'
     h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u6761</span></div>'
@@ -13372,7 +13435,7 @@
 
     // 记忆总结设置
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u8BB0\u5FC6\u603B\u7ED3\u8BBE\u7F6E</div>'
+    h += '<div class="pua-settings-title">\u8BB0\u5FC6\u603B\u7ED3\u8BBE\u7F6E</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u81EA\u52A8\u603B\u7ED3\u95F4\u9694\u697C\u5C42</span>'
     h += '<input class="pua-settings-input" id="set-mem-summarize-interval" type="number" min="1" max="200" value="' + (settings.summarizeInterval || 30) + '" style="width:80px;flex:none">'
     h += '<span style="font-size:10px;color:var(--pua-text-dim)">\u5C42</span></div>'
@@ -13406,14 +13469,14 @@
 
     // 悬浮球设置
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u60AC\u6D6E\u7403</div>'
+    h += '<div class="pua-settings-title">\u60AC\u6D6E\u7403</div>'
     h += '<div class="pua-settings-row"><span class="pua-settings-label">\u60AC\u6D6E\u7403\u4F4D\u7F6E</span>'
     h += '<button class="pua-btn pua-btn-sm" id="set-fab-reset">\u91CD\u7F6E\u4F4D\u7F6E</button></div>'
     h += '</div>'
 
     // 导出诊断
     h += '<div class="pua-settings-group">'
-    h += '<div class="pua-settings-title">\u2726 \u5BFC\u51FA\u8BCA\u65AD</div>'
+    h += '<div class="pua-settings-title">\u5BFC\u51FA\u8BCA\u65AD</div>'
     h += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:8px">\u68C0\u6D4B\u5F53\u524D\u73AF\u5883\u652F\u6301\u7684\u5BFC\u51FA\u65B9\u5F0F\uFF0C\u5E2E\u52A9\u8BCA\u65AD APK/Web \u5BFC\u51FA\u95EE\u9898</div>'
     h += '<div style="display:flex;gap:6px">'
     h += '<button class="pua-btn pua-btn-sm" id="set-detect-export">\u68C0\u6D4B\u5BFC\u51FA\u80FD\u529B</button>'
@@ -13889,7 +13952,7 @@
 
     // 分支选择器
     h += '<div class="pua-mem-card" style="margin-bottom:10px">'
-    h += '<div class="pua-mem-card-title">\u2726 \u5F53\u524D\u5206\u652F</div>'
+    h += '<div class="pua-mem-card-title">\u5F53\u524D\u5206\u652F</div>'
     h += '<select class="pua-settings-select" id="mem-branch-select" style="width:100%">'
     h += '<option value="">-- \u9009\u62E9\u5206\u652F --</option>'
     for (var bi = 0; bi < branches.length; bi++) {
@@ -13908,7 +13971,7 @@
 
     // 核心记忆
     h += '<div class="pua-mem-card">'
-    h += '<div class="pua-mem-card-title">\u2726 \u6838\u5FC3\u8BB0\u5FC6</div>'
+    h += '<div class="pua-mem-card-title">\u6838\u5FC3\u8BB0\u5FC6</div>'
     h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u5173\u7CFB\u4E0E\u5267\u60C5\u8FDB\u5C55</div>'
     h += '<textarea class="pua-mem-detail-textarea" id="mem-core-rel">' + this._escHtml(memData.core && memData.core.relationship || '') + '</textarea></div>'
     h += '<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--pua-accent);font-weight:600;margin-bottom:4px">\u4E8B\u4EF6\u6458\u8981 (' + (memData.core.events ? memData.core.events.length : 0) + ' \u6761)</div>'
@@ -13935,7 +13998,7 @@
 
     // 事实记忆列表
     h += '<div class="pua-mem-card">'
-    h += '<div class="pua-mem-card-title">\u2726 \u4E8B\u5B9E\u8BB0\u5FC6 (' + factCount + ' \u6761)</div>'
+    h += '<div class="pua-mem-card-title">\u4E8B\u5B9E\u8BB0\u5FC6 (' + factCount + ' \u6761)</div>'
     if (memData.facts && memData.facts.length > 0) {
       for (var mi = 0; mi < memData.facts.length; mi++) {
         var fact = memData.facts[mi]
@@ -13963,7 +14026,7 @@
     h += '<div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">'
     h += '<button class="pua-btn pua-btn-sm" id="mem-fact-add">+ \u6DFB\u52A0\u4E8B\u5B9E\u8BB0\u5FC6</button>'
     h += '<button class="pua-btn pua-btn-sm" id="mem-fact-embed">\u751F\u6210\u5411\u91CF</button>'
-    h += '<button class="pua-btn pua-btn-sm" id="mem-fact-summarize">\u2726 \u603B\u7ED3\u8BB0\u5FC6</button>'
+    h += '<button class="pua-btn pua-btn-sm" id="mem-fact-summarize">\u603B\u7ED3\u8BB0\u5FC6</button>'
     h += '<input type="number" id="mem-batch-size" value="10" min="1" max="50" style="width:48px;background:var(--pua-bg-input);border:1px solid var(--pua-border);border-radius:4px;padding:3px 5px;color:var(--pua-text);font-size:10px;text-align:center;outline:none" title="\u6BCF\u6279\u603B\u7ED3\u6570\u91CF">'
     h += '<button class="pua-btn pua-btn-sm pua-btn-gold" id="mem-fact-summarize-all">\u5168\u90E8\u603B\u7ED3</button>'
     h += '<button class="pua-btn pua-btn-sm" id="mem-fact-conv-summary" style="background:var(--pua-accent);color:#fff">\u624B\u52A8\u603B\u7ED3\u5BF9\u8BDD</button>'
@@ -15052,7 +15115,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.47.0',
+    version: '0.26.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
