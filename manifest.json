@@ -1,7 +1,7 @@
 {
   "id": "parallel-universe",
   "name": "平行时空档案馆",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "分支存档、预设编辑、正则管理、上下文组装、记忆系统 — 让Roche拥有平行时空",
   "author": "Roche Community",
   "entry": "https://raw.githubusercontent.com/yechen1844/roche.parallel-universe/main/plugin.js",

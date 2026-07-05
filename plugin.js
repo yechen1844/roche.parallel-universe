@@ -1,7 +1,8 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿/**
- * 平行时空档案馆 v0.42.0
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿/**
+ * 平行时空档案馆 v0.27.0
  * Parallel Universe Archive — 让Roche拥有平行时空
  *
+ * v0.27.0: 界面安全区域适配 — 顶栏/底栏 safe-area-inset 支持/设置页可自定义偏移/对话页面与主页面统一适配
  * v0.42.0: 记忆系统核心重写 — 数据结构升级/批次总结JSON/对话总结JSON/关系进展总结/手动总结确认对话框/提示词自定义/聊天记录过滤
  * v0.8.0: 预设系统/刷新模型列表/测试调用/BM25本地实现/向量召回/副API召回/分支记忆联动
  * v0.7.0: 美化分支存档配置 + 设置页面 + 记忆系统页面 + 自定义Checkbox
@@ -33,6 +34,8 @@
     '  font-family:"LXGW WenKai Lite",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;',
     '  color:var(--pua-text); background:var(--pua-bg); height:100%; width:100%;',
   '  position:relative; overflow:visible;',
+    '  --pua-safe-top:env(safe-area-inset-top, 0px);',
+    '  --pua-safe-bottom:env(safe-area-inset-bottom, 0px);',
     '  --pua-bg:rgba(18,18,22,0.96); --pua-bg-solid:#121216;',
     '  --pua-bg-card:rgba(28,28,36,0.88); --pua-bg-card-hover:rgba(36,36,48,0.92);',
     '  --pua-bg-input:rgba(0,0,0,0.25); --pua-glass:blur(24px) saturate(120%);',
@@ -92,10 +95,10 @@
 
     '/* ── 主内容区 ── */',
     '.pua-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }',
-    '.pua-topbar { height:48px; min-height:48px; background:var(--pua-bg-card);',
+    '.pua-topbar { min-height:48px; background:var(--pua-bg-card);',
     '  backdrop-filter:var(--pua-glass); -webkit-backdrop-filter:var(--pua-glass);',
     '  border-bottom:1px solid var(--pua-border); display:flex; align-items:center;',
-    '  justify-content:space-between; padding:0 20px; }',
+    '  justify-content:space-between; padding:var(--pua-safe-top) 20px; }',
     '.pua-topbar-title { font-size:13px; font-weight:600; letter-spacing:0.3px; }',
     '.pua-topbar-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }',
     '.pua-back-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--pua-border);',
@@ -521,14 +524,14 @@
     '.pua-panel-detail.show { display:flex; }',
     '.pua-modal { width:90vw; max-height:85vh; }',
     '.pua-content { padding:12px; }',
-    '.pua-topbar { padding:0 12px; }',
+    '.pua-topbar { padding:var(--pua-safe-top) 12px; }',
     '.pua-btn { min-height:36px; padding:6px 14px; font-size:12px; }',
     '.pua-btn-gold { min-height:40px; }',
     '.pua-nav-item { padding:12px 16px; font-size:13px; }',
     '.pua-branch-card { padding:14px; }',
     '.pua-branch-card:active { transform:scale(0.98); opacity:0.9; }',
     '.pua-branch-name { font-size:14px; }',
-    '.pua-topbar { height:52px; min-height:52px; }',
+    '.pua-topbar { min-height:52px; }',
     '.pua-back-btn { width:34px; height:34px; font-size:16px; }',
     '.pua-sidebar-open-btn { width:34px; height:34px; font-size:18px; }',
     '.pua-field-input { font-size:13px; padding:8px 12px; }',
@@ -546,7 +549,7 @@
     '.asm-visual { min-height:300px; }',
     '.pua-mem-layout { flex-direction:column; }',
     '.pua-mem-sidebar { width:100%; min-width:100%; }',
-    '.pua-topbar { height:auto; min-height:52px; flex-wrap:wrap; padding:8px 12px; }',
+    '.pua-topbar { height:auto; min-height:52px; flex-wrap:wrap; padding:calc(var(--pua-safe-top) + 8px) 12px 8px; }',
     '.pua-topbar-actions { flex-wrap:wrap; gap:4px; }',
     '.pua-btn { min-height:32px; padding:4px 10px; font-size:11px; }',
     '.pua-btn-gold { min-height:36px; }',
@@ -612,7 +615,7 @@
     '.pua-action-preview pre { margin:2px 0 0 0; white-space:pre-wrap; word-break:break-all; font-size:8px; max-height:100px; overflow-y:auto; }',
     '.pua-batch-actions-bar { display:flex; align-items:center; gap:8px; padding:8px 10px; margin-top:8px; border-radius:8px; background:rgba(255,183,77,0.08); border:1px solid rgba(255,183,77,0.25); }',
     '.pua-batch-info { font-size:10px; color:var(--pua-accent-text); font-weight:600; margin-right:auto; }',
-    '.pua-assistant-input-area { padding:10px 14px; border-top:1px solid var(--pua-border); }',
+    '.pua-assistant-input-area { padding:10px 14px var(--pua-safe-bottom); border-top:1px solid var(--pua-border); }',
     '.pua-assistant-attach-row { display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; align-items:center; }',
     '.pua-assistant-attach-btn { font-size:9px; padding:3px 8px; border-radius:4px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; transition:var(--pua-transition); }',
     '.pua-assistant-attach-btn:hover { border-color:var(--pua-accent); color:var(--pua-text); }',
@@ -705,7 +708,7 @@
 
     '/* ── 对话页面 ── */',
     '.pua-conv-layout { display:flex; flex-direction:column; height:100%; overflow-x:hidden; }',
-    '.pua-conv-topbar { padding:6px 14px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; gap:8px; flex-shrink:0; }',
+    '.pua-conv-topbar { padding:var(--pua-safe-top) 14px 6px; border-bottom:1px solid var(--pua-border); display:flex; align-items:center; gap:8px; flex-shrink:0; }',
     '.pua-conv-branch-name { font-size:12px; font-weight:600; color:var(--pua-accent-text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }',
     '.pua-conv-msg-count { font-size:9px; color:var(--pua-text-dim); background:var(--pua-bg-input); padding:2px 6px; border-radius:8px; }',
     '.pua-conv-topbar-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); }',
@@ -741,7 +744,7 @@
     '.pua-conv-alt-tabs { display:flex; gap:3px; margin-top:4px; }',
     '.pua-conv-alt-tab { font-size:8px; padding:1px 5px; border-radius:3px; border:1px solid var(--pua-border); background:var(--pua-bg-input); color:var(--pua-text-dim); cursor:pointer; }',
     '.pua-conv-alt-tab.active { border-color:var(--pua-accent); color:var(--pua-accent); background:var(--pua-accent-glow); }',
-    '.pua-conv-input-area { padding:10px 14px; border-top:1px solid var(--pua-border); flex-shrink:0; }',
+    '.pua-conv-input-area { padding:10px 14px var(--pua-safe-bottom); border-top:1px solid var(--pua-border); flex-shrink:0; }',
     '.pua-conv-input-row { display:flex; gap:8px; align-items:flex-end; }',
     '.pua-conv-input { flex:1; background:var(--pua-bg-input); border:1px solid var(--pua-border); border-radius:8px; padding:8px 12px; color:var(--pua-text); font-size:11px; font-family:inherit; outline:none; resize:none; height:60px; min-height:60px; max-height:150px; transition:height 0.25s ease, min-height 0.25s ease; }',
     '.pua-conv-input.expanded { height:150px; min-height:150px; }',
@@ -758,9 +761,9 @@
     '.pua-conv-jump-input:focus { border-color:var(--pua-accent); }',
     '.pua-conv-jump-row { display:none; align-items:center; gap:4px; margin-top:4px; }',
     '.pua-conv-jump-row.show { display:flex; }',
-    '.pua-conv-bottom-btn { position:absolute; bottom:80px; right:20px; width:32px; height:32px; border-radius:50%; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); z-index:50; box-shadow:var(--pua-shadow); }',
+    '.pua-conv-bottom-btn { position:absolute; bottom:calc(80px + var(--pua-safe-bottom)); right:20px; width:32px; height:32px; border-radius:50%; border:1px solid var(--pua-border); background:var(--pua-bg-card); color:var(--pua-text-sub); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:var(--pua-transition); z-index:50; box-shadow:var(--pua-shadow); }',
     '.pua-conv-bottom-btn:hover { border-color:var(--pua-accent); color:var(--pua-accent); }',
-    '.pua-conv-settings-panel { position:absolute; top:48px; right:10px; width:240px; background:var(--pua-bg-solid); border:1px solid var(--pua-border); border-radius:10px; box-shadow:var(--pua-shadow); z-index:100; padding:14px; display:none; }',
+    '.pua-conv-settings-panel { position:absolute; top:calc(48px + var(--pua-safe-top)); right:10px; width:240px; background:var(--pua-bg-solid); border:1px solid var(--pua-border); border-radius:10px; box-shadow:var(--pua-shadow); z-index:100; padding:14px; display:none; }',
     '.pua-conv-settings-panel.show { display:block; animation:pua-modalIn 0.2s ease; }',
     '.pua-conv-settings-title { font-size:11px; font-weight:600; color:var(--pua-accent); margin-bottom:8px; }',
     '.pua-conv-settings-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }',
@@ -1491,6 +1494,13 @@
 
     // 悬浮球
     root.appendChild(this._renderFloatingBall())
+
+    // 界面适配：注入安全区域 CSS 变量
+    var _settings = this._loadSettings()
+    var _safeTop = _settings.safeTop != null ? _settings.safeTop + 'px' : 'env(safe-area-inset-top, 0px)'
+    var _safeBottom = _settings.safeBottom != null ? _settings.safeBottom + 'px' : 'env(safe-area-inset-bottom, 0px)'
+    root.style.setProperty('--pua-safe-top', _safeTop)
+    root.style.setProperty('--pua-safe-bottom', _safeBottom)
 
     c.appendChild(root)
 
@@ -13474,6 +13484,19 @@
     h += '<button class="pua-btn pua-btn-sm" id="set-fab-reset">\u91CD\u7F6E\u4F4D\u7F6E</button></div>'
     h += '</div>'
 
+    // 界面适配（安全区域）
+    h += '<div class="pua-settings-group">'
+    h += '<div class="pua-settings-title">\u754C\u9762\u9002\u914D</div>'
+    h += '<div style="font-size:9px;color:var(--pua-text-dim);margin-bottom:8px">\u8C03\u6574\u9876\u680F/\u5E95\u680F\u7684\u5B89\u5168\u533A\u57DF\u504F\u79FB\uFF0C\u9002\u914D\u5F02\u5F62\u5C4F\u624B\u673A\u3002\u7559\u7A7A=\u81EA\u52A8\u8DDF\u968F\u7CFB\u7EDF\u5B89\u5168\u533A\u57DF\u3002</div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u9876\u680F\u504F\u79BB</span>'
+    h += '<input class="pua-settings-input" id="set-safe-top" type="number" min="-1" max="100" placeholder="\u7559\u7A7A=\u81EA\u52A8" value="' + (settings.safeTop != null ? settings.safeTop : '') + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">px</span></div>'
+    h += '<div class="pua-settings-row"><span class="pua-settings-label">\u5E95\u680F\u504F\u79BB</span>'
+    h += '<input class="pua-settings-input" id="set-safe-bottom" type="number" min="-1" max="100" placeholder="\u7559\u7A7A=\u81EA\u52A8" value="' + (settings.safeBottom != null ? settings.safeBottom : '') + '" style="width:80px;flex:none">'
+    h += '<span style="font-size:10px;color:var(--pua-text-dim)">px</span></div>'
+    h += '<div class="pua-settings-hint">\u63D0\u793A\uFF1A\u9876\u680F\u504F\u79FB\u5E94\u7528\u4E8E\u4E3B\u9875\u9876\u680F\u4E0E\u5BF9\u8BDD\u9876\u680F\uFF1B\u5E95\u680F\u504F\u79FB\u5E94\u7528\u4E8E\u8F93\u5165\u6846\u5E95\u90E8\u3002\u4F7F\u7528 -1 \u53EF\u5F3A\u5236\u6E05\u96F6\u3002</div>'
+    h += '</div>'
+
     // 导出诊断
     h += '<div class="pua-settings-group">'
     h += '<div class="pua-settings-title">\u5BFC\u51FA\u8BCA\u65AD</div>'
@@ -13821,6 +13844,11 @@
         settings.relationshipPrompt = (contentEl.querySelector('#set-relationship-prompt') || {}).value || ''
         settings.summaryFilterMode = (contentEl.querySelector('#set-summary-filter-mode') || {}).value || 'none'
         settings.summaryCustomRegex = (contentEl.querySelector('#set-summary-custom-regex') || {}).value || ''
+        // 界面适配（安全区域）
+        var safeTopVal = (contentEl.querySelector('#set-safe-top') || {}).value
+        var safeBottomVal = (contentEl.querySelector('#set-safe-bottom') || {}).value
+        settings.safeTop = (safeTopVal === '' || safeTopVal == null) ? null : (parseInt(safeTopVal) || null)
+        settings.safeBottom = (safeBottomVal === '' || safeBottomVal == null) ? null : (parseInt(safeBottomVal) || null)
         self._saveSettings(settings)
         self._toast('\u8BBE\u7F6E\u5DF2\u4FDD\u5B58')
       })
@@ -13866,6 +13894,12 @@
         if (!this._settingsCache.eventsCharLimit) {
           this._settingsCache.eventsCharLimit = 1000
         }
+        if (this._settingsCache.safeTop === undefined) {
+          this._settingsCache.safeTop = null
+        }
+        if (this._settingsCache.safeBottom === undefined) {
+          this._settingsCache.safeBottom = null
+        }
         return this._settingsCache
       }
     } catch(e) {}
@@ -13875,7 +13909,7 @@
       factSendCount: 10, summarizeInterval: 30,
       coreCharLimit: 2000, eventsCharLimit: 1000, recallMaxCount: 8, recallMode: 'vector',
       renderLimit: 10, contextDepth: 30, autoScroll: false,
-      convFontSize: 14,
+      convFontSize: 14, safeTop: null, safeBottom: null,
       oneSentencePrompt: '\u8BF7\u4ECE\u4EE5\u4E0B\u5BF9\u8BDD\u4E2D\u63D0\u53D6\u5173\u952E\u4E8B\u5B9E\uFF0C\u7528\u4E00\u53E5\u8BDD\u6982\u62EC\u6700\u91CD\u8981\u7684\u4E8B\u4EF6\u6216\u4FE1\u606F\u3002',
       keywordsPrompt: '\u8BF7\u4ECE\u4EE5\u4E0B\u5BF9\u8BDD\u4E2D\u63D0\u53D63-5\u4E2A\u5173\u952E\u8BCD\uFF0C\u7528\u9017\u53F7\u5206\u9694\u3002',
       summaryContentPrompt: '\u8BF7\u4ECE\u4EE5\u4E0B\u5BF9\u8BDD\u4E2D\u63D0\u53D6\u5173\u952E\u4E8B\u5B9E\u4FE1\u606F\uFF0C\u8BE6\u7EC6\u603B\u7ED3\u53D1\u751F\u4E86\u4EC0\u4E48\u3002',
@@ -15115,7 +15149,7 @@
   window.RochePlugin.register({
     id: 'parallel-universe',
     name: '\u5E73\u884C\u65F6\u7A7A\u6863\u6848\u9986',
-    version: '0.26.0',
+    version: '0.27.0',
     icon: '\u2606',
     apps: [{
       id: 'parallel-universe-home',
